@@ -87,3 +87,5 @@ export const DIAS_SEMANA = [
 ] as const;
 
 export const PERIODOS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+
+export const MAX_ALUNOS_POR_CELULA = 7;
