@@ -96,18 +96,23 @@
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
 
-  /* Blocos especiais */
-  --bloco-break-bg: oklch(0.35 0.02 260);
-  --bloco-break-fg: oklch(0.98 0 0);
-  --bloco-prep-bg: oklch(0.85 0.08 300);
-  --bloco-prep-fg: oklch(0.25 0.05 300);
-  --bloco-vip-bg: oklch(0.82 0.14 85);
-  --bloco-vip-fg: oklch(0.25 0.05 85);
-  --aula-online-bg: oklch(0.9 0.06 230);
-  --aula-online-fg: oklch(0.25 0.08 230);
-  --aula-vip-bg: oklch(0.93 0.08 85);
-  --aula-vip-fg: oklch(0.3 0.08 85);
+  /* Tipos de horário */
+  --tipo-regular-bg: oklch(1 0 0);
+  --tipo-regular-fg: oklch(0.2 0.02 260);
+  --tipo-online-bg: oklch(0.9 0.06 230);
+  --tipo-online-fg: oklch(0.25 0.08 230);
+  --tipo-vip-bg: oklch(0.9 0.12 85);
+  --tipo-vip-fg: oklch(0.28 0.08 85);
+  --tipo-reforco-bg: oklch(0.9 0.09 30);
+  --tipo-reforco-fg: oklch(0.3 0.1 30);
+  --tipo-conversacao-bg: oklch(0.88 0.09 160);
+  --tipo-conversacao-fg: oklch(0.28 0.08 160);
+  --tipo-break-bg: oklch(0.35 0.02 260);
+  --tipo-break-fg: oklch(0.98 0 0);
+  --tipo-prep-bg: oklch(0.85 0.08 300);
+  --tipo-prep-fg: oklch(0.25 0.05 300);
 }
+
 
 .dark {
   --background: oklch(0.129 0.042 264.695);

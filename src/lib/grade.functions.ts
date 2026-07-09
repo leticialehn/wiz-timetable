@@ -1,16 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
 import type {
   Aluno,
-  BlocoEspecial,
   CelulaAula,
   ExcecaoSemana,
   GradeBaseRow,
   GradeSemana,
+  HorarioConfig,
   Professora,
   TipoAula,
-  TipoBloco,
+  TipoHorario,
 } from "./types";
-import { datasDaSemana, parseISODate, diaSemanaISO } from "./date-utils";
+import { CAPACIDADE, TIPO_FECHADO } from "./types";
+import { datasDaSemana, parseISODate, diaSemanaISO, segundaDaSemana, toISODate } from "./date-utils";
 
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -24,9 +25,17 @@ async function publicClient() {
   });
 }
 
+function nomeDoAluno(row: { aluno_id: string | null; aluno_nome_avulso: string | null }, alunosById: Map<string, Aluno>) {
+  if (row.aluno_id) {
+    const a = alunosById.get(row.aluno_id);
+    return { nome: a?.nome ?? "?", nivel: a?.nivel ?? "", avulso: false };
+  }
+  return { nome: row.aluno_nome_avulso ?? "?", nivel: "", avulso: true };
+}
+
 function celulaFromBase(row: GradeBaseRow, alunosById: Map<string, Aluno>): CelulaAula | null {
-  if (!row.aluno_id) return null;
-  const a = alunosById.get(row.aluno_id);
+  if (!row.aluno_id && !row.aluno_nome_avulso) return null;
+  const info = nomeDoAluno(row, alunosById);
   return {
     id: row.id,
     origem: "base",
@@ -36,8 +45,9 @@ function celulaFromBase(row: GradeBaseRow, alunosById: Map<string, Aluno>): Celu
     periodo: row.periodo,
     professora_id: row.professora_id,
     aluno_id: row.aluno_id,
-    aluno_nome: a?.nome ?? "?",
-    aluno_nivel: a?.nivel ?? "",
+    aluno_nome: info.nome,
+    aluno_nivel: info.nivel,
+    aluno_avulso: info.avulso,
     tipo: row.tipo,
     horario_especifico: row.horario_especifico,
     observacao: row.observacao,
@@ -51,18 +61,18 @@ export const getGradeSemana = createServerFn({ method: "GET" })
     const datas = datasDaSemana(parseISODate(data.dataSegunda));
     const dataFim = datas[datas.length - 1];
 
-    const [profRes, alunosRes, baseRes, blocosRes, excRes] = await Promise.all([
+    const [profRes, alunosRes, baseRes, cfgRes, excRes] = await Promise.all([
       sb.from("professoras").select("*").order("ordem"),
       sb.from("alunos").select("*").order("nome"),
       sb.from("grade_base").select("*"),
-      sb.from("blocos_especiais").select("*"),
+      sb.from("horarios_config").select("*"),
       sb.from("excecoes_semana").select("*").gte("data", datas[0]).lte("data", dataFim),
     ]);
 
     const professoras = (profRes.data ?? []) as Professora[];
     const alunos = (alunosRes.data ?? []) as Aluno[];
     const base = (baseRes.data ?? []) as GradeBaseRow[];
-    const blocos = (blocosRes.data ?? []) as BlocoEspecial[];
+    const horariosConfig = (cfgRes.data ?? []) as HorarioConfig[];
     const excecoes = (excRes.data ?? []) as ExcecaoSemana[];
 
     const alunosById = new Map(alunos.map((a) => [a.id, a]));
@@ -83,8 +93,13 @@ export const getGradeSemana = createServerFn({ method: "GET" })
         if (removidos.has(row.id)) continue;
         if (movidos.has(row.id)) {
           const m = movidos.get(row.id)!;
-          const alunoId = m.aluno_id ?? row.aluno_id;
-          const a = alunoId ? alunosById.get(alunoId) : undefined;
+          const info = nomeDoAluno(
+            {
+              aluno_id: m.aluno_id ?? row.aluno_id,
+              aluno_nome_avulso: m.aluno_nome_avulso ?? row.aluno_nome_avulso,
+            },
+            alunosById,
+          );
           doDia.push({
             id: `mov-${m.id}`,
             origem: "excecao",
@@ -93,9 +108,10 @@ export const getGradeSemana = createServerFn({ method: "GET" })
             dia_semana: m.dia_semana ?? row.dia_semana,
             periodo: m.periodo ?? row.periodo,
             professora_id: m.professora_id ?? row.professora_id,
-            aluno_id: alunoId,
-            aluno_nome: a?.nome ?? "?",
-            aluno_nivel: a?.nivel ?? "",
+            aluno_id: m.aluno_id ?? row.aluno_id,
+            aluno_nome: info.nome,
+            aluno_nivel: info.nivel,
+            aluno_avulso: info.avulso,
             tipo: (m.tipo ?? row.tipo) as TipoAula,
             horario_especifico: m.horario_especifico ?? row.horario_especifico,
             observacao: m.observacao ?? row.observacao,
@@ -107,8 +123,9 @@ export const getGradeSemana = createServerFn({ method: "GET" })
       }
 
       for (const e of excsDoDia.filter((x) => x.tipo_excecao === "adicionar")) {
-        if (!e.aluno_id || !e.professora_id || !e.periodo) continue;
-        const a = alunosById.get(e.aluno_id);
+        if (!e.professora_id || !e.periodo) continue;
+        if (!e.aluno_id && !e.aluno_nome_avulso) continue;
+        const info = nomeDoAluno({ aluno_id: e.aluno_id, aluno_nome_avulso: e.aluno_nome_avulso }, alunosById);
         doDia.push({
           id: `add-${e.id}`,
           origem: "excecao",
@@ -118,8 +135,9 @@ export const getGradeSemana = createServerFn({ method: "GET" })
           periodo: e.periodo,
           professora_id: e.professora_id,
           aluno_id: e.aluno_id,
-          aluno_nome: a?.nome ?? "?",
-          aluno_nivel: a?.nivel ?? "",
+          aluno_nome: info.nome,
+          aluno_nivel: info.nivel,
+          aluno_avulso: info.avulso,
           tipo: (e.tipo ?? "regular") as TipoAula,
           horario_especifico: e.horario_especifico,
           observacao: e.observacao,
@@ -130,10 +148,54 @@ export const getGradeSemana = createServerFn({ method: "GET" })
     }
 
     const celulas = Object.values(celulasPorData).flat();
-    return { professoras, alunos, celulas, celulasPorData, blocos, datasSemana: datas };
+    return { professoras, alunos, celulas, celulasPorData, horariosConfig, datasSemana: datas };
   });
 
-// ============ Mutações ============
+// ============ Configuração de tipo de horário (por célula) ============
+
+export const setHorarioConfig = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      dia_semana: number;
+      periodo: number;
+      professora_id: string;
+      tipo: TipoHorario;
+      tema?: string | null;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    await (await import("./gate.server")).requireAdminUnlocked();
+    const sb = await admin();
+    const { error } = await sb.from("horarios_config").upsert(
+      {
+        dia_semana: data.dia_semana,
+        periodo: data.periodo,
+        professora_id: data.professora_id,
+        tipo: data.tipo,
+        tema: data.tema ?? null,
+      },
+      { onConflict: "dia_semana,periodo,professora_id" },
+    );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const removerHorarioConfig = createServerFn({ method: "POST" })
+  .inputValidator((data: { dia_semana: number; periodo: number; professora_id: string }) => data)
+  .handler(async ({ data }) => {
+    await (await import("./gate.server")).requireAdminUnlocked();
+    const sb = await admin();
+    const { error } = await sb
+      .from("horarios_config")
+      .delete()
+      .eq("dia_semana", data.dia_semana)
+      .eq("periodo", data.periodo)
+      .eq("professora_id", data.professora_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ============ Mutações de alunos ============
 
 type EscopoEdicao = "base" | "semana";
 
@@ -141,11 +203,12 @@ export const adicionarAluno = createServerFn({ method: "POST" })
   .inputValidator(
     (data: {
       escopo: EscopoEdicao;
-      data: string; // iso yyyy-mm-dd
+      data: string;
       dia_semana: number;
       periodo: number;
       professora_id: string;
-      aluno_id: string;
+      aluno_id?: string | null;
+      aluno_nome_avulso?: string | null;
       tipo?: TipoAula;
       horario_especifico?: string | null;
       observacao?: string | null;
@@ -155,25 +218,49 @@ export const adicionarAluno = createServerFn({ method: "POST" })
     await (await import("./gate.server")).requireAdminUnlocked();
     const sb = await admin();
 
-    // Validar capacidade máxima de 7 alunos por célula (dia+período+professora nesta data)
-    const { MAX_ALUNOS_POR_CELULA } = await import("./types");
-    const grade = await getGradeSemana({
-      data: { dataSegunda: (await import("./date-utils")).toISODate((await import("./date-utils")).segundaDaSemana(parseISODate(data.data))) },
-    });
+    if (!data.aluno_id && !data.aluno_nome_avulso) {
+      throw new Error("Informe um aluno ou o nome do aluno avulso.");
+    }
+
+    // Descobre tipo do horário e valida capacidade
+    const { data: cfgRow } = await sb
+      .from("horarios_config")
+      .select("*")
+      .eq("dia_semana", data.dia_semana)
+      .eq("periodo", data.periodo)
+      .eq("professora_id", data.professora_id)
+      .maybeSingle();
+    const tipoHorario: TipoHorario = (cfgRow?.tipo as TipoHorario) ?? "regular";
+
+    if (TIPO_FECHADO[tipoHorario]) {
+      throw new Error("Este horário está fechado (break / preparação).");
+    }
+    if (tipoHorario !== "reforco" && data.aluno_nome_avulso && !data.aluno_id) {
+      throw new Error("Aluno avulso só é permitido em horário de Reforço.");
+    }
+
+    const dataSegunda = toISODate(segundaDaSemana(parseISODate(data.data)));
+    const grade = await getGradeSemana({ data: { dataSegunda } });
     const ocupadas = (grade.celulasPorData[data.data] ?? []).filter(
       (c) => c.professora_id === data.professora_id && c.periodo === data.periodo,
     ).length;
-    if (ocupadas >= MAX_ALUNOS_POR_CELULA) {
-      throw new Error(`Este horário já está com ${MAX_ALUNOS_POR_CELULA} alunos (capacidade máxima).`);
+    const cap = CAPACIDADE[tipoHorario];
+    if (ocupadas >= cap) {
+      throw new Error(`Capacidade máxima atingida (${cap} para ${tipoHorario}).`);
     }
+
+    const tipoAula = (tipoHorario === "break" || tipoHorario === "preparacao_homework"
+      ? "regular"
+      : tipoHorario) as TipoAula;
 
     if (data.escopo === "base") {
       const { error } = await sb.from("grade_base").insert({
         dia_semana: data.dia_semana,
         periodo: data.periodo,
         professora_id: data.professora_id,
-        aluno_id: data.aluno_id,
-        tipo: data.tipo ?? "regular",
+        aluno_id: data.aluno_id ?? null,
+        aluno_nome_avulso: data.aluno_nome_avulso ?? null,
+        tipo: tipoAula,
         horario_especifico: data.horario_especifico ?? null,
         observacao: data.observacao ?? null,
       });
@@ -185,8 +272,9 @@ export const adicionarAluno = createServerFn({ method: "POST" })
         dia_semana: data.dia_semana,
         periodo: data.periodo,
         professora_id: data.professora_id,
-        aluno_id: data.aluno_id,
-        tipo: data.tipo ?? "regular",
+        aluno_id: data.aluno_id ?? null,
+        aluno_nome_avulso: data.aluno_nome_avulso ?? null,
+        tipo: tipoAula,
         horario_especifico: data.horario_especifico ?? null,
         observacao: data.observacao ?? null,
       });
@@ -200,7 +288,6 @@ export const removerCelula = createServerFn({ method: "POST" })
     (data: {
       escopo: EscopoEdicao;
       data: string;
-      celulaId: string;
       origem: "base" | "excecao";
       grade_base_id: string | null;
       excecao_id: string | null;
@@ -210,7 +297,6 @@ export const removerCelula = createServerFn({ method: "POST" })
     await (await import("./gate.server")).requireAdminUnlocked();
     const sb = await admin();
     if (data.origem === "excecao" && data.excecao_id) {
-      // Apagar a exceção de "adicionar" ou "mover"
       const { error } = await sb.from("excecoes_semana").delete().eq("id", data.excecao_id);
       if (error) throw new Error(error.message);
       return { ok: true };
@@ -228,113 +314,5 @@ export const removerCelula = createServerFn({ method: "POST" })
       });
       if (error) throw new Error(error.message);
     }
-    return { ok: true };
-  });
-
-export const atualizarCelula = createServerFn({ method: "POST" })
-  .inputValidator(
-    (data: {
-      escopo: EscopoEdicao;
-      data: string;
-      dia_semana: number;
-      periodo: number;
-      professora_id: string;
-      origem: "base" | "excecao";
-      grade_base_id: string | null;
-      excecao_id: string | null;
-      aluno_id: string;
-      tipo: TipoAula;
-      horario_especifico: string | null;
-      observacao: string | null;
-    }) => data,
-  )
-  .handler(async ({ data }) => {
-    await (await import("./gate.server")).requireAdminUnlocked();
-    const sb = await admin();
-    const patch = {
-      tipo: data.tipo,
-      horario_especifico: data.horario_especifico,
-      observacao: data.observacao,
-      aluno_id: data.aluno_id,
-    };
-
-    if (data.origem === "excecao" && data.excecao_id) {
-      const { error } = await sb.from("excecoes_semana").update(patch).eq("id", data.excecao_id);
-      if (error) throw new Error(error.message);
-      return { ok: true };
-    }
-
-    if (data.escopo === "base") {
-      if (!data.grade_base_id) throw new Error("grade_base_id ausente");
-      const { error } = await sb.from("grade_base").update(patch).eq("id", data.grade_base_id);
-      if (error) throw new Error(error.message);
-    } else {
-      if (!data.grade_base_id) throw new Error("grade_base_id ausente");
-      // Cria exceção "mover" para essa semana
-      const { error } = await sb.from("excecoes_semana").insert({
-        data: data.data,
-        tipo_excecao: "mover",
-        grade_base_id: data.grade_base_id,
-        dia_semana: data.dia_semana,
-        periodo: data.periodo,
-        professora_id: data.professora_id,
-        aluno_id: data.aluno_id,
-        tipo: data.tipo,
-        horario_especifico: data.horario_especifico,
-        observacao: data.observacao,
-      });
-      if (error) throw new Error(error.message);
-    }
-    return { ok: true };
-  });
-
-// ================ Blocos especiais =================
-
-export const upsertBloco = createServerFn({ method: "POST" })
-  .inputValidator(
-    (data: {
-      id?: string;
-      dia_semana: number;
-      periodo: number;
-      professora_id: string;
-      tipo: TipoBloco;
-      titulo: string;
-      aluno_nome_destaque?: string | null;
-    }) => data,
-  )
-  .handler(async ({ data }) => {
-    await (await import("./gate.server")).requireAdminUnlocked();
-    const sb = await admin();
-    if (data.id) {
-      const { error } = await sb
-        .from("blocos_especiais")
-        .update({
-          tipo: data.tipo,
-          titulo: data.titulo,
-          aluno_nome_destaque: data.aluno_nome_destaque ?? null,
-        })
-        .eq("id", data.id);
-      if (error) throw new Error(error.message);
-    } else {
-      const { error } = await sb.from("blocos_especiais").insert({
-        dia_semana: data.dia_semana,
-        periodo: data.periodo,
-        professora_id: data.professora_id,
-        tipo: data.tipo,
-        titulo: data.titulo,
-        aluno_nome_destaque: data.aluno_nome_destaque ?? null,
-      });
-      if (error) throw new Error(error.message);
-    }
-    return { ok: true };
-  });
-
-export const removerBloco = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string }) => data)
-  .handler(async ({ data }) => {
-    await (await import("./gate.server")).requireAdminUnlocked();
-    const sb = await admin();
-    const { error } = await sb.from("blocos_especiais").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
     return { ok: true };
   });

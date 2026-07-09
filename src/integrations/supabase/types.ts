@@ -38,50 +38,10 @@ export type Database = {
         }
         Relationships: []
       }
-      blocos_especiais: {
-        Row: {
-          aluno_nome_destaque: string | null
-          created_at: string
-          dia_semana: number
-          id: string
-          periodo: number
-          professora_id: string
-          tipo: string
-          titulo: string
-        }
-        Insert: {
-          aluno_nome_destaque?: string | null
-          created_at?: string
-          dia_semana: number
-          id?: string
-          periodo: number
-          professora_id: string
-          tipo: string
-          titulo?: string
-        }
-        Update: {
-          aluno_nome_destaque?: string | null
-          created_at?: string
-          dia_semana?: number
-          id?: string
-          periodo?: number
-          professora_id?: string
-          tipo?: string
-          titulo?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "blocos_especiais_professora_id_fkey"
-            columns: ["professora_id"]
-            isOneToOne: false
-            referencedRelation: "professoras"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       excecoes_semana: {
         Row: {
           aluno_id: string | null
+          aluno_nome_avulso: string | null
           created_at: string
           data: string
           dia_semana: number | null
@@ -96,6 +56,7 @@ export type Database = {
         }
         Insert: {
           aluno_id?: string | null
+          aluno_nome_avulso?: string | null
           created_at?: string
           data: string
           dia_semana?: number | null
@@ -110,6 +71,7 @@ export type Database = {
         }
         Update: {
           aluno_id?: string | null
+          aluno_nome_avulso?: string | null
           created_at?: string
           data?: string
           dia_semana?: number | null
@@ -149,6 +111,7 @@ export type Database = {
       grade_base: {
         Row: {
           aluno_id: string | null
+          aluno_nome_avulso: string | null
           created_at: string
           dia_semana: number
           horario_especifico: string | null
@@ -160,6 +123,7 @@ export type Database = {
         }
         Insert: {
           aluno_id?: string | null
+          aluno_nome_avulso?: string | null
           created_at?: string
           dia_semana: number
           horario_especifico?: string | null
@@ -171,6 +135,7 @@ export type Database = {
         }
         Update: {
           aluno_id?: string | null
+          aluno_nome_avulso?: string | null
           created_at?: string
           dia_semana?: number
           horario_especifico?: string | null
@@ -190,6 +155,44 @@ export type Database = {
           },
           {
             foreignKeyName: "grade_base_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "professoras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      horarios_config: {
+        Row: {
+          created_at: string
+          dia_semana: number
+          id: string
+          periodo: number
+          professora_id: string
+          tema: string | null
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          dia_semana: number
+          id?: string
+          periodo: number
+          professora_id: string
+          tema?: string | null
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          dia_semana?: number
+          id?: string
+          periodo?: number
+          professora_id?: string
+          tema?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "horarios_config_professora_id_fkey"
             columns: ["professora_id"]
             isOneToOne: false
             referencedRelation: "professoras"
