@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireAdminUnlocked } from "./gate.functions";
+import { requireAdminUnlocked } from "./gate.server";
 import type {
   Aluno,
   BlocoEspecial,
