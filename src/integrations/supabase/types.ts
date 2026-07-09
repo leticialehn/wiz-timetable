@@ -14,7 +14,216 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      alunos: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nivel: string
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nivel?: string
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nivel?: string
+          nome?: string
+        }
+        Relationships: []
+      }
+      blocos_especiais: {
+        Row: {
+          aluno_nome_destaque: string | null
+          created_at: string
+          dia_semana: number
+          id: string
+          periodo: number
+          professora_id: string
+          tipo: string
+          titulo: string
+        }
+        Insert: {
+          aluno_nome_destaque?: string | null
+          created_at?: string
+          dia_semana: number
+          id?: string
+          periodo: number
+          professora_id: string
+          tipo: string
+          titulo?: string
+        }
+        Update: {
+          aluno_nome_destaque?: string | null
+          created_at?: string
+          dia_semana?: number
+          id?: string
+          periodo?: number
+          professora_id?: string
+          tipo?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocos_especiais_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "professoras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      excecoes_semana: {
+        Row: {
+          aluno_id: string | null
+          created_at: string
+          data: string
+          dia_semana: number | null
+          grade_base_id: string | null
+          horario_especifico: string | null
+          id: string
+          observacao: string | null
+          periodo: number | null
+          professora_id: string | null
+          tipo: string | null
+          tipo_excecao: string
+        }
+        Insert: {
+          aluno_id?: string | null
+          created_at?: string
+          data: string
+          dia_semana?: number | null
+          grade_base_id?: string | null
+          horario_especifico?: string | null
+          id?: string
+          observacao?: string | null
+          periodo?: number | null
+          professora_id?: string | null
+          tipo?: string | null
+          tipo_excecao: string
+        }
+        Update: {
+          aluno_id?: string | null
+          created_at?: string
+          data?: string
+          dia_semana?: number | null
+          grade_base_id?: string | null
+          horario_especifico?: string | null
+          id?: string
+          observacao?: string | null
+          periodo?: number | null
+          professora_id?: string | null
+          tipo?: string | null
+          tipo_excecao?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "excecoes_semana_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "excecoes_semana_grade_base_id_fkey"
+            columns: ["grade_base_id"]
+            isOneToOne: false
+            referencedRelation: "grade_base"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "excecoes_semana_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "professoras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grade_base: {
+        Row: {
+          aluno_id: string | null
+          created_at: string
+          dia_semana: number
+          horario_especifico: string | null
+          id: string
+          observacao: string | null
+          periodo: number
+          professora_id: string
+          tipo: string
+        }
+        Insert: {
+          aluno_id?: string | null
+          created_at?: string
+          dia_semana: number
+          horario_especifico?: string | null
+          id?: string
+          observacao?: string | null
+          periodo: number
+          professora_id: string
+          tipo?: string
+        }
+        Update: {
+          aluno_id?: string | null
+          created_at?: string
+          dia_semana?: number
+          horario_especifico?: string | null
+          id?: string
+          observacao?: string | null
+          periodo?: number
+          professora_id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grade_base_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grade_base_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "professoras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professoras: {
+        Row: {
+          ativa: boolean
+          cor: string
+          created_at: string
+          id: string
+          nome: string
+          ordem: number
+        }
+        Insert: {
+          ativa?: boolean
+          cor?: string
+          created_at?: string
+          id?: string
+          nome: string
+          ordem?: number
+        }
+        Update: {
+          ativa?: boolean
+          cor?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          ordem?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
