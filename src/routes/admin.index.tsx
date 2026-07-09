@@ -2,14 +2,50 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { getGradeSemana, adicionarAluno, removerCelula, atualizarCelula, upsertBloco, removerBloco } from "@/lib/grade.functions";
+import {
+  getGradeSemana,
+  adicionarAluno,
+  removerCelula,
+  setHorarioConfig,
+  removerHorarioConfig,
+} from "@/lib/grade.functions";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
-import { datasDaSemana, formatarDataBR, parseISODate, segundaDaSemana, somarSemanas, toISODate } from "@/lib/date-utils";
-import { DIAS_SEMANA, PERIODOS, type Aluno, type CelulaAula, type Professora, type TipoAula, type BlocoEspecial, type TipoBloco } from "@/lib/types";
+import {
+  datasDaSemana,
+  formatarDataBR,
+  parseISODate,
+  segundaDaSemana,
+  somarSemanas,
+  toISODate,
+} from "@/lib/date-utils";
+import {
+  DIAS_SEMANA,
+  PERIODOS,
+  CAPACIDADE,
+  ROTULO_TIPO,
+  TIPO_FECHADO,
+  TIPO_MOSTRA_LIVRO,
+  configDe,
+  type Aluno,
+  type CelulaAula,
+  type HorarioConfig,
+  type Professora,
+  type TipoHorario,
+} from "@/lib/types";
 
 export const Route = createFileRoute("/admin/")({
   component: GradePage,
 });
+
+const TIPOS_ORDEM: TipoHorario[] = [
+  "regular",
+  "online",
+  "vip",
+  "reforco",
+  "conversacao",
+  "break",
+  "preparacao_homework",
+];
 
 function GradePage() {
   useRealtimeGrade();
@@ -28,11 +64,7 @@ function GradePage() {
   const datas = useMemo(() => datasDaSemana(parseISODate(dataSegunda)), [dataSegunda]);
   const dataDoDia = datas[diaAtivo - 1];
 
-  const [editando, setEditando] = useState<{
-    professora: Professora;
-    periodo: number;
-  } | null>(null);
-  const [editandoBloco, setEditandoBloco] = useState<BlocoEspecial | null>(null);
+  const [editando, setEditando] = useState<{ professora: Professora; periodo: number } | null>(null);
 
   return (
     <main className="max-w-[1400px] mx-auto px-4 py-6">
@@ -75,36 +107,27 @@ function GradePage() {
       ) : (
         <GradeTabela
           professoras={data.professoras.filter((p) => p.ativa)}
-          alunos={data.alunos.filter((a) => a.ativo)}
           celulas={data.celulasPorData[dataDoDia] ?? []}
-          blocos={data.blocos.filter((b) => b.dia_semana === diaAtivo)}
+          horariosConfig={data.horariosConfig}
           diaSemana={diaAtivo}
-          dataDoDia={dataDoDia}
           onEditarCelula={(professora, periodo) => setEditando({ professora, periodo })}
-          onEditarBloco={(b) => setEditandoBloco(b)}
         />
       )}
 
       {editando && data && (
         <CelulaEditor
-          key={`${editando.professora.id}-${editando.periodo}`}
+          key={`${editando.professora.id}-${editando.periodo}-${diaAtivo}`}
           professora={editando.professora}
           periodo={editando.periodo}
           diaSemana={diaAtivo}
           dataDoDia={dataDoDia}
+          config={configDe(data.horariosConfig, diaAtivo, editando.periodo, editando.professora.id)}
           celulas={(data.celulasPorData[dataDoDia] ?? []).filter(
             (c) => c.professora_id === editando.professora.id && c.periodo === editando.periodo,
           )}
           alunos={data.alunos.filter((a) => a.ativo)}
-          blocoExistente={data.blocos.find(
-            (b) => b.professora_id === editando.professora.id && b.periodo === editando.periodo && b.dia_semana === diaAtivo,
-          )}
           onFechar={() => setEditando(null)}
         />
-      )}
-
-      {editandoBloco && (
-        <BlocoEditor bloco={editandoBloco} onFechar={() => setEditandoBloco(null)} />
       )}
     </main>
   );
@@ -112,21 +135,18 @@ function GradePage() {
 
 function GradeTabela(props: {
   professoras: Professora[];
-  alunos: Aluno[];
   celulas: CelulaAula[];
-  blocos: BlocoEspecial[];
+  horariosConfig: HorarioConfig[];
   diaSemana: number;
-  dataDoDia: string;
   onEditarCelula: (p: Professora, periodo: number) => void;
-  onEditarBloco: (b: BlocoEspecial) => void;
 }) {
-  const { professoras, celulas, blocos } = props;
+  const { professoras, celulas, horariosConfig, diaSemana } = props;
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full border-collapse">
         <thead>
           <tr>
-            <th className="w-16 border border-border bg-muted text-xs font-medium text-muted-foreground p-2">Período</th>
+            <th className="w-16 border border-border bg-muted text-xs font-medium text-muted-foreground p-2">Per.</th>
             {professoras.map((p) => (
               <th
                 key={p.id}
@@ -143,31 +163,16 @@ function GradeTabela(props: {
             <tr key={per}>
               <td className="border border-border bg-muted text-center font-medium text-sm p-2">{per}</td>
               {professoras.map((p) => {
-                const bloco = blocos.find((b) => b.professora_id === p.id && b.periodo === per);
+                const cfg = configDe(horariosConfig, diaSemana, per, p.id);
+                const tipo: TipoHorario = cfg?.tipo ?? "regular";
                 const cels = celulas.filter((c) => c.professora_id === p.id && c.periodo === per);
                 return (
                   <td
                     key={p.id}
-                    onClick={() => bloco ? props.onEditarBloco(bloco) : props.onEditarCelula(p, per)}
-                    className="border border-border align-top p-1.5 min-w-[160px] h-20 cursor-pointer hover:bg-accent/40"
+                    onClick={() => props.onEditarCelula(p, per)}
+                    className={`border border-border align-top p-1.5 min-w-[170px] h-24 cursor-pointer hover:brightness-95 ${tipoCellBg(tipo)}`}
                   >
-                    {bloco ? (
-                      <BlocoPill bloco={bloco} />
-                    ) : cels.length === 0 ? (
-                      <span className="text-xs text-muted-foreground/50">—</span>
-                    ) : (
-                      <div className="space-y-1">
-                        {cels.map((c) => (
-                          <div key={c.id} className={`text-sm rounded px-1.5 py-1 ${aulaClass(c.tipo)}`}>
-                            {c.horario_especifico && (
-                              <span className="font-semibold mr-1">{c.horario_especifico}</span>
-                            )}
-                            <span>{c.aluno_nome}</span>
-                            {c.aluno_nivel && <span className="opacity-70"> — {c.aluno_nivel}</span>}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    <CelulaConteudo tipo={tipo} cfg={cfg} cels={cels} />
                   </td>
                 );
               })}
@@ -179,30 +184,59 @@ function GradeTabela(props: {
   );
 }
 
-function aulaClass(tipo: TipoAula) {
-  if (tipo === "online") return "bg-[var(--aula-online-bg)] text-[var(--aula-online-fg)]";
-  if (tipo === "vip") return "bg-[var(--aula-vip-bg)] text-[var(--aula-vip-fg)] font-semibold";
-  return "bg-white/60 text-foreground";
-}
-
-function BlocoPill({ bloco }: { bloco: BlocoEspecial }) {
-  const styles: Record<TipoBloco, string> = {
-    break: "bg-[var(--bloco-break-bg)] text-[var(--bloco-break-fg)]",
-    preparacao_homework: "bg-[var(--bloco-prep-bg)] text-[var(--bloco-prep-fg)]",
-    vip: "bg-[var(--bloco-vip-bg)] text-[var(--bloco-vip-fg)]",
-  };
+function CelulaConteudo({
+  tipo,
+  cfg,
+  cels,
+}: {
+  tipo: TipoHorario;
+  cfg: HorarioConfig | null;
+  cels: CelulaAula[];
+}) {
+  if (TIPO_FECHADO[tipo]) {
+    return (
+      <div className="text-center py-2">
+        <div className="text-xs font-bold uppercase tracking-wide">{ROTULO_TIPO[tipo]}</div>
+        {cfg?.tema && <div className="text-[11px] mt-1 opacity-80">{cfg.tema}</div>}
+      </div>
+    );
+  }
+  const cap = CAPACIDADE[tipo];
+  const mostraLivro = TIPO_MOSTRA_LIVRO[tipo];
   return (
-    <div className={`rounded px-2 py-2 h-full text-center text-sm font-semibold ${styles[bloco.tipo]}`}>
-      <div>{bloco.titulo || rotuloBloco(bloco.tipo)}</div>
-      {bloco.aluno_nome_destaque && <div className="text-xs mt-0.5">{bloco.aluno_nome_destaque}</div>}
+    <div className="space-y-1">
+      <div className="flex items-center justify-between gap-1">
+        <span className="text-[10px] uppercase font-bold opacity-70">{ROTULO_TIPO[tipo]}</span>
+        <span className="text-[10px] opacity-70">{cels.length}/{cap}</span>
+      </div>
+      {cfg?.tema && <div className="text-[11px] italic opacity-80 leading-tight">{cfg.tema}</div>}
+      {cels.length === 0 ? (
+        <div className="text-xs opacity-50">—</div>
+      ) : (
+        cels.map((c) => (
+          <div key={c.id} className="text-xs leading-tight">
+            {c.horario_especifico && <span className="font-semibold mr-1">{c.horario_especifico}</span>}
+            <span>{c.aluno_nome}</span>
+            {mostraLivro && c.aluno_nivel && <span className="opacity-70"> — {c.aluno_nivel}</span>}
+            {c.aluno_avulso && <span className="ml-1 text-[9px] uppercase opacity-70">avulso</span>}
+          </div>
+        ))
+      )}
     </div>
   );
 }
 
-function rotuloBloco(t: TipoBloco) {
-  if (t === "break") return "BREAK";
-  if (t === "preparacao_homework") return "Preparação & Homework";
-  return "VIP";
+function tipoCellBg(tipo: TipoHorario) {
+  const map: Record<TipoHorario, string> = {
+    regular: "bg-[var(--tipo-regular-bg)] text-[var(--tipo-regular-fg)]",
+    online: "bg-[var(--tipo-online-bg)] text-[var(--tipo-online-fg)]",
+    vip: "bg-[var(--tipo-vip-bg)] text-[var(--tipo-vip-fg)]",
+    reforco: "bg-[var(--tipo-reforco-bg)] text-[var(--tipo-reforco-fg)]",
+    conversacao: "bg-[var(--tipo-conversacao-bg)] text-[var(--tipo-conversacao-fg)]",
+    break: "bg-[var(--tipo-break-bg)] text-[var(--tipo-break-fg)]",
+    preparacao_homework: "bg-[var(--tipo-prep-bg)] text-[var(--tipo-prep-fg)]",
+  };
+  return map[tipo];
 }
 
 // ============ Editor de célula ============
@@ -212,72 +246,115 @@ function CelulaEditor(props: {
   periodo: number;
   diaSemana: number;
   dataDoDia: string;
+  config: HorarioConfig | null;
   celulas: CelulaAula[];
   alunos: Aluno[];
-  blocoExistente?: BlocoEspecial;
   onFechar: () => void;
 }) {
   const addFn = useServerFn(adicionarAluno);
   const removerFn = useServerFn(removerCelula);
-  const atualizarFn = useServerFn(atualizarCelula);
-  const upsertBlocoFn = useServerFn(upsertBloco);
+  const setCfgFn = useServerFn(setHorarioConfig);
+  const removerCfgFn = useServerFn(removerHorarioConfig);
 
+  const tipoAtual: TipoHorario = props.config?.tipo ?? "regular";
+  const [tipo, setTipo] = useState<TipoHorario>(tipoAtual);
+  const [tema, setTema] = useState(props.config?.tema ?? "");
   const [busca, setBusca] = useState("");
-  const [tipo, setTipo] = useState<TipoAula>("regular");
   const [horario, setHorario] = useState("");
   const [obs, setObs] = useState("");
   const [pendingAlunoId, setPendingAlunoId] = useState<string | null>(null);
-  const [escopo, setEscopo] = useState<"base" | "semana" | null>(null);
+  const [avulsoNome, setAvulsoNome] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
 
-  const alunosFiltrados = props.alunos.filter((a) => a.nome.toLowerCase().includes(busca.toLowerCase())).slice(0, 8);
+  const fechado = TIPO_FECHADO[tipo];
+  const cap = CAPACIDADE[tipo];
+  const mostraLivro = TIPO_MOSTRA_LIVRO[tipo];
+  const permiteAvulso = tipo === "reforco";
+  const cheio = props.celulas.length >= cap;
+
+  const alunosFiltrados = props.alunos
+    .filter((a) => a.nome.toLowerCase().includes(busca.toLowerCase()))
+    .slice(0, 8);
+
+  async function salvarTipo() {
+    setErro(null);
+    try {
+      await setCfgFn({
+        data: {
+          dia_semana: props.diaSemana,
+          periodo: props.periodo,
+          professora_id: props.professora.id,
+          tipo,
+          tema: tema || null,
+        },
+      });
+    } catch (e) {
+      setErro((e as Error).message);
+    }
+  }
+
+  async function limparTipo() {
+    setErro(null);
+    try {
+      await removerCfgFn({
+        data: {
+          dia_semana: props.diaSemana,
+          periodo: props.periodo,
+          professora_id: props.professora.id,
+        },
+      });
+      setTipo("regular");
+      setTema("");
+    } catch (e) {
+      setErro((e as Error).message);
+    }
+  }
 
   async function confirmarAdicao(esc: "base" | "semana") {
-    if (!pendingAlunoId) return;
-    await addFn({
-      data: {
-        escopo: esc,
-        data: props.dataDoDia,
-        dia_semana: props.diaSemana,
-        periodo: props.periodo,
-        professora_id: props.professora.id,
-        aluno_id: pendingAlunoId,
-        tipo,
-        horario_especifico: horario || null,
-        observacao: obs || null,
-      },
-    });
-    setPendingAlunoId(null);
-    setBusca("");
-    setHorario("");
-    setObs("");
-    setEscopo(null);
+    setErro(null);
+    if (!pendingAlunoId && !avulsoNome.trim()) {
+      setErro("Escolha um aluno matriculado ou informe o nome do aluno avulso.");
+      return;
+    }
+    try {
+      await addFn({
+        data: {
+          escopo: esc,
+          data: props.dataDoDia,
+          dia_semana: props.diaSemana,
+          periodo: props.periodo,
+          professora_id: props.professora.id,
+          aluno_id: pendingAlunoId ?? null,
+          aluno_nome_avulso: pendingAlunoId ? null : avulsoNome.trim() || null,
+          horario_especifico: horario || null,
+          observacao: obs || null,
+        },
+      });
+      setPendingAlunoId(null);
+      setAvulsoNome("");
+      setBusca("");
+      setHorario("");
+      setObs("");
+    } catch (e) {
+      setErro((e as Error).message);
+    }
   }
 
   async function remover(c: CelulaAula, esc: "base" | "semana") {
-    await removerFn({
-      data: {
-        escopo: esc,
-        data: props.dataDoDia,
-        celulaId: c.id,
-        origem: c.origem,
-        grade_base_id: c.grade_base_id,
-        excecao_id: c.excecao_id,
-      },
-    });
-  }
-
-  async function adicionarBloco(tipoBloco: TipoBloco) {
-    await upsertBlocoFn({
-      data: {
-        dia_semana: props.diaSemana,
-        periodo: props.periodo,
-        professora_id: props.professora.id,
-        tipo: tipoBloco,
-        titulo: rotuloBloco(tipoBloco),
-        aluno_nome_destaque: null,
-      },
-    });
-    props.onFechar();
+    setErro(null);
+    try {
+      await removerFn({
+        data: {
+          escopo: esc,
+          data: props.dataDoDia,
+          origem: c.origem,
+          grade_base_id: c.grade_base_id,
+          excecao_id: c.excecao_id,
+        },
+      });
+    } catch (e) {
+      setErro((e as Error).message);
+    }
   }
 
   return (
@@ -289,42 +366,114 @@ function CelulaEditor(props: {
         <div className="p-6">
           <div className="flex items-center gap-3 mb-1">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: props.professora.cor }} />
-            <h2 className="font-semibold text-lg">{props.professora.nome} — Período {props.periodo}</h2>
+            <h2 className="font-semibold text-lg">
+              {props.professora.nome} — {DIAS_SEMANA[props.diaSemana - 1].nome} • Período {props.periodo}
+            </h2>
           </div>
           <p className="text-sm text-muted-foreground mb-4">{formatarDataBR(props.dataDoDia)}</p>
 
-          {props.blocoExistente ? (
-            <div className="rounded border border-border p-3 mb-4">
-              <p className="text-sm">Este período está marcado como <strong>{rotuloBloco(props.blocoExistente.tipo)}</strong>.</p>
-              <p className="text-xs text-muted-foreground mt-1">Feche este painel e clique no bloco para editar ou removê-lo.</p>
+          {erro && (
+            <div className="mb-3 rounded border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {erro}
             </div>
-          ) : null}
+          )}
 
-          {props.celulas.length > 0 && (
+          {/* Configuração do horário */}
+          <section className="mb-6 rounded border border-border p-3">
+            <h3 className="font-medium text-sm mb-2">Tipo deste horário</h3>
+            <div className="grid grid-cols-2 gap-1.5 mb-3">
+              {TIPOS_ORDEM.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTipo(t)}
+                  className={`text-xs rounded px-2 py-1.5 border ${
+                    tipo === t
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border hover:bg-accent"
+                  }`}
+                >
+                  {ROTULO_TIPO[t]}
+                </button>
+              ))}
+            </div>
+            {(tipo === "reforco" || tipo === "conversacao" || fechado) && (
+              <input
+                value={tema}
+                onChange={(e) => setTema(e.target.value)}
+                placeholder={
+                  tipo === "conversacao"
+                    ? "Tema da conversação"
+                    : tipo === "reforco"
+                    ? "Conteúdo a ser estudado"
+                    : "Observação (opcional)"
+                }
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm mb-2"
+              />
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={salvarTipo}
+                className="flex-1 rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm"
+              >
+                Salvar tipo
+              </button>
+              {props.config && (
+                <button
+                  onClick={limparTipo}
+                  className="rounded-md border border-border px-3 py-2 text-sm hover:bg-accent"
+                >
+                  Voltar a Regular
+                </button>
+              )}
+            </div>
+            {!fechado && (
+              <div className="text-xs text-muted-foreground mt-2">
+                Capacidade: até {cap} aluno{cap > 1 ? "s" : ""}.
+              </div>
+            )}
+          </section>
+
+          {/* Lista de alunos */}
+          {!fechado && props.celulas.length > 0 && (
             <section className="mb-6">
-              <h3 className="font-medium text-sm mb-2 text-muted-foreground">Alunos neste período</h3>
+              <h3 className="font-medium text-sm mb-2 text-muted-foreground">
+                Alunos ({props.celulas.length}/{cap})
+              </h3>
               <ul className="space-y-2">
                 {props.celulas.map((c) => (
                   <li key={c.id} className="rounded border border-border p-2 flex items-center gap-2">
                     <div className="flex-1">
                       <div className="font-medium">
-                        {c.horario_especifico && <span className="text-sm text-primary mr-1">{c.horario_especifico}</span>}
-                        {c.aluno_nome} {c.aluno_nivel && <span className="text-muted-foreground text-sm">— {c.aluno_nivel}</span>}
+                        {c.horario_especifico && (
+                          <span className="text-sm text-primary mr-1">{c.horario_especifico}</span>
+                        )}
+                        {c.aluno_nome}
+                        {mostraLivro && c.aluno_nivel && (
+                          <span className="text-muted-foreground text-sm"> — {c.aluno_nivel}</span>
+                        )}
+                        {c.aluno_avulso && (
+                          <span className="ml-2 text-[10px] uppercase bg-accent px-1.5 py-0.5 rounded">
+                            avulso
+                          </span>
+                        )}
                       </div>
-                      <div className="text-xs text-muted-foreground uppercase">{c.tipo}</div>
-                      {c.observacao && <div className="text-xs text-muted-foreground italic">{c.observacao}</div>}
+                      {c.observacao && (
+                        <div className="text-xs text-muted-foreground italic">{c.observacao}</div>
+                      )}
                     </div>
                     <div className="flex gap-1">
                       <button
                         onClick={() => remover(c, "semana")}
                         className="text-xs px-2 py-1 rounded border border-border hover:bg-accent"
-                        title="Remover só nesta semana"
-                      >Só nesta semana</button>
+                      >
+                        Só nesta semana
+                      </button>
                       <button
                         onClick={() => remover(c, "base")}
                         className="text-xs px-2 py-1 rounded bg-destructive text-destructive-foreground"
-                        title="Remover em todas as semanas"
-                      >Todas</button>
+                      >
+                        Todas
+                      </button>
                     </div>
                   </li>
                 ))}
@@ -332,132 +481,114 @@ function CelulaEditor(props: {
             </section>
           )}
 
-          {!props.blocoExistente && (
-            <>
-              <section className="mb-6">
-                <h3 className="font-medium text-sm mb-2 text-muted-foreground">Adicionar aluno</h3>
-                <input
-                  value={busca}
-                  onChange={(e) => setBusca(e.target.value)}
-                  placeholder="Buscar aluno pelo nome…"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                />
-                {busca && (
-                  <ul className="mt-2 space-y-1 max-h-52 overflow-y-auto">
-                    {alunosFiltrados.length === 0 && (
-                      <li className="text-sm text-muted-foreground p-2">Nenhum aluno encontrado.</li>
-                    )}
-                    {alunosFiltrados.map((a) => (
-                      <li key={a.id}>
-                        <button
-                          onClick={() => setPendingAlunoId(a.id)}
-                          className={`w-full text-left rounded px-2 py-1.5 text-sm hover:bg-accent ${pendingAlunoId === a.id ? "bg-accent" : ""}`}
-                        >
-                          {a.nome} <span className="text-muted-foreground">— {a.nivel}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+          {/* Adicionar aluno */}
+          {!fechado && (
+            <section className="mb-6">
+              <h3 className="font-medium text-sm mb-2 text-muted-foreground">Adicionar aluno</h3>
+              {cheio ? (
+                <div className="text-sm text-muted-foreground">
+                  Horário lotado ({cap} alunos).
+                </div>
+              ) : (
+                <>
+                  <input
+                    value={busca}
+                    onChange={(e) => {
+                      setBusca(e.target.value);
+                      setAvulsoNome("");
+                    }}
+                    placeholder="Buscar aluno matriculado…"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                  {busca && (
+                    <ul className="mt-2 space-y-1 max-h-52 overflow-y-auto">
+                      {alunosFiltrados.length === 0 && (
+                        <li className="text-sm text-muted-foreground p-2">Nenhum aluno encontrado.</li>
+                      )}
+                      {alunosFiltrados.map((a) => (
+                        <li key={a.id}>
+                          <button
+                            onClick={() => {
+                              setPendingAlunoId(a.id);
+                              setAvulsoNome("");
+                            }}
+                            className={`w-full text-left rounded px-2 py-1.5 text-sm hover:bg-accent ${
+                              pendingAlunoId === a.id ? "bg-accent" : ""
+                            }`}
+                          >
+                            {a.nome} <span className="text-muted-foreground">— {a.nivel}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
 
-                {pendingAlunoId && (
-                  <div className="mt-3 space-y-2 rounded border border-border p-3">
-                    <div className="flex gap-2">
-                      <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoAula)}
-                        className="rounded-md border border-input bg-background px-2 py-1.5 text-sm">
-                        <option value="regular">Regular</option>
-                        <option value="vip">VIP</option>
-                        <option value="online">Online</option>
-                      </select>
+                  {permiteAvulso && (
+                    <div className="mt-3">
+                      <div className="text-xs text-muted-foreground mb-1">
+                        …ou aluno avulso (não matriculado):
+                      </div>
                       <input
-                        value={horario} onChange={(e) => setHorario(e.target.value)}
-                        placeholder="Horário (ex: 07:30)"
-                        className="flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+                        value={avulsoNome}
+                        onChange={(e) => {
+                          setAvulsoNome(e.target.value);
+                          setPendingAlunoId(null);
+                          setBusca("");
+                        }}
+                        placeholder="Nome do aluno avulso"
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                       />
                     </div>
-                    <input
-                      value={obs} onChange={(e) => setObs(e.target.value)}
-                      placeholder="Observação (opcional)"
-                      className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-                    />
-                    <div className="text-xs text-muted-foreground pt-1">Aplicar:</div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => confirmarAdicao("semana")}
-                        className="flex-1 rounded-md border border-border px-3 py-2 text-sm hover:bg-accent"
-                      >Só nesta semana</button>
-                      <button
-                        onClick={() => confirmarAdicao("base")}
-                        className="flex-1 rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm"
-                      >Em todas as semanas</button>
-                    </div>
-                  </div>
-                )}
-              </section>
+                  )}
 
-              <section className="mb-6">
-                <h3 className="font-medium text-sm mb-2 text-muted-foreground">Bloco especial</h3>
-                <div className="flex flex-wrap gap-2">
-                  <button onClick={() => adicionarBloco("break")}
-                    className="text-xs px-3 py-1.5 rounded border border-border hover:bg-accent">+ Break</button>
-                  <button onClick={() => adicionarBloco("preparacao_homework")}
-                    className="text-xs px-3 py-1.5 rounded border border-border hover:bg-accent">+ Preparação & Homework</button>
-                  <button onClick={() => adicionarBloco("vip")}
-                    className="text-xs px-3 py-1.5 rounded border border-border hover:bg-accent">+ VIP</button>
-                </div>
-              </section>
-            </>
+                  {(pendingAlunoId || avulsoNome.trim()) && (
+                    <div className="mt-3 space-y-2 rounded border border-border p-3">
+                      <div className="flex gap-2">
+                        <input
+                          value={horario}
+                          onChange={(e) => setHorario(e.target.value)}
+                          placeholder={
+                            tipo === "online"
+                              ? "Horário do slot (ex: 07:00, 07:20…)"
+                              : "Horário (opcional, ex: 07:30)"
+                          }
+                          className="flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+                        />
+                      </div>
+                      <input
+                        value={obs}
+                        onChange={(e) => setObs(e.target.value)}
+                        placeholder="Observação (opcional)"
+                        className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+                      />
+                      <div className="text-xs text-muted-foreground pt-1">Aplicar:</div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => confirmarAdicao("semana")}
+                          className="flex-1 rounded-md border border-border px-3 py-2 text-sm hover:bg-accent"
+                        >
+                          Só nesta semana
+                        </button>
+                        <button
+                          onClick={() => confirmarAdicao("base")}
+                          className="flex-1 rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm"
+                        >
+                          Em todas as semanas
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </section>
           )}
 
           <button
             onClick={props.onFechar}
             className="mt-4 w-full rounded-md border border-border px-3 py-2 text-sm hover:bg-accent"
-          >Fechar</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function BlocoEditor({ bloco, onFechar }: { bloco: BlocoEspecial; onFechar: () => void }) {
-  const upsertFn = useServerFn(upsertBloco);
-  const removerFn = useServerFn(removerBloco);
-  const [titulo, setTitulo] = useState(bloco.titulo);
-  const [destaque, setDestaque] = useState(bloco.aluno_nome_destaque ?? "");
-
-  async function salvar() {
-    await upsertFn({
-      data: {
-        id: bloco.id,
-        dia_semana: bloco.dia_semana,
-        periodo: bloco.periodo,
-        professora_id: bloco.professora_id,
-        tipo: bloco.tipo,
-        titulo,
-        aluno_nome_destaque: destaque || null,
-      },
-    });
-    onFechar();
-  }
-  async function remover() {
-    await removerFn({ data: { id: bloco.id } });
-    onFechar();
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4" onClick={onFechar}>
-      <div className="w-full max-w-md rounded-2xl bg-card shadow-2xl p-6" onClick={(e) => e.stopPropagation()}>
-        <h2 className="font-semibold text-lg">Editar bloco ({rotuloBloco(bloco.tipo)})</h2>
-        <p className="text-sm text-muted-foreground mb-4">Dia {bloco.dia_semana} • Período {bloco.periodo}</p>
-        <label className="text-sm">Título</label>
-        <input value={titulo} onChange={(e) => setTitulo(e.target.value)}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm mb-3" />
-        <label className="text-sm">Nome em destaque (opcional)</label>
-        <input value={destaque} onChange={(e) => setDestaque(e.target.value)}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm mb-4" />
-        <div className="flex gap-2">
-          <button onClick={remover} className="flex-1 rounded-md bg-destructive text-destructive-foreground px-3 py-2 text-sm">Remover bloco</button>
-          <button onClick={salvar} className="flex-1 rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm">Salvar</button>
+          >
+            Fechar
+          </button>
         </div>
       </div>
     </div>
