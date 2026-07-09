@@ -154,6 +154,19 @@ export const adicionarAluno = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await (await import("./gate.server")).requireAdminUnlocked();
     const sb = await admin();
+
+    // Validar capacidade máxima de 7 alunos por célula (dia+período+professora nesta data)
+    const { MAX_ALUNOS_POR_CELULA } = await import("./types");
+    const grade = await getGradeSemana({
+      data: { dataSegunda: (await import("./date-utils")).toISODate((await import("./date-utils")).segundaDaSemana(parseISODate(data.data))) },
+    });
+    const ocupadas = (grade.celulasPorData[data.data] ?? []).filter(
+      (c) => c.professora_id === data.professora_id && c.periodo === data.periodo,
+    ).length;
+    if (ocupadas >= MAX_ALUNOS_POR_CELULA) {
+      throw new Error(`Este horário já está com ${MAX_ALUNOS_POR_CELULA} alunos (capacidade máxima).`);
+    }
+
     if (data.escopo === "base") {
       const { error } = await sb.from("grade_base").insert({
         dia_semana: data.dia_semana,
