@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireAdminUnlocked } from "./gate.server";
 import type {
   Aluno,
   BlocoEspecial,
@@ -153,7 +152,7 @@ export const adicionarAluno = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data }) => {
-    await requireAdminUnlocked();
+    await (await import("./gate.server")).requireAdminUnlocked();
     const sb = await admin();
     if (data.escopo === "base") {
       const { error } = await sb.from("grade_base").insert({
@@ -195,7 +194,7 @@ export const removerCelula = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data }) => {
-    await requireAdminUnlocked();
+    await (await import("./gate.server")).requireAdminUnlocked();
     const sb = await admin();
     if (data.origem === "excecao" && data.excecao_id) {
       // Apagar a exceção de "adicionar" ou "mover"
@@ -237,7 +236,7 @@ export const atualizarCelula = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data }) => {
-    await requireAdminUnlocked();
+    await (await import("./gate.server")).requireAdminUnlocked();
     const sb = await admin();
     const patch = {
       tipo: data.tipo,
@@ -291,7 +290,7 @@ export const upsertBloco = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data }) => {
-    await requireAdminUnlocked();
+    await (await import("./gate.server")).requireAdminUnlocked();
     const sb = await admin();
     if (data.id) {
       const { error } = await sb
@@ -320,7 +319,7 @@ export const upsertBloco = createServerFn({ method: "POST" })
 export const removerBloco = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
-    await requireAdminUnlocked();
+    await (await import("./gate.server")).requireAdminUnlocked();
     const sb = await admin();
     const { error } = await sb.from("blocos_especiais").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
