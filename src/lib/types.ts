@@ -13,8 +13,68 @@ export type Aluno = {
   ativo: boolean;
 };
 
-export type TipoAula = "regular" | "vip" | "online";
-export type TipoBloco = "break" | "preparacao_homework" | "vip";
+// Tipos de horário (configuração da célula: dia × período × professora)
+export type TipoHorario =
+  | "regular"
+  | "online"
+  | "break"
+  | "preparacao_homework"
+  | "reforco"
+  | "vip"
+  | "conversacao";
+
+// Tipos que aceitam alunos matriculados na célula
+export type TipoAula = Exclude<TipoHorario, "break" | "preparacao_homework">;
+
+export const CAPACIDADE: Record<TipoHorario, number> = {
+  regular: 7,
+  online: 3,
+  vip: 1,
+  reforco: 4,
+  conversacao: 6,
+  break: 0,
+  preparacao_homework: 0,
+};
+
+export const ROTULO_TIPO: Record<TipoHorario, string> = {
+  regular: "Aula regular",
+  online: "Aula online",
+  break: "Break",
+  preparacao_homework: "Preparação & Homework",
+  reforco: "Reforço",
+  vip: "VIP",
+  conversacao: "Conversação",
+};
+
+export const TIPO_MOSTRA_LIVRO: Record<TipoHorario, boolean> = {
+  regular: true,
+  online: true,
+  vip: true,
+  reforco: true,
+  conversacao: false,
+  break: false,
+  preparacao_homework: false,
+};
+
+export const TIPO_FECHADO: Record<TipoHorario, boolean> = {
+  regular: false,
+  online: false,
+  vip: false,
+  reforco: false,
+  conversacao: false,
+  break: true,
+  preparacao_homework: true,
+};
+
+// Configuração de uma célula (uma "vaga" por dia+período+professora)
+export type HorarioConfig = {
+  id: string;
+  dia_semana: number;
+  periodo: number;
+  professora_id: string;
+  tipo: TipoHorario;
+  tema: string | null;
+};
 
 export type GradeBaseRow = {
   id: string;
@@ -22,19 +82,10 @@ export type GradeBaseRow = {
   periodo: number;
   professora_id: string;
   aluno_id: string | null;
+  aluno_nome_avulso: string | null;
   tipo: TipoAula;
   horario_especifico: string | null;
   observacao: string | null;
-};
-
-export type BlocoEspecial = {
-  id: string;
-  dia_semana: number;
-  periodo: number;
-  professora_id: string;
-  tipo: TipoBloco;
-  titulo: string;
-  aluno_nome_destaque: string | null;
 };
 
 export type ExcecaoSemana = {
@@ -44,6 +95,7 @@ export type ExcecaoSemana = {
   grade_base_id: string | null;
   professora_id: string | null;
   aluno_id: string | null;
+  aluno_nome_avulso: string | null;
   dia_semana: number | null;
   periodo: number | null;
   tipo: TipoAula | null;
@@ -53,7 +105,7 @@ export type ExcecaoSemana = {
 
 // Célula computada (aluno ocupando um período)
 export type CelulaAula = {
-  id: string;                 // id efetivo (grade_base_id ou excecao id)
+  id: string;
   origem: "base" | "excecao";
   grade_base_id: string | null;
   excecao_id: string | null;
@@ -63,6 +115,7 @@ export type CelulaAula = {
   aluno_id: string | null;
   aluno_nome: string;
   aluno_nivel: string;
+  aluno_avulso: boolean;
   tipo: TipoAula;
   horario_especifico: string | null;
   observacao: string | null;
@@ -71,10 +124,10 @@ export type CelulaAula = {
 export type GradeSemana = {
   professoras: Professora[];
   alunos: Aluno[];
-  celulas: CelulaAula[];         // todas as aulas efetivas para a semana (por data ISO)
+  celulas: CelulaAula[];
   celulasPorData: Record<string, CelulaAula[]>;
-  blocos: BlocoEspecial[];
-  datasSemana: string[];         // 6 datas (seg..sáb) ISO yyyy-mm-dd
+  horariosConfig: HorarioConfig[];
+  datasSemana: string[];
 };
 
 export const DIAS_SEMANA = [
@@ -88,4 +141,28 @@ export const DIAS_SEMANA = [
 
 export const PERIODOS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 
-export const MAX_ALUNOS_POR_CELULA = 7;
+export function tipoHorarioDe(
+  configs: HorarioConfig[],
+  dia_semana: number,
+  periodo: number,
+  professora_id: string,
+): TipoHorario {
+  return (
+    configs.find(
+      (c) => c.dia_semana === dia_semana && c.periodo === periodo && c.professora_id === professora_id,
+    )?.tipo ?? "regular"
+  );
+}
+
+export function configDe(
+  configs: HorarioConfig[],
+  dia_semana: number,
+  periodo: number,
+  professora_id: string,
+): HorarioConfig | null {
+  return (
+    configs.find(
+      (c) => c.dia_semana === dia_semana && c.periodo === periodo && c.professora_id === professora_id,
+    ) ?? null
+  );
+}
