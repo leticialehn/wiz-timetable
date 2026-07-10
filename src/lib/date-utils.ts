@@ -47,3 +47,19 @@ export function somarSemanas(iso: string, n: number): string {
   d.setDate(d.getDate() + n * 7);
   return toISODate(d);
 }
+
+export function inicioDoMes(base: Date | string = new Date()): Date {
+  const d = typeof base === "string" ? parseISODate(base) : new Date(base);
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+export function fimDoMes(base: Date | string = new Date()): Date {
+  const d = typeof base === "string" ? parseISODate(base) : new Date(base);
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+}
+
+export function somarMeses(iso: string, n: number): string {
+  const d = parseISODate(iso);
+  d.setMonth(d.getMonth() + n);
+  return toISODate(d);
+}

@@ -9,6 +9,7 @@ import {
   setHorarioConfig,
   removerHorarioConfig,
 } from "@/lib/grade.functions";
+import { getAlertasFaltas } from "@/lib/alertas.functions";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
 import {
   datasDaSemana,
@@ -61,10 +62,16 @@ function GradePage() {
     queryFn: () => getFn({ data: { dataSegunda } }),
   });
 
+  const alertasFn = useServerFn(getAlertasFaltas);
+  const { data: alertas } = useQuery({ queryKey: ["alertas-faltas"], queryFn: () => alertasFn() });
+  const alertaIds = useMemo(() => new Set((alertas ?? []).map((a) => a.aluno_id)), [alertas]);
+
   const datas = useMemo(() => datasDaSemana(parseISODate(dataSegunda)), [dataSegunda]);
   const dataDoDia = datas[diaAtivo - 1];
 
-  const [editando, setEditando] = useState<{ professora: Professora; periodo: number } | null>(null);
+  const [editando, setEditando] = useState<{ professora: Professora; periodo: number } | null>(
+    null,
+  );
 
   return (
     <main className="max-w-[1400px] mx-auto px-4 py-6">
@@ -72,15 +79,21 @@ function GradePage() {
         <button
           onClick={() => setDataSegunda(somarSemanas(dataSegunda, -1))}
           className="px-3 py-1.5 rounded-md border border-border hover:bg-accent"
-        >← Semana anterior</button>
+        >
+          ← Semana anterior
+        </button>
         <button
           onClick={() => setDataSegunda(toISODate(segundaDaSemana()))}
           className="px-3 py-1.5 rounded-md border border-border hover:bg-accent"
-        >Hoje</button>
+        >
+          Hoje
+        </button>
         <button
           onClick={() => setDataSegunda(somarSemanas(dataSegunda, 1))}
           className="px-3 py-1.5 rounded-md border border-border hover:bg-accent"
-        >Próxima semana →</button>
+        >
+          Próxima semana →
+        </button>
         <div className="ml-auto text-sm text-muted-foreground">
           Semana de {formatarDataBR(datas[0])} a {formatarDataBR(datas[5])}
         </div>
@@ -110,6 +123,7 @@ function GradePage() {
           celulas={data.celulasPorData[dataDoDia] ?? []}
           horariosConfig={data.horariosConfig}
           diaSemana={diaAtivo}
+          alertaIds={alertaIds}
           onEditarCelula={(professora, periodo) => setEditando({ professora, periodo })}
         />
       )}
@@ -138,6 +152,7 @@ function GradeTabela(props: {
   celulas: CelulaAula[];
   horariosConfig: HorarioConfig[];
   diaSemana: number;
+  alertaIds: Set<string>;
   onEditarCelula: (p: Professora, periodo: number) => void;
 }) {
   const { professoras, celulas, horariosConfig, diaSemana } = props;
@@ -146,7 +161,9 @@ function GradeTabela(props: {
       <table className="w-full border-collapse">
         <thead>
           <tr>
-            <th className="w-16 border border-border bg-muted text-xs font-medium text-muted-foreground p-2">Per.</th>
+            <th className="w-16 border border-border bg-muted text-xs font-medium text-muted-foreground p-2">
+              Per.
+            </th>
             {professoras.map((p) => (
               <th
                 key={p.id}
@@ -161,7 +178,9 @@ function GradeTabela(props: {
         <tbody>
           {PERIODOS.map((per) => (
             <tr key={per}>
-              <td className="border border-border bg-muted text-center font-medium text-sm p-2">{per}</td>
+              <td className="border border-border bg-muted text-center font-medium text-sm p-2">
+                {per}
+              </td>
               {professoras.map((p) => {
                 const cfg = configDe(horariosConfig, diaSemana, per, p.id);
                 const tipo: TipoHorario = cfg?.tipo ?? "regular";
@@ -172,7 +191,7 @@ function GradeTabela(props: {
                     onClick={() => props.onEditarCelula(p, per)}
                     className={`border border-border align-top p-1.5 min-w-[170px] h-24 cursor-pointer hover:brightness-95 ${tipoCellBg(tipo)}`}
                   >
-                    <CelulaConteudo tipo={tipo} cfg={cfg} cels={cels} />
+                    <CelulaConteudo tipo={tipo} cfg={cfg} cels={cels} alertaIds={props.alertaIds} />
                   </td>
                 );
               })}
@@ -188,10 +207,12 @@ function CelulaConteudo({
   tipo,
   cfg,
   cels,
+  alertaIds,
 }: {
   tipo: TipoHorario;
   cfg: HorarioConfig | null;
   cels: CelulaAula[];
+  alertaIds: Set<string>;
 }) {
   if (TIPO_FECHADO[tipo]) {
     return (
@@ -207,15 +228,25 @@ function CelulaConteudo({
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-1">
         <span className="text-[10px] uppercase font-bold opacity-70">{ROTULO_TIPO[tipo]}</span>
-        <span className="text-[10px] opacity-70">{cels.length}/{cap}</span>
+        <span className="text-[10px] opacity-70">
+          {cels.length}/{cap}
+        </span>
       </div>
       {cfg?.tema && <div className="text-[11px] italic opacity-80 leading-tight">{cfg.tema}</div>}
       {cels.length === 0 ? (
         <div className="text-xs opacity-50">—</div>
       ) : (
         cels.map((c) => (
-          <div key={c.id} className="text-xs leading-tight">
-            {c.horario_especifico && <span className="font-semibold mr-1">{c.horario_especifico}</span>}
+          <div key={c.id} className="text-xs leading-tight flex items-center gap-1">
+            {c.aluno_id && alertaIds.has(c.aluno_id) && (
+              <span
+                className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0"
+                title="Alerta de faltas consecutivas"
+              />
+            )}
+            {c.horario_especifico && (
+              <span className="font-semibold mr-1">{c.horario_especifico}</span>
+            )}
             <span>{c.aluno_nome}</span>
             {mostraLivro && c.aluno_nivel && <span className="opacity-70"> — {c.aluno_nivel}</span>}
             {c.aluno_avulso && <span className="ml-1 text-[9px] uppercase opacity-70">avulso</span>}
@@ -369,7 +400,8 @@ function CelulaEditor(props: {
           <div className="flex items-center gap-3 mb-1">
             <div className="w-4 h-4 rounded" style={{ backgroundColor: props.professora.cor }} />
             <h2 className="font-semibold text-lg">
-              {props.professora.nome} — {DIAS_SEMANA[props.diaSemana - 1].nome} • Período {props.periodo}
+              {props.professora.nome} — {DIAS_SEMANA[props.diaSemana - 1].nome} • Período{" "}
+              {props.periodo}
             </h2>
           </div>
           <p className="text-sm text-muted-foreground mb-4">{formatarDataBR(props.dataDoDia)}</p>
@@ -409,8 +441,8 @@ function CelulaEditor(props: {
                     tipo === "conversacao"
                       ? "Tema da conversação"
                       : tipo === "reforco"
-                      ? "Conteúdo a ser estudado"
-                      : "Observação (opcional)"
+                        ? "Conteúdo a ser estudado"
+                        : "Observação (opcional)"
                   }
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm mb-2"
                 />
@@ -467,7 +499,6 @@ function CelulaEditor(props: {
             </section>
           )}
 
-
           {/* Lista de alunos */}
           {props.config && !modoTipo && !fechado && props.celulas.length > 0 && (
             <section className="mb-6">
@@ -476,7 +507,10 @@ function CelulaEditor(props: {
               </h3>
               <ul className="space-y-2">
                 {props.celulas.map((c) => (
-                  <li key={c.id} className="rounded border border-border p-2 flex items-center gap-2">
+                  <li
+                    key={c.id}
+                    className="rounded border border-border p-2 flex items-center gap-2"
+                  >
                     <div className="flex-1">
                       <div className="font-medium">
                         {c.horario_especifico && (
@@ -521,9 +555,7 @@ function CelulaEditor(props: {
             <section className="mb-6">
               <h3 className="font-medium text-sm mb-2 text-muted-foreground">Adicionar aluno</h3>
               {cheio ? (
-                <div className="text-sm text-muted-foreground">
-                  Horário lotado ({cap} alunos).
-                </div>
+                <div className="text-sm text-muted-foreground">Horário lotado ({cap} alunos).</div>
               ) : (
                 <>
                   <input
@@ -538,7 +570,9 @@ function CelulaEditor(props: {
                   {busca && (
                     <ul className="mt-2 space-y-1 max-h-52 overflow-y-auto">
                       {alunosFiltrados.length === 0 && (
-                        <li className="text-sm text-muted-foreground p-2">Nenhum aluno encontrado.</li>
+                        <li className="text-sm text-muted-foreground p-2">
+                          Nenhum aluno encontrado.
+                        </li>
                       )}
                       {alunosFiltrados.map((a) => (
                         <li key={a.id}>
