@@ -265,6 +265,7 @@ function CelulaEditor(props: {
   const [pendingAlunoId, setPendingAlunoId] = useState<string | null>(null);
   const [avulsoNome, setAvulsoNome] = useState("");
   const [erro, setErro] = useState<string | null>(null);
+  const [modoTipo, setModoTipo] = useState(!props.config);
 
   const fechado = TIPO_FECHADO[tipo];
   const cap = CAPACIDADE[tipo];
