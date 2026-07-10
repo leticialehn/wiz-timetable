@@ -8,6 +8,8 @@ const TABELAS = [
   "grade_base",
   "horarios_config",
   "excecoes_semana",
+  "aulas_presenca",
+  "aulas_notas",
 ] as const;
 
 export function useRealtimeGrade() {

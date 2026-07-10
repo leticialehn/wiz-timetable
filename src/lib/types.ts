@@ -166,3 +166,40 @@ export function configDe(
     ) ?? null
   );
 }
+
+// ============ Presença e notas ============
+export type StatusPresenca = "presente" | "falta";
+export type ConceitoNota = "O" | "MB" | "B" | "R";
+export type CampoNota = "fala" | "audicao" | "leitura" | "escrita";
+
+export const CONCEITOS: ConceitoNota[] = ["O", "MB", "B", "R"];
+export const CAMPOS_NOTA: { key: CampoNota; label: string }[] = [
+  { key: "fala", label: "Fala" },
+  { key: "audicao", label: "Audição" },
+  { key: "leitura", label: "Leitura" },
+  { key: "escrita", label: "Escrita" },
+];
+
+export type PresencaRow = {
+  id: string;
+  data: string;
+  professora_id: string;
+  aluno_id: string;
+  periodo: number;
+  dia_semana: number;
+  status: StatusPresenca;
+  observacao: string | null;
+};
+
+export type NotaRow = {
+  id: string;
+  data: string;
+  professora_id: string;
+  aluno_id: string;
+  periodo: number;
+  fala: ConceitoNota | null;
+  audicao: ConceitoNota | null;
+  leitura: ConceitoNota | null;
+  escrita: ConceitoNota | null;
+};
+
