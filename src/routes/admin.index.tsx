@@ -517,7 +517,7 @@ function CelulaEditor(props: {
           )}
 
           {/* Adicionar aluno */}
-          {!fechado && (
+          {props.config && !modoTipo && !fechado && (
             <section className="mb-6">
               <h3 className="font-medium text-sm mb-2 text-muted-foreground">Adicionar aluno</h3>
               {cheio ? (
