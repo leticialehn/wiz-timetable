@@ -289,6 +289,7 @@ function CelulaEditor(props: {
           tema: tema || null,
         },
       });
+      setModoTipo(false);
     } catch (e) {
       setErro((e as Error).message);
     }
