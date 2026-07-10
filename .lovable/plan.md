@@ -1,82 +1,100 @@
-# Sistema de Horários - Escola de Idiomas
+## Objetivo
 
-Sistema web em português (BR) com duas interfaces: painel da secretaria (edição) e tela da professora (leitura em tempo real), usando Lovable Cloud (Supabase) com realtime.
+1. Simplificar o painel da secretaria para o fluxo "clico no horário → escolho o tipo de aula".
+2. Adicionar tela da professora com **lançamento de presença e notas** (sem qualquer poder de agendar/alterar horários).
 
-## Stack e infraestrutura
+---
 
-- **Lovable Cloud** (Supabase gerenciado) para banco + realtime.
-- TanStack Start + React (já configurado).
-- Realtime via `supabase.channel(...).on('postgres_changes', ...)` invalidando queries do TanStack Query.
-- Sem autenticação Supabase: `/admin` protegido por senha simples via server function + cookie de sessão (padrão `tanstack-shared-password-gate`). `/professora` público, escolha da professora salva em `localStorage`.
+## 1. Painel da secretaria (`/admin`)
 
-## Modelo de dados (migrations)
+O editor de célula já permite trocar o tipo — a mudança é apenas de UX:
 
-Tabelas em `public`, com RLS aberta para `anon` (leitura) e escrita restrita ao service_role (todas as mutações passam por server functions autenticadas pelo gate). GRANTs explícitos.
+- Ao clicar em uma célula **ainda sem tipo definido**, a primeira coisa que aparece é a **grade de escolha do tipo** (Regular, Online, Reforço, VIP, Conversação, Break, Preparação & Homework). Só depois de salvar o tipo é que a seção de "adicionar aluno" aparece.
+- Ao clicar em uma célula **já configurada**, mostra o tipo atual no topo com botão "Trocar tipo" (recolhe a lista de aulas e mostra os botões de tipo de novo). Isso evita mudar tipo por engano.
+- Reforçar visualmente qual tipo cada célula tem na grade (já é por cor + rótulo — só ajuste fino).
+- **Nada muda no banco** para esta parte: já usamos `horarios_config` com `setHorarioConfig` / `removerHorarioConfig`.
 
-- `professoras` (id uuid, nome text, cor text, ativa bool, created_at)
-- `alunos` (id uuid, nome text, nivel text, ativo bool, created_at)
-- `grade_base` (id, dia_semana int 1–6, periodo int 1–9, professora_id fk, aluno_id fk nullable, tipo text check in ('regular','vip','online'), horario_especifico text nullable, observacao text nullable)
-- `blocos_especiais` (id, dia_semana int, periodo int, professora_id fk, tipo text check in ('break','preparacao_homework','vip'), titulo text, aluno_nome_destaque text nullable)
-- `excecoes_semana` (id, data date, tipo_excecao text check in ('adicionar','remover','mover'), grade_base_id fk nullable, professora_id fk nullable, aluno_id fk nullable, periodo int nullable, dia_semana int nullable, horario_especifico text nullable, tipo text nullable, observacao text nullable)
+## 2. Tela da professora (`/professora`) — presença e notas
 
-Realtime habilitado nas 5 tabelas via `alter publication supabase_realtime add table ...`.
+Passa a ser a tela de trabalho da professora em sala, **só leitura da grade + lançamento de presença/notas**. Nenhum botão de agendar, remover aluno, trocar tipo, adicionar avulso, etc.
 
-Seed: professoras (Duda, Eduarda, Júlia, Letícia, Zi) com cores distintas (rosa, verde, salmão, azul-claro, lilás). Níveis são apenas strings livres nos alunos — sem tabela.
+### Navegação
+- Seletor de professora (já existe, salvo em `localStorage`).
+- Abas dos dias: **hoje + próximos dias da mesma semana** (segunda até sábado, dias passados da semana ficam visíveis mas com marcação "concluído").
+- Botão "ver histórico" abre um seletor de semanas anteriores em modo somente-leitura.
 
-## Server functions (`src/lib/*.functions.ts`)
+### Cada aula (célula do dia da professora)
+Cabeçalho: período, horário, tipo da aula, tema (se houver).
+Lista de alunos daquela aula. Para cada aluno:
+- Chip **Presença**: `Presente` / `Falta` (toggle de 2 estados; default "não lançado").
+- Quatro campos de **nota**: `Fala`, `Audição`, `Leitura`, `Escrita`. Cada um é um seletor com os conceitos **O, MB, B, R** (ou "—" para não lançado).
+- Campo livre opcional "observação da aula" por aluno.
+- Estado "salvo" com data/hora do último lançamento, e a professora pode reeditar depois (histórico é semana atual + anteriores).
 
-- `gate.functions.ts`: `unlockAdmin(password)`, `lockAdmin()`, `isAdminUnlocked()` — cookie de sessão (`useSession`), senha via `ADMIN_PASSWORD` env, comparação timing-safe.
-- `professoras.functions.ts`: `listProfessoras`, `createProfessora`, `updateProfessora`, `toggleAtiva` (mutações requerem gate).
-- `alunos.functions.ts`: idem.
-- `grade.functions.ts`:
-  - `getGradeSemana({ dataInicio })` → retorna grade_base + blocos_especiais + excecoes da semana, aplicadas.
-  - `upsertCelula({ escopo: 'semana'|'base', ... })` — grava em `excecoes_semana` ou `grade_base`.
-  - `removerAluno`, `moverAluno`, `definirHorario`, `marcarTipo`, `setObservacao`.
+### Histórico
+Rota `/professora/historico` (ou aba dentro de `/professora`): lista de semanas anteriores; ao abrir uma semana, mostra a mesma visualização dos dias, com presença/notas em modo edição também (a professora pode corrigir depois).
 
-Leitura pública via cliente publishable server-side (RLS SELECT to anon). Escritas exigem `requireAdminUnlocked` middleware.
+## 3. Modelo de dados (nova migration)
 
-## Rotas
+Duas tabelas novas em `public`, com realtime ligado, GRANTs completos e RLS pública (o app não tem auth de usuário — o gate protege apenas escritas do admin, mas presença/notas precisam ser gravadas pela professora sem senha):
 
 ```
-src/routes/
-  __root.tsx           (metadata BR, título "Grade — Escola")
-  index.tsx            (landing: dois botões — Secretaria / Professora)
-  admin.tsx            (layout: verifica gate; senão renderiza <UnlockForm/>)
-  admin.index.tsx      (grade semanal editável)
-  admin.professoras.tsx
-  admin.alunos.tsx
-  professora.tsx       (seleção + grade do dia, realtime)
+aulas_presenca
+  id uuid pk
+  data date                       -- data específica da aula
+  professora_id uuid fk professoras
+  aluno_id uuid fk alunos          -- só alunos matriculados; avulsos ficam de fora (não fazem sentido acompanhar)
+  dia_semana int, periodo int      -- redundante mas facilita consulta
+  status text check in ('presente','falta')
+  observacao text nullable
+  created_at, updated_at
+  unique (data, professora_id, aluno_id, periodo)
+
+aulas_notas
+  id uuid pk
+  data date
+  professora_id uuid fk professoras
+  aluno_id uuid fk alunos
+  periodo int
+  fala text check in ('O','MB','B','R') nullable
+  audicao  ...
+  leitura  ...
+  escrita  ...
+  created_at, updated_at
+  unique (data, professora_id, aluno_id, periodo)
 ```
 
-## Componentes principais
+- GRANT `SELECT, INSERT, UPDATE` para `anon` (a professora não tem login; escrever presença/notas é a única exceção à regra "só admin escreve"). Escopo é a professora selecionada no client — não há como impedir maliciosamente sem auth, e o usuário aceitou esse trade-off ao pedir "sem login para professora".
+- RLS aberta para leitura; sem DELETE público.
+- `ALTER PUBLICATION supabase_realtime ADD TABLE` para as duas.
+- Trigger `update_updated_at_column`.
 
-- `GradeSemanal` (admin): seletor de semana (anterior/atual/próxima com datas), tabs dia da semana (Seg–Sáb), tabela colunas=professoras (bg da cor) × linhas=períodos 1–9. Cada célula lista alunos "Nome — Nível" + horário. Blocos especiais ocupam célula inteira com estilo próprio.
-- `CelulaEditor` (Sheet lateral): busca aluno, remover, horário, tipo (regular/VIP/online), observação. Dialog de confirmação: "Aplicar só nesta semana ou em todas?".
-- `GradeProfessora` (tela professora): coluna vertical dos períodos 1–9 do dia atual, fonte grande, alto contraste, cor da professora no header, botões de dias.
-- Realtime hook `useRealtimeGrade(dataInicio)` — subscribe nas 5 tabelas e `queryClient.invalidateQueries`.
+## 4. Server functions novas (`src/lib/presenca.functions.ts`)
 
-## Design system (`src/styles.css`)
+- `setPresenca({ data, professora_id, aluno_id, periodo, dia_semana, status })` — upsert em `aulas_presenca`. **Sem** `requireAdminUnlocked` (a professora não passa pelo gate).
+- `setNota({ data, professora_id, aluno_id, periodo, campo: 'fala'|'audicao'|'leitura'|'escrita', valor })` — upsert em `aulas_notas`.
+- `getLancamentosSemana({ dataSegunda, professora_id })` — retorna presença + notas de todos os dias da semana daquela professora, para pré-preencher a tela.
+- `getLancamentosHistorico({ dataSegunda, professora_id })` — mesmo, para semanas anteriores.
 
-- Paleta clara, tipografia legível grande na tela da professora.
-- Tokens semânticos para cores das professoras (fundo dinâmico via inline style com a cor hex).
-- Variants de destaque para blocos: `break` (cinza-escuro), `vip` (dourado/âmbar), `online` (azul), `preparacao_homework` (roxo suave).
-- Cards de aluno grandes na tela da professora (min 18–20pt).
+Realtime hook (`use-realtime-grade.ts`) passa a incluir as duas tabelas.
 
-## Segredos
+## 5. Reforço explícito na professora
 
-- `ADMIN_PASSWORD` → `add_secret` (usuário define).
-- `SESSION_SECRET` → `generate_secret`.
+- Remover qualquer botão de editar grade na `/professora` (garantir que o componente `GradeProfessora` só mostra leitura + as ações de presença/notas).
+- Toda mudança de grade continua exclusivamente no `/admin` (protegido por senha, como já está).
 
-## Ordem de implementação
+## 6. Ordem de implementação
 
-1. Habilitar Lovable Cloud.
-2. Criar secrets (ADMIN_PASSWORD, SESSION_SECRET).
-3. Migration: tabelas + GRANTs + RLS + realtime publication + seed professoras.
-4. Server functions (gate, professoras, alunos, grade).
-5. Design system + rotas + componentes.
-6. Realtime hook.
+1. Migration com as tabelas `aulas_presenca` e `aulas_notas`, GRANTs, RLS, trigger, publication.
+2. `src/lib/presenca.functions.ts` (server fns sem gate) e tipos em `src/lib/types.ts`.
+3. `src/hooks/use-realtime-grade.ts` — incluir as duas tabelas novas.
+4. Refazer `src/routes/professora.tsx`: cabeçalho por dia da semana atual, lista de aulas do dia, presença + 4 notas por aluno, com salvamento otimista e realtime.
+5. Aba/rota de histórico de semanas.
+6. Pequeno ajuste no `CelulaEditor` do admin: quando célula ainda não tem tipo salvo, esconder a seção de "adicionar aluno" até o tipo ser salvo; caso já tenha, mostrar o tipo atual com botão "Trocar tipo".
 7. Verificar build.
 
-## Pergunta única antes de começar
+## Detalhes técnicos rápidos
 
-A senha do painel `/admin` — você quer definir agora (eu abro o campo seguro) ou prefere começar com uma senha padrão temporária que você troca depois?
+- Conceitos O/MB/B/R como enum de string simples (check constraint), sem tabela auxiliar.
+- Avulsos (aluno_nome_avulso) ficam **fora** de presença/notas — só alunos com `aluno_id` real são lançáveis (limitação técnica: sem id, não há chave). A UI mostra o avulso na lista mas com badge "avulso" e sem controles.
+- Presença "não lançada" = ausência de linha em `aulas_presenca` para aquela combinação. A UI mostra três estados visuais: presente, falta, não lançado.
