@@ -50,6 +50,7 @@ function porDataDesc<T extends { data: string; periodo: number }>(a: T, b: T) {
 export const getHistoricoAluno = createServerFn({ method: "GET" })
   .inputValidator((data: { aluno_id: string }) => data)
   .handler(async ({ data }): Promise<HistoricoAluno | null> => {
+    await (await import("./auth.server")).requireRole(["secretaria", "coordenador"]);
     const sb = await publicClient();
     const [alunoRes, presRes, notasRes, profRes] = await Promise.all([
       sb.from("alunos").select("*").eq("id", data.aluno_id).maybeSingle(),

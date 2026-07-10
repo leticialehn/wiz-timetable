@@ -10,7 +10,7 @@ async function admin() {
 export const criarProfessora = createServerFn({ method: "POST" })
   .inputValidator((data: { nome: string; cor: string }) => data)
   .handler(async ({ data }) => {
-    await (await import("./gate.server")).requireAdminUnlocked();
+    await (await import("./auth.server")).requireRole(["secretaria", "coordenador"]);
     const sb = await admin();
     const { error } = await sb.from("professoras").insert({ nome: data.nome, cor: data.cor });
     if (error) throw new Error(error.message);
@@ -20,7 +20,7 @@ export const criarProfessora = createServerFn({ method: "POST" })
 export const atualizarProfessora = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string; nome: string; cor: string; ativa: boolean }) => data)
   .handler(async ({ data }) => {
-    await (await import("./gate.server")).requireAdminUnlocked();
+    await (await import("./auth.server")).requireRole(["secretaria", "coordenador"]);
     const sb = await admin();
     const { error } = await sb
       .from("professoras")
@@ -33,7 +33,7 @@ export const atualizarProfessora = createServerFn({ method: "POST" })
 export const removerProfessora = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
-    await (await import("./gate.server")).requireAdminUnlocked();
+    await (await import("./auth.server")).requireRole(["secretaria", "coordenador"]);
     const sb = await admin();
     const { error } = await sb.from("professoras").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
@@ -45,7 +45,7 @@ export const removerProfessora = createServerFn({ method: "POST" })
 export const criarAluno = createServerFn({ method: "POST" })
   .inputValidator((data: { nome: string; nivel: string }) => data)
   .handler(async ({ data }) => {
-    await (await import("./gate.server")).requireAdminUnlocked();
+    await (await import("./auth.server")).requireRole(["secretaria", "coordenador"]);
     const sb = await admin();
     const { error } = await sb.from("alunos").insert({ nome: data.nome, nivel: data.nivel });
     if (error) throw new Error(error.message);
@@ -55,7 +55,7 @@ export const criarAluno = createServerFn({ method: "POST" })
 export const atualizarAluno = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string; nome: string; nivel: string; ativo: boolean }) => data)
   .handler(async ({ data }) => {
-    await (await import("./gate.server")).requireAdminUnlocked();
+    await (await import("./auth.server")).requireRole(["secretaria", "coordenador"]);
     const sb = await admin();
     const { error } = await sb
       .from("alunos")
@@ -68,7 +68,7 @@ export const atualizarAluno = createServerFn({ method: "POST" })
 export const removerAluno = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
-    await (await import("./gate.server")).requireAdminUnlocked();
+    await (await import("./auth.server")).requireRole(["secretaria", "coordenador"]);
     const sb = await admin();
     const { error } = await sb.from("alunos").delete().eq("id", data.id);
     if (error) throw new Error(error.message);

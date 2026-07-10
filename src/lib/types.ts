@@ -15,13 +15,7 @@ export type Aluno = {
 
 // Tipos de horário (configuração da célula: dia × período × professora)
 export type TipoHorario =
-  | "regular"
-  | "online"
-  | "break"
-  | "preparacao_homework"
-  | "reforco"
-  | "vip"
-  | "conversacao";
+  "regular" | "online" | "break" | "preparacao_homework" | "reforco" | "vip" | "conversacao";
 
 // Tipos que aceitam alunos matriculados na célula
 export type TipoAula = Exclude<TipoHorario, "break" | "preparacao_homework">;
@@ -149,7 +143,8 @@ export function tipoHorarioDe(
 ): TipoHorario {
   return (
     configs.find(
-      (c) => c.dia_semana === dia_semana && c.periodo === periodo && c.professora_id === professora_id,
+      (c) =>
+        c.dia_semana === dia_semana && c.periodo === periodo && c.professora_id === professora_id,
     )?.tipo ?? "regular"
   );
 }
@@ -162,7 +157,8 @@ export function configDe(
 ): HorarioConfig | null {
   return (
     configs.find(
-      (c) => c.dia_semana === dia_semana && c.periodo === periodo && c.professora_id === professora_id,
+      (c) =>
+        c.dia_semana === dia_semana && c.periodo === periodo && c.professora_id === professora_id,
     ) ?? null
   );
 }
@@ -179,6 +175,24 @@ export const CAMPOS_NOTA: { key: CampoNota; label: string }[] = [
   { key: "leitura", label: "Leitura" },
   { key: "escrita", label: "Escrita" },
 ];
+
+// ============ Usuários e papéis ============
+export type Papel = "secretaria" | "professor" | "coordenador";
+
+export const PAPEIS: { key: Papel; label: string }[] = [
+  { key: "secretaria", label: "Secretaria" },
+  { key: "professor", label: "Professor" },
+  { key: "coordenador", label: "Coordenador" },
+];
+
+export type UsuarioAutenticado = {
+  id: string;
+  nome: string;
+  username: string;
+  papeis: Papel[];
+  professora_id: string | null;
+  ativo: boolean;
+};
 
 export type PresencaRow = {
   id: string;
@@ -202,4 +216,3 @@ export type NotaRow = {
   leitura: ConceitoNota | null;
   escrita: ConceitoNota | null;
 };
-

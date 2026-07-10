@@ -115,6 +115,7 @@ export type CargaProfessora = {
 export const getCargaProfessoras = createServerFn({ method: "GET" })
   .inputValidator((data: { dataInicio: string; dataFim: string }) => data)
   .handler(async ({ data }): Promise<CargaProfessora[]> => {
+    await (await import("./auth.server")).requireRole(["secretaria", "coordenador"]);
     const sb = await publicClient();
     const profRes = await sb.from("professoras").select("*").order("ordem");
     const professoras = (profRes.data ?? []) as Professora[];

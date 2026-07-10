@@ -30,6 +30,7 @@ function calcularSequenciaFaltas(registros: RegistroPresenca[]): number {
 
 export const getAlertasFaltas = createServerFn({ method: "GET" }).handler(
   async (): Promise<AlunoEmAlerta[]> => {
+    await (await import("./auth.server")).requireRole(["secretaria", "coordenador"]);
     const sb = await publicClient();
     const [alunosRes, presRes] = await Promise.all([
       sb.from("alunos").select("*").eq("ativo", true),
