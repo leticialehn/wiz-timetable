@@ -381,59 +381,92 @@ function CelulaEditor(props: {
           )}
 
           {/* Configuração do horário */}
-          <section className="mb-6 rounded border border-border p-3">
-            <h3 className="font-medium text-sm mb-2">Tipo deste horário</h3>
-            <div className="grid grid-cols-2 gap-1.5 mb-3">
-              {TIPOS_ORDEM.map((t) => (
+          {modoTipo ? (
+            <section className="mb-6 rounded border border-border p-3">
+              <h3 className="font-medium text-sm mb-2">
+                {props.config ? "Trocar tipo deste horário" : "Escolha o tipo deste horário"}
+              </h3>
+              <div className="grid grid-cols-2 gap-1.5 mb-3">
+                {TIPOS_ORDEM.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTipo(t)}
+                    className={`text-xs rounded px-2 py-1.5 border ${
+                      tipo === t
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border hover:bg-accent"
+                    }`}
+                  >
+                    {ROTULO_TIPO[t]}
+                  </button>
+                ))}
+              </div>
+              {(tipo === "reforco" || tipo === "conversacao" || fechado) && (
+                <input
+                  value={tema}
+                  onChange={(e) => setTema(e.target.value)}
+                  placeholder={
+                    tipo === "conversacao"
+                      ? "Tema da conversação"
+                      : tipo === "reforco"
+                      ? "Conteúdo a ser estudado"
+                      : "Observação (opcional)"
+                  }
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm mb-2"
+                />
+              )}
+              <div className="flex gap-2">
                 <button
-                  key={t}
-                  onClick={() => setTipo(t)}
-                  className={`text-xs rounded px-2 py-1.5 border ${
-                    tipo === t
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border hover:bg-accent"
-                  }`}
+                  onClick={salvarTipo}
+                  className="flex-1 rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm"
                 >
-                  {ROTULO_TIPO[t]}
+                  Salvar tipo
                 </button>
-              ))}
-            </div>
-            {(tipo === "reforco" || tipo === "conversacao" || fechado) && (
-              <input
-                value={tema}
-                onChange={(e) => setTema(e.target.value)}
-                placeholder={
-                  tipo === "conversacao"
-                    ? "Tema da conversação"
-                    : tipo === "reforco"
-                    ? "Conteúdo a ser estudado"
-                    : "Observação (opcional)"
-                }
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm mb-2"
-              />
-            )}
-            <div className="flex gap-2">
-              <button
-                onClick={salvarTipo}
-                className="flex-1 rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm"
-              >
-                Salvar tipo
-              </button>
+                {props.config && (
+                  <button
+                    onClick={() => {
+                      setModoTipo(false);
+                      setTipo(tipoAtual);
+                      setTema(props.config?.tema ?? "");
+                    }}
+                    className="rounded-md border border-border px-3 py-2 text-sm hover:bg-accent"
+                  >
+                    Cancelar
+                  </button>
+                )}
+              </div>
               {props.config && (
                 <button
                   onClick={limparTipo}
-                  className="rounded-md border border-border px-3 py-2 text-sm hover:bg-accent"
+                  className="mt-2 text-xs text-muted-foreground underline"
                 >
-                  Voltar a Regular
+                  Voltar a Regular (limpar configuração)
                 </button>
               )}
-            </div>
-            {!fechado && (
-              <div className="text-xs text-muted-foreground mt-2">
-                Capacidade: até {cap} aluno{cap > 1 ? "s" : ""}.
+            </section>
+          ) : (
+            <section className="mb-6 rounded border border-border p-3 flex items-center justify-between">
+              <div>
+                <div className="text-xs text-muted-foreground uppercase font-bold">Tipo</div>
+                <div className="font-semibold">{ROTULO_TIPO[tipoAtual]}</div>
+                {props.config?.tema && (
+                  <div className="text-xs italic text-muted-foreground">{props.config.tema}</div>
+                )}
+                {!fechado && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Capacidade: até {cap} aluno{cap > 1 ? "s" : ""}.
+                  </div>
+                )}
               </div>
-            )}
-          </section>
+              <button
+                onClick={() => setModoTipo(true)}
+                className="text-xs rounded border border-border px-3 py-1.5 hover:bg-accent"
+              >
+                Trocar tipo
+              </button>
+            </section>
+          )}
+
 
           {/* Lista de alunos */}
           {!fechado && props.celulas.length > 0 && (
