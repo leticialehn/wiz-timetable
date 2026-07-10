@@ -38,6 +38,117 @@ export type Database = {
         }
         Relationships: []
       }
+      aulas_notas: {
+        Row: {
+          aluno_id: string
+          audicao: string | null
+          created_at: string
+          data: string
+          escrita: string | null
+          fala: string | null
+          id: string
+          leitura: string | null
+          periodo: number
+          professora_id: string
+          updated_at: string
+        }
+        Insert: {
+          aluno_id: string
+          audicao?: string | null
+          created_at?: string
+          data: string
+          escrita?: string | null
+          fala?: string | null
+          id?: string
+          leitura?: string | null
+          periodo: number
+          professora_id: string
+          updated_at?: string
+        }
+        Update: {
+          aluno_id?: string
+          audicao?: string | null
+          created_at?: string
+          data?: string
+          escrita?: string | null
+          fala?: string | null
+          id?: string
+          leitura?: string | null
+          periodo?: number
+          professora_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aulas_notas_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aulas_notas_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "professoras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aulas_presenca: {
+        Row: {
+          aluno_id: string
+          created_at: string
+          data: string
+          dia_semana: number
+          id: string
+          observacao: string | null
+          periodo: number
+          professora_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          aluno_id: string
+          created_at?: string
+          data: string
+          dia_semana: number
+          id?: string
+          observacao?: string | null
+          periodo: number
+          professora_id: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          aluno_id?: string
+          created_at?: string
+          data?: string
+          dia_semana?: number
+          id?: string
+          observacao?: string | null
+          periodo?: number
+          professora_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aulas_presenca_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aulas_presenca_professora_id_fkey"
+            columns: ["professora_id"]
+            isOneToOne: false
+            referencedRelation: "professoras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       excecoes_semana: {
         Row: {
           aluno_id: string | null
