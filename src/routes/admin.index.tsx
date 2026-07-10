@@ -469,7 +469,7 @@ function CelulaEditor(props: {
 
 
           {/* Lista de alunos */}
-          {!fechado && props.celulas.length > 0 && (
+          {props.config && !modoTipo && !fechado && props.celulas.length > 0 && (
             <section className="mb-6">
               <h3 className="font-medium text-sm mb-2 text-muted-foreground">
                 Alunos ({props.celulas.length}/{cap})
