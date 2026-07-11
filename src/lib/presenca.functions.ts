@@ -2,10 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import type { CampoNota, ConceitoNota, StatusPresenca, PresencaRow, NotaRow } from "./types";
 
 async function sb() {
-  const { createClient } = await import("@supabase/supabase-js");
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
-    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
-  });
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin;
 }
 
 // Exige login; contas vinculadas a uma professora (papel "professor") só podem
