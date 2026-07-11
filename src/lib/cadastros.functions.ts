@@ -43,9 +43,13 @@ export const criarAluno = createServerFn({ method: "POST" })
   .inputValidator((data: { nome: string; nivel: string }) => data)
   .handler(async ({ data }) => {
     const sb = await admin();
-    const { error } = await sb.from("alunos").insert({ nome: data.nome, nivel: data.nivel });
-    if (error) throw new Error(error.message);
-    return { ok: true };
+    const { data: novoAluno, error } = await sb
+      .from("alunos")
+      .insert({ nome: data.nome, nivel: data.nivel })
+      .select("id")
+      .single();
+    if (error || !novoAluno) throw new Error(error?.message ?? "Erro ao criar aluno");
+    return { ok: true, id: novoAluno.id };
   });
 
 export const atualizarAluno = createServerFn({ method: "POST" })

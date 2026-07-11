@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
   getGradeSemana,
@@ -9,6 +9,7 @@ import {
   setHorarioConfig,
   removerHorarioConfig,
 } from "@/lib/grade.functions";
+import { criarAluno } from "@/lib/cadastros.functions";
 import { getAlertasFaltas } from "@/lib/alertas.functions";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
 import {
@@ -50,6 +51,7 @@ const TIPOS_ORDEM: TipoHorario[] = [
 
 function GradePage() {
   useRealtimeGrade();
+  const qc = useQueryClient();
   const [dataSegunda, setDataSegunda] = useState(() => toISODate(segundaDaSemana()));
   const [diaAtivo, setDiaAtivo] = useState<number>(() => {
     const hoje = new Date().getDay();
@@ -72,6 +74,47 @@ function GradePage() {
   const [editando, setEditando] = useState<{ professora: Professora; periodo: number } | null>(
     null,
   );
+
+  const adicionarFn = useServerFn(adicionarAluno);
+  const removerFn = useServerFn(removerCelula);
+  const criarAlunoFn = useServerFn(criarAluno);
+
+  async function handleAdicionar(professoraId: string, periodo: number, alunoId: string) {
+    await adicionarFn({
+      data: {
+        escopo: "base",
+        data: dataDoDia,
+        dia_semana: diaAtivo,
+        periodo,
+        professora_id: professoraId,
+        aluno_id: alunoId,
+      },
+    });
+    qc.invalidateQueries();
+  }
+
+  async function handleCriarEAdicionar(
+    professoraId: string,
+    periodo: number,
+    nome: string,
+    nivel: string,
+  ) {
+    const r = await criarAlunoFn({ data: { nome, nivel } });
+    await handleAdicionar(professoraId, periodo, r.id);
+  }
+
+  async function handleRemover(c: CelulaAula) {
+    await removerFn({
+      data: {
+        escopo: "base",
+        data: dataDoDia,
+        origem: c.origem,
+        grade_base_id: c.grade_base_id,
+        excecao_id: c.excecao_id,
+      },
+    });
+    qc.invalidateQueries();
+  }
 
   return (
     <main className="max-w-[1400px] mx-auto px-4 py-6">
@@ -124,6 +167,10 @@ function GradePage() {
           horariosConfig={data.horariosConfig}
           diaSemana={diaAtivo}
           alertaIds={alertaIds}
+          alunos={data.alunos.filter((a) => a.ativo)}
+          onAdicionar={handleAdicionar}
+          onCriarEAdicionar={handleCriarEAdicionar}
+          onRemover={handleRemover}
           onEditarCelula={(professora, periodo) => setEditando({ professora, periodo })}
         />
       )}
@@ -153,6 +200,15 @@ function GradeTabela(props: {
   horariosConfig: HorarioConfig[];
   diaSemana: number;
   alertaIds: Set<string>;
+  alunos: Aluno[];
+  onAdicionar: (professoraId: string, periodo: number, alunoId: string) => Promise<void>;
+  onCriarEAdicionar: (
+    professoraId: string,
+    periodo: number,
+    nome: string,
+    nivel: string,
+  ) => Promise<void>;
+  onRemover: (c: CelulaAula) => Promise<void>;
   onEditarCelula: (p: Professora, periodo: number) => void;
 }) {
   const { professoras, celulas, horariosConfig, diaSemana } = props;
@@ -188,10 +244,27 @@ function GradeTabela(props: {
                 return (
                   <td
                     key={p.id}
-                    onClick={() => props.onEditarCelula(p, per)}
-                    className={`border border-border align-top p-1.5 min-w-[170px] h-24 cursor-pointer hover:brightness-95 ${tipoCellBg(tipo)}`}
+                    className={`group relative border border-border align-top p-1.5 min-w-[170px] min-h-[6rem] ${tipoCellBg(tipo)}`}
                   >
-                    <CelulaConteudo tipo={tipo} cfg={cfg} cels={cels} alertaIds={props.alertaIds} />
+                    <button
+                      onClick={() => props.onEditarCelula(p, per)}
+                      title="Configurar tipo / opções avançadas"
+                      className="absolute right-0.5 top-0.5 z-10 rounded px-1 text-[10px] leading-none text-muted-foreground opacity-0 hover:bg-accent group-hover:opacity-100"
+                    >
+                      ⋯
+                    </button>
+                    <CelulaConteudo
+                      tipo={tipo}
+                      cfg={cfg}
+                      cels={cels}
+                      alertaIds={props.alertaIds}
+                      alunos={props.alunos}
+                      onAdicionar={(alunoId) => props.onAdicionar(p.id, per, alunoId)}
+                      onCriarEAdicionar={(nome, nivel) =>
+                        props.onCriarEAdicionar(p.id, per, nome, nivel)
+                      }
+                      onRemover={props.onRemover}
+                    />
                   </td>
                 );
               })}
@@ -208,11 +281,19 @@ function CelulaConteudo({
   cfg,
   cels,
   alertaIds,
+  alunos,
+  onAdicionar,
+  onCriarEAdicionar,
+  onRemover,
 }: {
   tipo: TipoHorario;
   cfg: HorarioConfig | null;
   cels: CelulaAula[];
   alertaIds: Set<string>;
+  alunos: Aluno[];
+  onAdicionar: (alunoId: string) => Promise<void>;
+  onCriarEAdicionar: (nome: string, nivel: string) => Promise<void>;
+  onRemover: (c: CelulaAula) => Promise<void>;
 }) {
   if (TIPO_FECHADO[tipo]) {
     return (
@@ -224,35 +305,208 @@ function CelulaConteudo({
   }
   const cap = CAPACIDADE[tipo];
   const mostraLivro = TIPO_MOSTRA_LIVRO[tipo];
+  const vagas = Math.max(cap - cels.length, 0);
+
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between gap-1">
-        <span className="text-[10px] uppercase font-bold opacity-70">{ROTULO_TIPO[tipo]}</span>
-        <span className="text-[10px] opacity-70">
-          {cels.length}/{cap}
-        </span>
-      </div>
-      {cfg?.tema && <div className="text-[11px] italic opacity-80 leading-tight">{cfg.tema}</div>}
-      {cels.length === 0 ? (
-        <div className="text-xs opacity-50">—</div>
-      ) : (
-        cels.map((c) => (
-          <div key={c.id} className="text-xs leading-tight flex items-center gap-1">
-            {c.aluno_id && alertaIds.has(c.aluno_id) && (
-              <span
-                className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0"
-                title="Alerta de faltas consecutivas"
-              />
-            )}
-            {c.horario_especifico && (
-              <span className="font-semibold mr-1">{c.horario_especifico}</span>
-            )}
-            <span>{c.aluno_nome}</span>
-            {mostraLivro && c.aluno_nivel && <span className="opacity-70"> — {c.aluno_nivel}</span>}
-            {c.aluno_avulso && <span className="ml-1 text-[9px] uppercase opacity-70">avulso</span>}
-          </div>
-        ))
+    <div className="space-y-0.5 pr-3">
+      {tipo !== "regular" && (
+        <div className="flex items-center justify-between gap-1 mb-0.5">
+          <span className="text-[10px] uppercase font-bold opacity-70">{ROTULO_TIPO[tipo]}</span>
+          <span className="text-[10px] opacity-70">
+            {cels.length}/{cap}
+          </span>
+        </div>
       )}
+      {cfg?.tema && <div className="text-[11px] italic opacity-80 leading-tight">{cfg.tema}</div>}
+      {cels.map((c) => (
+        <LinhaPreenchida
+          key={c.id}
+          c={c}
+          mostraLivro={mostraLivro}
+          emAlerta={!!c.aluno_id && alertaIds.has(c.aluno_id)}
+          onRemover={() => onRemover(c)}
+        />
+      ))}
+      {Array.from({ length: vagas }).map((_, i) => (
+        <LinhaVaziaEditavel
+          key={`vaga-${i}`}
+          alunos={alunos}
+          onAdicionar={onAdicionar}
+          onCriarEAdicionar={onCriarEAdicionar}
+        />
+      ))}
+    </div>
+  );
+}
+
+function LinhaPreenchida({
+  c,
+  mostraLivro,
+  emAlerta,
+  onRemover,
+}: {
+  c: CelulaAula;
+  mostraLivro: boolean;
+  emAlerta: boolean;
+  onRemover: () => void;
+}) {
+  const [removendo, setRemovendo] = useState(false);
+
+  return (
+    <div className="group/linha flex items-center gap-1 text-[11px] leading-tight">
+      {emAlerta && (
+        <span
+          className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0"
+          title="Alerta de faltas consecutivas"
+        />
+      )}
+      {c.horario_especifico && (
+        <span className="font-semibold shrink-0">{c.horario_especifico}</span>
+      )}
+      <span className="flex-1 min-w-0 truncate">{c.aluno_nome}</span>
+      {mostraLivro && c.aluno_nivel && <span className="shrink-0 opacity-70">{c.aluno_nivel}</span>}
+      {c.aluno_avulso && <span className="shrink-0 text-[9px] uppercase opacity-70">avulso</span>}
+      <button
+        type="button"
+        disabled={removendo}
+        onClick={async () => {
+          if (!confirm(`Remover ${c.aluno_nome}?`)) return;
+          setRemovendo(true);
+          try {
+            await onRemover();
+          } finally {
+            setRemovendo(false);
+          }
+        }}
+        title="Remover"
+        className="shrink-0 opacity-0 group-hover/linha:opacity-100 text-muted-foreground hover:text-destructive px-1 disabled:opacity-50"
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
+function LinhaVaziaEditavel({
+  alunos,
+  onAdicionar,
+  onCriarEAdicionar,
+}: {
+  alunos: Aluno[];
+  onAdicionar: (alunoId: string) => Promise<void>;
+  onCriarEAdicionar: (nome: string, nivel: string) => Promise<void>;
+}) {
+  const [editando, setEditando] = useState(false);
+  const [nome, setNome] = useState("");
+  const [nivel, setNivel] = useState("");
+  const [alunoId, setAlunoId] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
+
+  const sugestoes =
+    !alunoId && nome.trim()
+      ? alunos.filter((a) => a.nome.toLowerCase().includes(nome.trim().toLowerCase())).slice(0, 6)
+      : [];
+
+  function cancelar() {
+    setEditando(false);
+    setNome("");
+    setNivel("");
+    setAlunoId(null);
+    setErro(null);
+  }
+
+  async function confirmar() {
+    if (!nome.trim()) {
+      cancelar();
+      return;
+    }
+    setErro(null);
+    setSalvando(true);
+    try {
+      if (alunoId) await onAdicionar(alunoId);
+      else await onCriarEAdicionar(nome.trim(), nivel.trim());
+      cancelar();
+    } catch (e) {
+      setSalvando(false);
+      setErro((e as Error).message);
+    }
+  }
+
+  if (!editando) {
+    return (
+      <button
+        type="button"
+        onClick={() => setEditando(true)}
+        className="w-full border-b border-dashed border-border/60 text-left text-[11px] leading-relaxed text-transparent hover:border-muted-foreground/40"
+      >
+        &nbsp;
+      </button>
+    );
+  }
+
+  return (
+    <div
+      className="relative"
+      onBlur={(e) => {
+        if (salvando) return;
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) confirmar();
+      }}
+    >
+      <div className="flex gap-1">
+        <input
+          autoFocus
+          value={nome}
+          onChange={(e) => {
+            setNome(e.target.value);
+            setAlunoId(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              confirmar();
+            }
+            if (e.key === "Escape") cancelar();
+          }}
+          placeholder="Nome…"
+          className="min-w-0 flex-1 rounded border border-input bg-background px-1 py-0.5 text-[11px]"
+        />
+        <input
+          value={nivel}
+          onChange={(e) => setNivel(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              confirmar();
+            }
+            if (e.key === "Escape") cancelar();
+          }}
+          placeholder="Nível"
+          className="w-12 shrink-0 rounded border border-input bg-background px-1 py-0.5 text-[11px]"
+        />
+      </div>
+      {sugestoes.length > 0 && (
+        <ul className="absolute left-0 right-0 top-full z-30 mt-0.5 max-h-32 overflow-y-auto rounded border border-border bg-card shadow-lg">
+          {sugestoes.map((a) => (
+            <li key={a.id}>
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  setAlunoId(a.id);
+                  setNome(a.nome);
+                  setNivel(a.nivel);
+                }}
+                className="block w-full truncate px-2 py-1 text-left text-[11px] hover:bg-accent"
+              >
+                {a.nome} <span className="text-muted-foreground">— {a.nivel}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {erro && <div className="mt-0.5 text-[10px] text-destructive">{erro}</div>}
+      {salvando && <div className="mt-0.5 text-[10px] text-muted-foreground">Salvando…</div>}
     </div>
   );
 }
@@ -270,7 +524,7 @@ function tipoCellBg(tipo: TipoHorario) {
   return map[tipo];
 }
 
-// ============ Editor de célula ============
+// ============ Editor avançado de célula (tipo, tema, avulso, escopo) ============
 
 function CelulaEditor(props: {
   professora: Professora;
