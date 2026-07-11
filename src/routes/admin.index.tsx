@@ -22,7 +22,8 @@ import {
 } from "@/lib/date-utils";
 import {
   DIAS_SEMANA,
-  PERIODOS,
+  HORARIO_INICIO_PERIODO,
+  periodosDoDia,
   CAPACIDADE,
   ROTULO_TIPO,
   TIPO_FECHADO,
@@ -213,6 +214,7 @@ function GradeTabela(props: {
   onEditarCelula: (p: Professora, periodo: number) => void;
 }) {
   const { professoras, celulas, horariosConfig, diaSemana } = props;
+  const periodos = periodosDoDia(diaSemana);
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full border-collapse">
@@ -233,10 +235,13 @@ function GradeTabela(props: {
           </tr>
         </thead>
         <tbody>
-          {PERIODOS.map((per) => (
+          {periodos.map((per) => (
             <tr key={per}>
-              <td className="border border-border bg-muted text-center font-medium text-sm p-2">
-                {per}
+              <td className="border border-border bg-muted text-center text-sm p-2">
+                <div className="font-medium">{per}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  {HORARIO_INICIO_PERIODO[per]}
+                </div>
               </td>
               {professoras.map((p) => {
                 const cfg = configDe(horariosConfig, diaSemana, per, p.id);

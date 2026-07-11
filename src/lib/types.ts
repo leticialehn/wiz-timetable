@@ -145,7 +145,29 @@ export const DIAS_SEMANA = [
   { n: 6, nome: "Sábado", curto: "Sáb" },
 ] as const;
 
-export const PERIODOS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+// 8h-12h (períodos 1-4) e 13h-21h (períodos 5-12), de segunda a sexta.
+export const PERIODOS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
+// Sábado só funciona de manhã (8h-12h).
+export const PERIODOS_SABADO = [1, 2, 3, 4] as const;
+
+export const HORARIO_INICIO_PERIODO: Record<number, string> = {
+  1: "8h",
+  2: "9h",
+  3: "10h",
+  4: "11h",
+  5: "13h",
+  6: "14h",
+  7: "15h",
+  8: "16h",
+  9: "17h",
+  10: "18h",
+  11: "19h",
+  12: "20h",
+};
+
+export function periodosDoDia(dia_semana: number): readonly number[] {
+  return dia_semana === 6 ? PERIODOS_SABADO : PERIODOS;
+}
 
 export function tipoHorarioDe(
   configs: HorarioConfig[],
