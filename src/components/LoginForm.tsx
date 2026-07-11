@@ -21,10 +21,15 @@ export function LoginForm({
     e.preventDefault();
     setLoading(true);
     setErro(null);
-    const r = await loginFn({ data: { username, senha } });
-    setLoading(false);
-    if (r.ok) onSuccess();
-    else setErro(r.erro ?? "Usuário ou senha incorretos");
+    try {
+      const r = await loginFn({ data: { username, senha } });
+      if (r.ok) onSuccess();
+      else setErro(r.erro ?? "Usuário ou senha incorretos");
+    } catch (err) {
+      setErro((err as Error).message || "Erro ao entrar. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

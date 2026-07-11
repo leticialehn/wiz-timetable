@@ -56,10 +56,15 @@ function PrimeiraContaForm({ onCriado }: { onCriado: () => void }) {
     e.preventDefault();
     setLoading(true);
     setErro(null);
-    const r = await criar({ data: { nome, username, senha } });
-    setLoading(false);
-    if (r.ok) onCriado();
-    else setErro(r.erro ?? "Erro ao criar conta");
+    try {
+      const r = await criar({ data: { nome, username, senha } });
+      if (r.ok) onCriado();
+      else setErro(r.erro ?? "Erro ao criar conta");
+    } catch (err) {
+      setErro((err as Error).message || "Erro ao criar conta. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

@@ -19,7 +19,8 @@ export async function getAuthSession() {
   return useSession<AuthSession>(sessionConfig());
 }
 
-const PBKDF2_ITERATIONS = 210_000;
+// Cloudflare Workers (runtime de produção) recusa PBKDF2 acima de 100.000 iterações.
+const PBKDF2_ITERATIONS = 100_000;
 
 function toBase64(bytes: Uint8Array): string {
   return Buffer.from(bytes).toString("base64");
