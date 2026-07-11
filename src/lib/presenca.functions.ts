@@ -2,10 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import type { CampoNota, ConceitoNota, StatusPresenca, PresencaRow, NotaRow } from "./types";
 
 async function sb() {
-  const { createClient } = await import("@supabase/supabase-js");
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
-    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
-  });
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin;
 }
 
 // Exige login; contas vinculadas a uma professora (papel "professor") só podem
@@ -80,7 +78,8 @@ export const setNota = createServerFn({ method: "POST" })
     row[data.campo] = data.valor;
     const { error } = await client
       .from("aulas_notas")
-      .upsert(row, { onConflict: "data,professora_id,aluno_id,periodo" });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .upsert(row as any, { onConflict: "data,professora_id,aluno_id,periodo" });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
