@@ -6,6 +6,7 @@ import { getGradeSemana } from "@/lib/grade.functions";
 import { criarAluno, atualizarAluno, removerAluno } from "@/lib/cadastros.functions";
 import { segundaDaSemana, toISODate } from "@/lib/date-utils";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
+import type { Aluno } from "@/lib/types";
 
 const NIVEIS = ["T2", "T4", "T6", "K2", "K6", "W2", "W4", "W6", "W10", "W12"];
 
@@ -90,59 +91,137 @@ function AlunosPage() {
 
       <ul className="space-y-2">
         {filtrados.map((a) => (
-          <li
+          <LinhaAluno
             key={a.id}
-            onClick={() => navigate({ to: "/admin/alunos/$id", params: { id: a.id } })}
-            title="Clique para ver o histórico do aluno"
-            className="rounded-lg border border-border p-3 flex items-center gap-3 cursor-pointer hover:bg-accent/50"
-          >
-            <input
-              defaultValue={a.nome}
-              onClick={(e) => e.stopPropagation()}
-              onBlur={(e) =>
-                e.target.value !== a.nome &&
-                atualizar.mutate({
-                  data: { id: a.id, nome: e.target.value, nivel: a.nivel, ativo: a.ativo },
-                })
-              }
-              className="rounded-md border border-input bg-background px-3 py-1.5 text-sm flex-1"
-            />
-            <input
-              defaultValue={a.nivel}
-              list="niveis"
-              onClick={(e) => e.stopPropagation()}
-              onBlur={(e) =>
-                e.target.value !== a.nivel &&
-                atualizar.mutate({
-                  data: { id: a.id, nome: a.nome, nivel: e.target.value, ativo: a.ativo },
-                })
-              }
-              className="w-20 rounded-md border border-input bg-background px-3 py-1.5 text-sm"
-            />
-            <label className="text-xs flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-              <input
-                type="checkbox"
-                defaultChecked={a.ativo}
-                onChange={(e) =>
-                  atualizar.mutate({
-                    data: { id: a.id, nome: a.nome, nivel: a.nivel, ativo: e.target.checked },
-                  })
-                }
-              />
-              Ativo
-            </label>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (confirm(`Remover ${a.nome}?`)) remover.mutate({ data: { id: a.id } });
-              }}
-              className="text-xs px-2 py-1 rounded border border-border hover:bg-destructive hover:text-destructive-foreground"
-            >
-              Remover
-            </button>
-          </li>
+            aluno={a}
+            onAtualizar={(nome, nivel, ativo) =>
+              atualizar.mutate({ data: { id: a.id, nome, nivel, ativo } })
+            }
+            onRemover={() => remover.mutate({ data: { id: a.id } })}
+            onAbrirHistorico={() => navigate({ to: "/admin/alunos/$id", params: { id: a.id } })}
+          />
         ))}
       </ul>
     </main>
+  );
+}
+
+function LinhaAluno({
+  aluno,
+  onAtualizar,
+  onRemover,
+  onAbrirHistorico,
+}: {
+  aluno: Aluno;
+  onAtualizar: (nome: string, nivel: string, ativo: boolean) => void;
+  onRemover: () => void;
+  onAbrirHistorico: () => void;
+}) {
+  const [editando, setEditando] = useState(false);
+  const [nome, setNome] = useState(aluno.nome);
+  const [nivel, setNivel] = useState(aluno.nivel);
+
+  function abrirEdicao() {
+    setNome(aluno.nome);
+    setNivel(aluno.nivel);
+    setEditando(true);
+  }
+
+  function salvar() {
+    if (!nome.trim()) return;
+    onAtualizar(nome.trim(), nivel.trim(), aluno.ativo);
+    setEditando(false);
+  }
+
+  function cancelar() {
+    setNome(aluno.nome);
+    setNivel(aluno.nivel);
+    setEditando(false);
+  }
+
+  return (
+    <li
+      onClick={editando ? undefined : onAbrirHistorico}
+      title={editando ? undefined : "Clique para ver o histórico do aluno"}
+      className={`rounded-lg border border-border p-3 flex items-center gap-3 ${
+        editando ? "" : "cursor-pointer hover:bg-accent/50"
+      }`}
+    >
+      {editando ? (
+        <>
+          <input
+            autoFocus
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") salvar();
+              if (e.key === "Escape") cancelar();
+            }}
+            className="rounded-md border border-input bg-background px-3 py-1.5 text-sm flex-1"
+          />
+          <input
+            value={nivel}
+            list="niveis"
+            onChange={(e) => setNivel(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") salvar();
+              if (e.key === "Escape") cancelar();
+            }}
+            className="w-20 rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+          />
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              salvar();
+            }}
+            className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground"
+          >
+            Salvar
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              cancelar();
+            }}
+            className="text-xs px-2 py-1 rounded border border-border hover:bg-accent"
+          >
+            Cancelar
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="flex-1">
+            <span className="font-medium">{aluno.nome}</span>
+            <span className="text-muted-foreground text-sm"> — {aluno.nivel}</span>
+          </div>
+          <label className="text-xs flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            <input
+              type="checkbox"
+              checked={aluno.ativo}
+              onChange={(e) => onAtualizar(aluno.nome, aluno.nivel, e.target.checked)}
+            />
+            Ativo
+          </label>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              abrirEdicao();
+            }}
+            className="text-xs px-2 py-1 rounded border border-border hover:bg-accent"
+          >
+            Editar
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (confirm(`Remover ${aluno.nome}?`)) onRemover();
+            }}
+            className="text-xs px-2 py-1 rounded border border-border hover:bg-destructive hover:text-destructive-foreground"
+          >
+            Remover
+          </button>
+        </>
+      )}
+    </li>
   );
 }
