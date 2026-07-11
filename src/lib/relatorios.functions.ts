@@ -3,10 +3,8 @@ import type { ExcecaoSemana, GradeBaseRow, Professora, TipoAula } from "./types"
 import { diaSemanaISO, parseISODate, toISODate } from "./date-utils";
 
 async function publicClient() {
-  const { createClient } = await import("@supabase/supabase-js");
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
-    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
-  });
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin;
 }
 
 type SupabaseLike = Awaited<ReturnType<typeof publicClient>>;
