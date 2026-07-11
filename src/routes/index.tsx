@@ -4,8 +4,8 @@ export const Route = createFileRoute("/")({
   component: Index,
   head: () => ({
     meta: [
-      { title: "Grade de Aulas — Escola de Idiomas" },
-      { name: "description", content: "Escolha entre painel da secretaria ou tela da professora." },
+      { title: "Wiz Timetable" },
+      { name: "description", content: "Wizard Brusque Horário Semanal" },
     ],
   }),
 });
