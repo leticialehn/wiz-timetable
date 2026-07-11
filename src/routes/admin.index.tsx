@@ -237,11 +237,8 @@ function GradeTabela(props: {
         <tbody>
           {periodos.map((per) => (
             <tr key={per}>
-              <td className="border border-border bg-muted text-center text-sm p-2">
-                <div className="font-medium">{per}</div>
-                <div className="text-[10px] text-muted-foreground">
-                  {HORARIO_INICIO_PERIODO[per]}
-                </div>
+              <td className="border border-border bg-muted text-center text-sm font-medium p-2">
+                {HORARIO_INICIO_PERIODO[per]}
               </td>
               {professoras.map((p) => {
                 const cfg = configDe(horariosConfig, diaSemana, per, p.id);
