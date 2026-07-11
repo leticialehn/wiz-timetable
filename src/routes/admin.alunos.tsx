@@ -38,9 +38,15 @@ function AlunosPage() {
   const [nome, setNome] = useState("");
   const [nivel, setNivel] = useState("T2");
   const [busca, setBusca] = useState("");
+  const [ordem, setOrdem] = useState<"nome" | "nivel">("nome");
 
-  const filtrados =
-    data?.alunos.filter((a) => a.nome.toLowerCase().includes(busca.toLowerCase())) ?? [];
+  const filtrados = (data?.alunos ?? [])
+    .filter((a) => a.nome.toLowerCase().includes(busca.toLowerCase()))
+    .sort((a, b) =>
+      ordem === "nome"
+        ? a.nome.localeCompare(b.nome)
+        : a.nivel.localeCompare(b.nivel) || a.nome.localeCompare(b.nome),
+    );
 
   return (
     <main className="max-w-3xl mx-auto px-4 py-6">
@@ -85,9 +91,33 @@ function AlunosPage() {
       <input
         value={busca}
         onChange={(e) => setBusca(e.target.value)}
-        placeholder="Buscar…"
-        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm mb-3"
+        placeholder="Buscar por nome…"
+        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm mb-2"
       />
+
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-xs text-muted-foreground">Ordenar por:</span>
+        <button
+          onClick={() => setOrdem("nome")}
+          className={`text-xs px-2.5 py-1 rounded border ${
+            ordem === "nome"
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border hover:bg-accent"
+          }`}
+        >
+          Nome (A-Z)
+        </button>
+        <button
+          onClick={() => setOrdem("nivel")}
+          className={`text-xs px-2.5 py-1 rounded border ${
+            ordem === "nivel"
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border hover:bg-accent"
+          }`}
+        >
+          Nível
+        </button>
+      </div>
 
       <ul className="space-y-2">
         {filtrados.map((a) => (
