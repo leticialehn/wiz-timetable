@@ -78,7 +78,8 @@ export const setNota = createServerFn({ method: "POST" })
     row[data.campo] = data.valor;
     const { error } = await client
       .from("aulas_notas")
-      .upsert(row, { onConflict: "data,professora_id,aluno_id,periodo" });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .upsert(row as any, { onConflict: "data,professora_id,aluno_id,periodo" });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
