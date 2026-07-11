@@ -25,10 +25,9 @@ async function admin() {
 }
 
 async function publicClient() {
-  const { createClient } = await import("@supabase/supabase-js");
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
-    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
-  });
+  // Uses service role to bypass RLS; all callers are gated by auth server-side.
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin;
 }
 
 function nomeDoAluno(
