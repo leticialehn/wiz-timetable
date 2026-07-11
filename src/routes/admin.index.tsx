@@ -9,7 +9,7 @@ import {
   setHorarioConfig,
   removerHorarioConfig,
 } from "@/lib/grade.functions";
-import { criarAluno } from "@/lib/cadastros.functions";
+import { criarAluno, atualizarAluno } from "@/lib/cadastros.functions";
 import { getAlertasFaltas } from "@/lib/alertas.functions";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
 import {
@@ -80,6 +80,7 @@ function GradePage() {
   const adicionarFn = useServerFn(adicionarAluno);
   const removerFn = useServerFn(removerCelula);
   const criarAlunoFn = useServerFn(criarAluno);
+  const atualizarAlunoFn = useServerFn(atualizarAluno);
 
   async function handleAdicionar(professoraId: string, periodo: number, alunoId: string) {
     await adicionarFn({
@@ -103,6 +104,11 @@ function GradePage() {
   ) {
     const r = await criarAlunoFn({ data: { nome, nivel } });
     await handleAdicionar(professoraId, periodo, r.id);
+  }
+
+  async function handleEditarAluno(alunoId: string, nome: string, nivel: string) {
+    await atualizarAlunoFn({ data: { id: alunoId, nome, nivel, ativo: true } });
+    qc.invalidateQueries();
   }
 
   async function handleRemover(c: CelulaAula) {
@@ -172,6 +178,7 @@ function GradePage() {
           alunos={data.alunos.filter((a) => a.ativo)}
           onAdicionar={handleAdicionar}
           onCriarEAdicionar={handleCriarEAdicionar}
+          onEditarAluno={handleEditarAluno}
           onRemover={handleRemover}
           onEditarCelula={(professora, periodo) => setEditando({ professora, periodo })}
         />
@@ -210,6 +217,7 @@ function GradeTabela(props: {
     nome: string,
     nivel: string,
   ) => Promise<void>;
+  onEditarAluno: (alunoId: string, nome: string, nivel: string) => Promise<void>;
   onRemover: (c: CelulaAula) => Promise<void>;
   onEditarCelula: (p: Professora, periodo: number) => void;
 }) {
@@ -266,6 +274,7 @@ function GradeTabela(props: {
                       onCriarEAdicionar={(nome, nivel) =>
                         props.onCriarEAdicionar(p.id, per, nome, nivel)
                       }
+                      onEditarAluno={props.onEditarAluno}
                       onRemover={props.onRemover}
                     />
                   </td>
@@ -287,6 +296,7 @@ function CelulaConteudo({
   alunos,
   onAdicionar,
   onCriarEAdicionar,
+  onEditarAluno,
   onRemover,
 }: {
   tipo: TipoHorario;
@@ -296,6 +306,7 @@ function CelulaConteudo({
   alunos: Aluno[];
   onAdicionar: (alunoId: string) => Promise<void>;
   onCriarEAdicionar: (nome: string, nivel: string) => Promise<void>;
+  onEditarAluno: (alunoId: string, nome: string, nivel: string) => Promise<void>;
   onRemover: (c: CelulaAula) => Promise<void>;
 }) {
   if (TIPO_FECHADO[tipo]) {
@@ -329,6 +340,7 @@ function CelulaConteudo({
           c={c}
           mostraLivro={mostraLivro}
           emAlerta={!!c.aluno_id && alertaIds.has(c.aluno_id)}
+          onEditar={c.aluno_id ? (nome, nivel) => onEditarAluno(c.aluno_id!, nome, nivel) : null}
           onRemover={() => onRemover(c)}
         />
       ))}
@@ -355,14 +367,93 @@ function LinhaPreenchida({
   c,
   mostraLivro,
   emAlerta,
+  onEditar,
   onRemover,
 }: {
   c: CelulaAula;
   mostraLivro: boolean;
   emAlerta: boolean;
+  onEditar: ((nome: string, nivel: string) => Promise<void>) | null;
   onRemover: () => void;
 }) {
   const [removendo, setRemovendo] = useState(false);
+  const [editando, setEditando] = useState(false);
+  const [nome, setNome] = useState(c.aluno_nome);
+  const [nivel, setNivel] = useState(c.aluno_nivel);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  function abrirEdicao() {
+    if (!onEditar) return;
+    setNome(c.aluno_nome);
+    setNivel(c.aluno_nivel);
+    setErro(null);
+    setEditando(true);
+  }
+
+  function cancelar() {
+    setEditando(false);
+    setErro(null);
+  }
+
+  async function confirmar() {
+    if (!onEditar) return;
+    if (!nome.trim()) {
+      cancelar();
+      return;
+    }
+    setErro(null);
+    setSalvando(true);
+    try {
+      await onEditar(nome.trim(), nivel.trim());
+      setEditando(false);
+    } catch (e) {
+      setErro((e as Error).message);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  if (editando) {
+    return (
+      <div
+        className="relative"
+        onBlur={(e) => {
+          if (salvando) return;
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) confirmar();
+        }}
+      >
+        <div className="flex gap-1">
+          <input
+            autoFocus
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                confirmar();
+              }
+              if (e.key === "Escape") cancelar();
+            }}
+            className="min-w-0 flex-1 rounded border border-input bg-background px-1 py-0.5 text-[11px]"
+          />
+          <input
+            value={nivel}
+            onChange={(e) => setNivel(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                confirmar();
+              }
+              if (e.key === "Escape") cancelar();
+            }}
+            className="w-12 shrink-0 rounded border border-input bg-background px-1 py-0.5 text-[11px]"
+          />
+        </div>
+        {erro && <div className="mt-0.5 text-[10px] text-destructive">{erro}</div>}
+      </div>
+    );
+  }
 
   return (
     <div className="group/linha flex items-center gap-1 text-[11px] leading-tight">
@@ -375,7 +466,15 @@ function LinhaPreenchida({
       {c.horario_especifico && (
         <span className="font-semibold shrink-0">{c.horario_especifico}</span>
       )}
-      <span className="flex-1 min-w-0 truncate">{c.aluno_nome}</span>
+      <button
+        type="button"
+        disabled={!onEditar}
+        onClick={abrirEdicao}
+        title={onEditar ? "Editar nome/nível" : undefined}
+        className="min-w-0 flex-1 truncate text-left disabled:cursor-default"
+      >
+        {c.aluno_nome}
+      </button>
       {mostraLivro && c.aluno_nivel && <span className="shrink-0 opacity-70">{c.aluno_nivel}</span>}
       {c.aluno_avulso && <span className="shrink-0 text-[9px] uppercase opacity-70">avulso</span>}
       <button
