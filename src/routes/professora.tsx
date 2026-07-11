@@ -1,11 +1,9 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { getGradeSemana } from "@/lib/grade.functions";
 import { getLancamentosSemana, setPresenca, setNota } from "@/lib/presenca.functions";
-import { getSessaoAtual, logout } from "@/lib/auth.functions";
-import { LoginForm } from "@/components/LoginForm";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
 import {
   DIAS_SEMANA,
@@ -24,7 +22,6 @@ import {
   type Professora,
   type StatusPresenca,
   type TipoHorario,
-  type UsuarioAutenticado,
 } from "@/lib/types";
 import {
   datasDaSemana,
@@ -36,10 +33,6 @@ import {
 } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/professora")({
-  beforeLoad: async () => {
-    const sessao = await getSessaoAtual();
-    return { sessao };
-  },
   component: ProfessoraPage,
   head: () => ({ meta: [{ title: "Minha grade — Professora" }] }),
 });
@@ -47,34 +40,14 @@ export const Route = createFileRoute("/professora")({
 const STORAGE_KEY = "escola:professora-id";
 
 function ProfessoraPage() {
-  const { sessao } = Route.useRouteContext();
-  const router = useRouter();
-
-  if (!sessao.autenticado) {
-    return (
-      <LoginForm
-        title="Minha grade"
-        subtitle="Entre com seu usuário e senha."
-        onSuccess={() => router.invalidate()}
-      />
-    );
-  }
-  return <ProfessoraLogada usuario={sessao.usuario!} />;
-}
-
-function ProfessoraLogada({ usuario }: { usuario: UsuarioAutenticado }) {
   useRealtimeGrade();
-  const router = useRouter();
-  const sairFn = useServerFn(logout);
-  const vinculada = usuario.professora_id;
-  const [professoraId, setProfessoraId] = useState<string | null>(vinculada);
-  const [mounted, setMounted] = useState(!!vinculada);
+  const [professoraId, setProfessoraId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (vinculada) return;
     setMounted(true);
     setProfessoraId(typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null);
-  }, [vinculada]);
+  }, []);
 
   const [dataSegunda, setDataSegunda] = useState(() => toISODate(segundaDaSemana()));
   const datas = useMemo(() => datasDaSemana(parseISODate(dataSegunda)), [dataSegunda]);
@@ -115,10 +88,6 @@ function ProfessoraLogada({ usuario }: { usuario: UsuarioAutenticado }) {
           localStorage.setItem(STORAGE_KEY, id);
           setProfessoraId(id);
         }}
-        onSair={async () => {
-          await sairFn();
-          router.invalidate();
-        }}
       />
     );
   }
@@ -142,18 +111,13 @@ function ProfessoraLogada({ usuario }: { usuario: UsuarioAutenticado }) {
             <h1 className="text-2xl font-bold">{professora.nome}</h1>
           </div>
           <button
-            onClick={async () => {
-              if (vinculada) {
-                await sairFn();
-                router.invalidate();
-              } else {
-                localStorage.removeItem(STORAGE_KEY);
-                setProfessoraId(null);
-              }
+            onClick={() => {
+              localStorage.removeItem(STORAGE_KEY);
+              setProfessoraId(null);
             }}
             className="text-xs px-3 py-1.5 rounded bg-black/10 hover:bg-black/20"
           >
-            {vinculada ? "Sair" : "Trocar"}
+            Trocar
           </button>
         </div>
       </header>
@@ -500,11 +464,9 @@ function tipoCardBg(tipo: TipoHorario) {
 function SelecaoProfessora({
   professoras,
   onEscolher,
-  onSair,
 }: {
   professoras: Professora[];
   onEscolher: (id: string) => void;
-  onSair: () => void;
 }) {
   return (
     <main className="min-h-screen bg-background flex items-center justify-center px-4 py-10">
@@ -531,13 +493,10 @@ function SelecaoProfessora({
               </li>
             ))}
         </ul>
-        <div className="mt-6 flex items-center justify-center gap-4">
+        <div className="mt-6 text-center">
           <Link to="/" className="text-xs text-muted-foreground underline">
             Voltar
           </Link>
-          <button onClick={onSair} className="text-xs text-muted-foreground underline">
-            Sair
-          </button>
         </div>
       </div>
     </main>

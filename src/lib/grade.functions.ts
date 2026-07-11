@@ -65,7 +65,6 @@ function celulaFromBase(row: GradeBaseRow, alunosById: Map<string, Aluno>): Celu
 export const getGradeSemana = createServerFn({ method: "GET" })
   .inputValidator((data: { dataSegunda: string }) => data)
   .handler(async ({ data }): Promise<GradeSemana> => {
-    await (await import("./auth.server")).requireAuthenticated();
     const sb = await publicClient();
     const datas = datasDaSemana(parseISODate(data.dataSegunda));
     const dataFim = datas[datas.length - 1];
@@ -180,7 +179,6 @@ export const setHorarioConfig = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data }) => {
-    await (await import("./auth.server")).requireRole(["secretaria", "coordenador"]);
     const sb = await admin();
     const { error } = await sb.from("horarios_config").upsert(
       {
@@ -199,7 +197,6 @@ export const setHorarioConfig = createServerFn({ method: "POST" })
 export const removerHorarioConfig = createServerFn({ method: "POST" })
   .inputValidator((data: { dia_semana: number; periodo: number; professora_id: string }) => data)
   .handler(async ({ data }) => {
-    await (await import("./auth.server")).requireRole(["secretaria", "coordenador"]);
     const sb = await admin();
     const { error } = await sb
       .from("horarios_config")
@@ -231,7 +228,6 @@ export const adicionarAluno = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data }) => {
-    await (await import("./auth.server")).requireRole(["secretaria", "coordenador"]);
     const sb = await admin();
 
     if (!data.aluno_id && !data.aluno_nome_avulso) {
@@ -310,7 +306,6 @@ export const removerCelula = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data }) => {
-    await (await import("./auth.server")).requireRole(["secretaria", "coordenador"]);
     const sb = await admin();
     if (data.origem === "excecao" && data.excecao_id) {
       const { error } = await sb.from("excecoes_semana").delete().eq("id", data.excecao_id);

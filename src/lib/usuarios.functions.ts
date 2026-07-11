@@ -17,7 +17,6 @@ export type UsuarioListado = {
 
 export const listarUsuarios = createServerFn({ method: "GET" }).handler(
   async (): Promise<UsuarioListado[]> => {
-    await (await import("./auth.server")).requireRole(["secretaria"]);
     const sb = await admin();
     const [usuariosRes, papeisRes] = await Promise.all([
       sb.from("usuarios").select("id, nome, username, ativo, professora_id").order("nome"),
@@ -51,7 +50,6 @@ export const criarUsuario = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data }) => {
-    await (await import("./auth.server")).requireRole(["secretaria"]);
     if (data.papeis.length === 0) {
       return { ok: false as const, erro: "Selecione ao menos um papel." };
     }
@@ -87,7 +85,6 @@ export const atualizarUsuario = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data }) => {
-    await (await import("./auth.server")).requireRole(["secretaria"]);
     if (data.papeis.length === 0) {
       return { ok: false as const, erro: "Selecione ao menos um papel." };
     }
@@ -116,7 +113,6 @@ export const atualizarUsuario = createServerFn({ method: "POST" })
 export const redefinirSenha = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string; novaSenha: string }) => data)
   .handler(async ({ data }) => {
-    await (await import("./auth.server")).requireRole(["secretaria"]);
     const { hashPassword } = await import("./auth.server");
     const sb = await admin();
     const senha_hash = await hashPassword(data.novaSenha);
@@ -128,7 +124,6 @@ export const redefinirSenha = createServerFn({ method: "POST" })
 export const removerUsuario = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
-    await (await import("./auth.server")).requireRole(["secretaria"]);
     const sb = await admin();
     const { error } = await sb.from("usuarios").delete().eq("id", data.id);
     if (error) throw new Error(error.message);

@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -15,11 +15,6 @@ import { segundaDaSemana, toISODate } from "@/lib/date-utils";
 import { PAPEIS, type Papel } from "@/lib/types";
 
 export const Route = createFileRoute("/admin/usuarios")({
-  beforeLoad: ({ context }) => {
-    if (!context.sessao.usuario?.papeis.includes("secretaria")) {
-      throw redirect({ to: "/admin" });
-    }
-  },
   component: UsuariosPage,
 });
 
