@@ -15,10 +15,17 @@ export type Aluno = {
 
 // Tipos de horário (configuração da célula: dia × período × professora)
 export type TipoHorario =
-  "regular" | "online" | "break" | "preparacao_homework" | "reforco" | "vip" | "conversacao";
+  | "regular"
+  | "online"
+  | "break"
+  | "preparacao_homework"
+  | "reforco"
+  | "vip"
+  | "conversacao"
+  | "sem_aula";
 
 // Tipos que aceitam alunos matriculados na célula
-export type TipoAula = Exclude<TipoHorario, "break" | "preparacao_homework">;
+export type TipoAula = Exclude<TipoHorario, "break" | "preparacao_homework" | "sem_aula">;
 
 export const CAPACIDADE: Record<TipoHorario, number> = {
   regular: 7,
@@ -28,6 +35,7 @@ export const CAPACIDADE: Record<TipoHorario, number> = {
   conversacao: 6,
   break: 0,
   preparacao_homework: 0,
+  sem_aula: 0,
 };
 
 export const ROTULO_TIPO: Record<TipoHorario, string> = {
@@ -38,6 +46,7 @@ export const ROTULO_TIPO: Record<TipoHorario, string> = {
   reforco: "Reforço",
   vip: "VIP",
   conversacao: "Conversação",
+  sem_aula: "Sem aula",
 };
 
 export const TIPO_MOSTRA_LIVRO: Record<TipoHorario, boolean> = {
@@ -48,6 +57,7 @@ export const TIPO_MOSTRA_LIVRO: Record<TipoHorario, boolean> = {
   conversacao: false,
   break: false,
   preparacao_homework: false,
+  sem_aula: false,
 };
 
 export const TIPO_FECHADO: Record<TipoHorario, boolean> = {
@@ -58,6 +68,7 @@ export const TIPO_FECHADO: Record<TipoHorario, boolean> = {
   conversacao: false,
   break: true,
   preparacao_homework: true,
+  sem_aula: true,
 };
 
 // Configuração de uma célula (uma "vaga" por dia+período+professora)
@@ -68,6 +79,7 @@ export type HorarioConfig = {
   professora_id: string;
   tipo: TipoHorario;
   tema: string | null;
+  vagas_fechadas: number;
 };
 
 export type GradeBaseRow = {

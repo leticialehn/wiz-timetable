@@ -111,8 +111,9 @@
   --tipo-break-fg: oklch(0.98 0 0);
   --tipo-prep-bg: oklch(0.85 0.08 300);
   --tipo-prep-fg: oklch(0.25 0.05 300);
+  --tipo-sem-aula-bg: oklch(0.82 0.006 260);
+  --tipo-sem-aula-fg: oklch(0.4 0.01 260);
 }
-
 
 .dark {
   --background: oklch(0.129 0.042 264.695);

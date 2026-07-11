@@ -457,6 +457,7 @@ function tipoCardBg(tipo: TipoHorario) {
     conversacao: "bg-[var(--tipo-conversacao-bg)] text-[var(--tipo-conversacao-fg)]",
     break: "bg-[var(--tipo-break-bg)] text-[var(--tipo-break-fg)]",
     preparacao_homework: "bg-[var(--tipo-prep-bg)] text-[var(--tipo-prep-fg)]",
+    sem_aula: "bg-[var(--tipo-sem-aula-bg)] text-[var(--tipo-sem-aula-fg)]",
   };
   return map[tipo];
 }

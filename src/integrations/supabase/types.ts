@@ -343,6 +343,7 @@ export type Database = {
           professora_id: string;
           tema: string | null;
           tipo: string;
+          vagas_fechadas: number;
         };
         Insert: {
           created_at?: string;
@@ -352,6 +353,7 @@ export type Database = {
           professora_id: string;
           tema?: string | null;
           tipo: string;
+          vagas_fechadas?: number;
         };
         Update: {
           created_at?: string;
@@ -361,6 +363,7 @@ export type Database = {
           professora_id?: string;
           tema?: string | null;
           tipo?: string;
+          vagas_fechadas?: number;
         };
         Relationships: [
           {

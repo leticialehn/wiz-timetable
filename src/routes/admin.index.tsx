@@ -47,6 +47,7 @@ const TIPOS_ORDEM: TipoHorario[] = [
   "conversacao",
   "break",
   "preparacao_homework",
+  "sem_aula",
 ];
 
 function GradePage() {
@@ -305,7 +306,9 @@ function CelulaConteudo({
   }
   const cap = CAPACIDADE[tipo];
   const mostraLivro = TIPO_MOSTRA_LIVRO[tipo];
-  const vagas = Math.max(cap - cels.length, 0);
+  const capEfetiva = Math.max(cap - (cfg?.vagas_fechadas ?? 0), 0);
+  const vagas = Math.max(capEfetiva - cels.length, 0);
+  const fechadas = Math.max(cap - Math.max(cels.length, capEfetiva), 0);
 
   return (
     <div className="space-y-0.5 pr-3">
@@ -313,7 +316,7 @@ function CelulaConteudo({
         <div className="flex items-center justify-between gap-1 mb-0.5">
           <span className="text-[10px] uppercase font-bold opacity-70">{ROTULO_TIPO[tipo]}</span>
           <span className="text-[10px] opacity-70">
-            {cels.length}/{cap}
+            {cels.length}/{capEfetiva}
           </span>
         </div>
       )}
@@ -333,6 +336,13 @@ function CelulaConteudo({
           alunos={alunos}
           onAdicionar={onAdicionar}
           onCriarEAdicionar={onCriarEAdicionar}
+        />
+      ))}
+      {Array.from({ length: fechadas }).map((_, i) => (
+        <div
+          key={`fechada-${i}`}
+          title="Vaga fechada"
+          className="h-[13px] rounded-sm bg-foreground/10"
         />
       ))}
     </div>
@@ -520,6 +530,7 @@ function tipoCellBg(tipo: TipoHorario) {
     conversacao: "bg-[var(--tipo-conversacao-bg)] text-[var(--tipo-conversacao-fg)]",
     break: "bg-[var(--tipo-break-bg)] text-[var(--tipo-break-fg)]",
     preparacao_homework: "bg-[var(--tipo-prep-bg)] text-[var(--tipo-prep-fg)]",
+    sem_aula: "bg-[var(--tipo-sem-aula-bg)] text-[var(--tipo-sem-aula-fg)]",
   };
   return map[tipo];
 }
@@ -544,6 +555,7 @@ function CelulaEditor(props: {
   const tipoAtual: TipoHorario = props.config?.tipo ?? "regular";
   const [tipo, setTipo] = useState<TipoHorario>(tipoAtual);
   const [tema, setTema] = useState(props.config?.tema ?? "");
+  const [vagasFechadas, setVagasFechadas] = useState(props.config?.vagas_fechadas ?? 0);
   const [busca, setBusca] = useState("");
   const [horario, setHorario] = useState("");
   const [obs, setObs] = useState("");
@@ -554,9 +566,10 @@ function CelulaEditor(props: {
 
   const fechado = TIPO_FECHADO[tipo];
   const cap = CAPACIDADE[tipo];
+  const capEfetiva = Math.max(cap - vagasFechadas, 0);
   const mostraLivro = TIPO_MOSTRA_LIVRO[tipo];
   const permiteAvulso = tipo === "reforco";
-  const cheio = props.celulas.length >= cap;
+  const cheio = props.celulas.length >= capEfetiva;
 
   const alunosFiltrados = props.alunos
     .filter((a) => a.nome.toLowerCase().includes(busca.toLowerCase()))
@@ -572,9 +585,29 @@ function CelulaEditor(props: {
           professora_id: props.professora.id,
           tipo,
           tema: tema || null,
+          vagas_fechadas: vagasFechadas,
         },
       });
       setModoTipo(false);
+    } catch (e) {
+      setErro((e as Error).message);
+    }
+  }
+
+  async function salvarVagasFechadas(novoValor: number) {
+    setErro(null);
+    try {
+      await setCfgFn({
+        data: {
+          dia_semana: props.diaSemana,
+          periodo: props.periodo,
+          professora_id: props.professora.id,
+          tipo: tipoAtual,
+          tema: props.config?.tema ?? null,
+          vagas_fechadas: novoValor,
+        },
+      });
+      setVagasFechadas(novoValor);
     } catch (e) {
       setErro((e as Error).message);
     }
@@ -592,6 +625,7 @@ function CelulaEditor(props: {
       });
       setTipo("regular");
       setTema("");
+      setVagasFechadas(0);
     } catch (e) {
       setErro((e as Error).message);
     }
@@ -740,7 +774,10 @@ function CelulaEditor(props: {
                 )}
                 {!fechado && (
                   <div className="text-xs text-muted-foreground mt-1">
-                    Capacidade: até {cap} aluno{cap > 1 ? "s" : ""}.
+                    Capacidade: até {capEfetiva} aluno{capEfetiva > 1 ? "s" : ""}
+                    {vagasFechadas > 0 &&
+                      ` (${vagasFechadas} vaga${vagasFechadas > 1 ? "s" : ""} fechada${vagasFechadas > 1 ? "s" : ""})`}
+                    .
                   </div>
                 )}
               </div>
@@ -753,11 +790,41 @@ function CelulaEditor(props: {
             </section>
           )}
 
+          {/* Fechar vagas específicas, sem mudar o tipo */}
+          {!modoTipo && !fechado && (
+            <section className="mb-6 rounded border border-border p-3">
+              <h3 className="font-medium text-sm mb-1">Fechar vagas</h3>
+              <p className="text-xs text-muted-foreground mb-2">
+                Reduz quantas vagas ficam disponíveis nesta célula (vale todas as semanas, até você
+                reabrir).
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => salvarVagasFechadas(Math.max(vagasFechadas - 1, 0))}
+                  disabled={vagasFechadas <= 0}
+                  className="rounded border border-border px-2.5 py-1 text-sm hover:bg-accent disabled:opacity-40"
+                >
+                  −
+                </button>
+                <span className="text-sm">
+                  {vagasFechadas} de {cap} fechada{vagasFechadas === 1 ? "" : "s"}
+                </span>
+                <button
+                  onClick={() => salvarVagasFechadas(Math.min(vagasFechadas + 1, cap))}
+                  disabled={vagasFechadas >= cap}
+                  className="rounded border border-border px-2.5 py-1 text-sm hover:bg-accent disabled:opacity-40"
+                >
+                  +
+                </button>
+              </div>
+            </section>
+          )}
+
           {/* Lista de alunos */}
           {props.config && !modoTipo && !fechado && props.celulas.length > 0 && (
             <section className="mb-6">
               <h3 className="font-medium text-sm mb-2 text-muted-foreground">
-                Alunos ({props.celulas.length}/{cap})
+                Alunos ({props.celulas.length}/{capEfetiva})
               </h3>
               <ul className="space-y-2">
                 {props.celulas.map((c) => (
@@ -809,7 +876,9 @@ function CelulaEditor(props: {
             <section className="mb-6">
               <h3 className="font-medium text-sm mb-2 text-muted-foreground">Adicionar aluno</h3>
               {cheio ? (
-                <div className="text-sm text-muted-foreground">Horário lotado ({cap} alunos).</div>
+                <div className="text-sm text-muted-foreground">
+                  Horário lotado ({capEfetiva} alunos).
+                </div>
               ) : (
                 <>
                   <input

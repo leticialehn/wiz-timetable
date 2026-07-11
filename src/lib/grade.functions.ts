@@ -176,6 +176,7 @@ export const setHorarioConfig = createServerFn({ method: "POST" })
       professora_id: string;
       tipo: TipoHorario;
       tema?: string | null;
+      vagas_fechadas?: number;
     }) => data,
   )
   .handler(async ({ data }) => {
@@ -187,6 +188,7 @@ export const setHorarioConfig = createServerFn({ method: "POST" })
         professora_id: data.professora_id,
         tipo: data.tipo,
         tema: data.tema ?? null,
+        vagas_fechadas: data.vagas_fechadas ?? 0,
       },
       { onConflict: "dia_semana,periodo,professora_id" },
     );
@@ -256,7 +258,7 @@ export const adicionarAluno = createServerFn({ method: "POST" })
     const ocupadas = (grade.celulasPorData[data.data] ?? []).filter(
       (c) => c.professora_id === data.professora_id && c.periodo === data.periodo,
     ).length;
-    const cap = CAPACIDADE[tipoHorario];
+    const cap = Math.max(CAPACIDADE[tipoHorario] - (cfgRow?.vagas_fechadas ?? 0), 0);
     if (ocupadas >= cap) {
       throw new Error(`Capacidade máxima atingida (${cap} para ${tipoHorario}).`);
     }
