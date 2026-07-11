@@ -2,10 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import type { Aluno, StatusPresenca } from "./types";
 
 async function publicClient() {
-  const { createClient } = await import("@supabase/supabase-js");
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
-    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
-  });
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin;
 }
 
 export type AlunoEmAlerta = {
