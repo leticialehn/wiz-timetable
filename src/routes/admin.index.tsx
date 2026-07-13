@@ -387,6 +387,8 @@ function LinhaVagaTrancada({ onDestrancar }: { onDestrancar: () => Promise<void>
         setDestrancando(true);
         try {
           await onDestrancar();
+        } catch (err) {
+          alert(`Não foi possível destrancar a vaga: ${(err as Error).message}`);
         } finally {
           setDestrancando(false);
         }
@@ -609,6 +611,8 @@ function LinhaVaziaEditavel({
             setTrancando(true);
             try {
               await onTrancarVaga();
+            } catch (err) {
+              alert(`Não foi possível trancar a vaga: ${(err as Error).message}`);
             } finally {
               setTrancando(false);
             }

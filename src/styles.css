@@ -109,8 +109,8 @@
   --tipo-conversacao-fg: oklch(0.28 0.08 160);
   --tipo-break-bg: oklch(0.35 0.02 260);
   --tipo-break-fg: oklch(0.98 0 0);
-  --tipo-prep-bg: oklch(0.85 0.08 300);
-  --tipo-prep-fg: oklch(0.25 0.05 300);
+  --tipo-prep-bg: oklch(1 0 0);
+  --tipo-prep-fg: oklch(0.2 0.02 260);
   --tipo-sem-aula-bg: oklch(0.82 0.006 260);
   --tipo-sem-aula-fg: oklch(0.4 0.01 260);
 }
