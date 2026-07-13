@@ -13,6 +13,24 @@ export type Aluno = {
   ativo: boolean;
 };
 
+// Níveis de aluno pré-cadastrados — não é permitido usar outro valor além destes.
+export const NIVEIS = [
+  "K2",
+  "K4",
+  "PTeens",
+  "T2",
+  "T4",
+  "T6",
+  "T8",
+  "W2",
+  "W4",
+  "W6",
+  "W8",
+  "W10",
+  "W12",
+] as const;
+export type Nivel = (typeof NIVEIS)[number];
+
 // Tipos de horário (configuração da célula: dia × período × professora)
 export type TipoHorario =
   | "regular"

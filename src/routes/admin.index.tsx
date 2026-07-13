@@ -29,6 +29,7 @@ import {
   ROTULO_TIPO,
   TIPO_FECHADO,
   TIPO_MOSTRA_LIVRO,
+  NIVEIS,
   configDe,
   type Aluno,
   type CelulaAula,
@@ -476,7 +477,7 @@ function LinhaPreenchida({
             }}
             className="min-w-0 flex-1 rounded border border-input bg-background px-1 py-0.5 text-[11px]"
           />
-          <input
+          <select
             value={nivel}
             onChange={(e) => setNivel(e.target.value)}
             onKeyDown={(e) => {
@@ -486,8 +487,14 @@ function LinhaPreenchida({
               }
               if (e.key === "Escape") cancelar();
             }}
-            className="w-12 shrink-0 rounded border border-input bg-background px-1 py-0.5 text-[11px]"
-          />
+            className="w-16 shrink-0 rounded border border-input bg-background px-1 py-0.5 text-[11px]"
+          >
+            {NIVEIS.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
         </div>
         {erro && <div className="mt-0.5 text-[10px] text-destructive">{erro}</div>}
       </div>
@@ -582,11 +589,15 @@ function LinhaVaziaEditavel({
       cancelar();
       return;
     }
+    if (!alunoId && !nivel) {
+      setErro("Escolha um nível.");
+      return;
+    }
     setErro(null);
     setSalvando(true);
     try {
       if (alunoId) await onAdicionar(alunoId);
-      else await onCriarEAdicionar(nome.trim(), nivel.trim());
+      else await onCriarEAdicionar(nome.trim(), nivel);
       cancelar();
     } catch (e) {
       setSalvando(false);
@@ -660,7 +671,7 @@ function LinhaVaziaEditavel({
           placeholder="Nome…"
           className="min-w-0 flex-1 rounded border border-input bg-background px-1 py-0.5 text-[11px]"
         />
-        <input
+        <select
           value={nivel}
           onChange={(e) => setNivel(e.target.value)}
           onKeyDown={(e) => {
@@ -670,9 +681,17 @@ function LinhaVaziaEditavel({
             }
             if (e.key === "Escape") cancelar();
           }}
-          placeholder="Nível"
-          className="w-12 shrink-0 rounded border border-input bg-background px-1 py-0.5 text-[11px]"
-        />
+          className="w-16 shrink-0 rounded border border-input bg-background px-1 py-0.5 text-[11px]"
+        >
+          <option value="" disabled>
+            Nível
+          </option>
+          {NIVEIS.map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
       </div>
       {sugestoes.length > 0 && (
         <ul className="absolute left-0 right-0 top-full z-30 mt-0.5 max-h-32 overflow-y-auto rounded border border-border bg-card shadow-lg">

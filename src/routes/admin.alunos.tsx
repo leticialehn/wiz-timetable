@@ -6,9 +6,7 @@ import { getGradeSemana } from "@/lib/grade.functions";
 import { criarAluno, atualizarAluno, removerAluno } from "@/lib/cadastros.functions";
 import { segundaDaSemana, toISODate } from "@/lib/date-utils";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
-import type { Aluno } from "@/lib/types";
-
-const NIVEIS = ["T2", "T4", "T6", "K2", "K6", "W2", "W4", "W6", "W10", "W12"];
+import { NIVEIS, type Aluno } from "@/lib/types";
 
 export const Route = createFileRoute("/admin/alunos")({ component: AlunosPage });
 
@@ -71,17 +69,17 @@ function AlunosPage() {
         </div>
         <div>
           <label className="text-sm block mb-1">Nível</label>
-          <input
-            list="niveis"
+          <select
             value={nivel}
             onChange={(e) => setNivel(e.target.value)}
             className="w-24 rounded-md border border-input bg-background px-3 py-2 text-sm"
-          />
-          <datalist id="niveis">
+          >
             {NIVEIS.map((n) => (
-              <option key={n} value={n} />
+              <option key={n} value={n}>
+                {n}
+              </option>
             ))}
-          </datalist>
+          </select>
         </div>
         <button className="rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm">
           Adicionar
@@ -189,16 +187,21 @@ function LinhaAluno({
             }}
             className="rounded-md border border-input bg-background px-3 py-1.5 text-sm flex-1"
           />
-          <input
+          <select
             value={nivel}
-            list="niveis"
             onChange={(e) => setNivel(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") salvar();
               if (e.key === "Escape") cancelar();
             }}
-            className="w-20 rounded-md border border-input bg-background px-3 py-1.5 text-sm"
-          />
+            className="w-24 rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+          >
+            {NIVEIS.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
           <button
             onClick={(e) => {
               e.stopPropagation();
