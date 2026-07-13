@@ -578,6 +578,13 @@ function LinhaVaziaEditavel({
               confirmar();
             }
             if (e.key === "Escape") cancelar();
+            if (e.key === "Tab" && sugestoes.length > 0) {
+              e.preventDefault();
+              const a = sugestoes[0];
+              setAlunoId(a.id);
+              setNome(a.nome);
+              setNivel(a.nivel);
+            }
           }}
           placeholder="Nome…"
           className="min-w-0 flex-1 rounded border border-input bg-background px-1 py-0.5 text-[11px]"
