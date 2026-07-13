@@ -392,7 +392,7 @@ function LinhaVagaTrancada({ onDestrancar }: { onDestrancar: () => Promise<void>
         }
       }}
       title="Vaga trancada — clique para destrancar"
-      className="flex h-[13px] w-full items-center justify-center rounded-sm bg-foreground/10 text-[9px] uppercase tracking-wide text-muted-foreground hover:bg-foreground/20 disabled:opacity-50"
+      className="flex h-[13px] w-full items-center justify-center rounded-sm bg-[var(--tipo-sem-aula-bg)] text-[9px] uppercase tracking-wide text-[var(--tipo-sem-aula-fg)] hover:opacity-80 disabled:opacity-50"
     >
       🔒
     </button>
