@@ -8,6 +8,8 @@ import {
   removerCelula,
   setHorarioConfig,
   removerHorarioConfig,
+  fecharVagaSemana,
+  abrirVagaSemana,
 } from "@/lib/grade.functions";
 import { criarAluno, atualizarAluno } from "@/lib/cadastros.functions";
 import { getAlertasFaltas } from "@/lib/alertas.functions";
@@ -29,6 +31,7 @@ import {
   TIPO_FECHADO,
   TIPO_MOSTRA_LIVRO,
   configDe,
+  chaveVagaSemana,
   type Aluno,
   type CelulaAula,
   type HorarioConfig,
@@ -81,6 +84,8 @@ function GradePage() {
   const removerFn = useServerFn(removerCelula);
   const criarAlunoFn = useServerFn(criarAluno);
   const atualizarAlunoFn = useServerFn(atualizarAluno);
+  const fecharVagaFn = useServerFn(fecharVagaSemana);
+  const abrirVagaFn = useServerFn(abrirVagaSemana);
 
   async function handleAdicionar(professoraId: string, periodo: number, alunoId: string) {
     await adicionarFn({
@@ -121,6 +126,18 @@ function GradePage() {
         excecao_id: c.excecao_id,
       },
     });
+    qc.invalidateQueries();
+  }
+
+  async function handleFecharVaga(professoraId: string, periodo: number) {
+    await fecharVagaFn({
+      data: { data: dataDoDia, dia_semana: diaAtivo, periodo, professora_id: professoraId },
+    });
+    qc.invalidateQueries();
+  }
+
+  async function handleAbrirVaga(professoraId: string, periodo: number) {
+    await abrirVagaFn({ data: { data: dataDoDia, periodo, professora_id: professoraId } });
     qc.invalidateQueries();
   }
 
@@ -173,6 +190,8 @@ function GradePage() {
           professoras={data.professoras.filter((p) => p.ativa)}
           celulas={data.celulasPorData[dataDoDia] ?? []}
           horariosConfig={data.horariosConfig}
+          vagasFechadasSemana={data.vagasFechadasSemana}
+          dataDoDia={dataDoDia}
           diaSemana={diaAtivo}
           alertaIds={alertaIds}
           alunos={data.alunos.filter((a) => a.ativo)}
@@ -180,6 +199,8 @@ function GradePage() {
           onCriarEAdicionar={handleCriarEAdicionar}
           onEditarAluno={handleEditarAluno}
           onRemover={handleRemover}
+          onFecharVaga={handleFecharVaga}
+          onAbrirVaga={handleAbrirVaga}
           onEditarCelula={(professora, periodo) => setEditando({ professora, periodo })}
         />
       )}
@@ -207,6 +228,8 @@ function GradeTabela(props: {
   professoras: Professora[];
   celulas: CelulaAula[];
   horariosConfig: HorarioConfig[];
+  vagasFechadasSemana: Record<string, number>;
+  dataDoDia: string;
   diaSemana: number;
   alertaIds: Set<string>;
   alunos: Aluno[];
@@ -219,6 +242,8 @@ function GradeTabela(props: {
   ) => Promise<void>;
   onEditarAluno: (alunoId: string, nome: string, nivel: string) => Promise<void>;
   onRemover: (c: CelulaAula) => Promise<void>;
+  onFecharVaga: (professoraId: string, periodo: number) => Promise<void>;
+  onAbrirVaga: (professoraId: string, periodo: number) => Promise<void>;
   onEditarCelula: (p: Professora, periodo: number) => void;
 }) {
   const { professoras, celulas, horariosConfig, diaSemana } = props;
@@ -270,12 +295,17 @@ function GradeTabela(props: {
                       cels={cels}
                       alertaIds={props.alertaIds}
                       alunos={props.alunos}
+                      vagasFechadasSemana={
+                        props.vagasFechadasSemana[chaveVagaSemana(props.dataDoDia, per, p.id)] ?? 0
+                      }
                       onAdicionar={(alunoId) => props.onAdicionar(p.id, per, alunoId)}
                       onCriarEAdicionar={(nome, nivel) =>
                         props.onCriarEAdicionar(p.id, per, nome, nivel)
                       }
                       onEditarAluno={props.onEditarAluno}
                       onRemover={props.onRemover}
+                      onFecharVaga={() => props.onFecharVaga(p.id, per)}
+                      onAbrirVaga={() => props.onAbrirVaga(p.id, per)}
                     />
                   </td>
                 );
@@ -294,20 +324,26 @@ function CelulaConteudo({
   cels,
   alertaIds,
   alunos,
+  vagasFechadasSemana,
   onAdicionar,
   onCriarEAdicionar,
   onEditarAluno,
   onRemover,
+  onFecharVaga,
+  onAbrirVaga,
 }: {
   tipo: TipoHorario;
   cfg: HorarioConfig | null;
   cels: CelulaAula[];
   alertaIds: Set<string>;
   alunos: Aluno[];
+  vagasFechadasSemana: number;
   onAdicionar: (alunoId: string) => Promise<void>;
   onCriarEAdicionar: (nome: string, nivel: string) => Promise<void>;
   onEditarAluno: (alunoId: string, nome: string, nivel: string) => Promise<void>;
   onRemover: (c: CelulaAula) => Promise<void>;
+  onFecharVaga: () => Promise<void>;
+  onAbrirVaga: () => Promise<void>;
 }) {
   if (TIPO_FECHADO[tipo]) {
     return (
@@ -319,9 +355,11 @@ function CelulaConteudo({
   }
   const cap = CAPACIDADE[tipo];
   const mostraLivro = TIPO_MOSTRA_LIVRO[tipo];
-  const capEfetiva = Math.max(cap - (cfg?.vagas_fechadas ?? 0), 0);
-  const vagas = Math.max(capEfetiva - cels.length, 0);
-  const fechadas = Math.max(cap - Math.max(cels.length, capEfetiva), 0);
+  const fechadasRecorrentes = Math.min(cfg?.vagas_fechadas ?? 0, cap);
+  const capAposRecorrente = Math.max(cap - fechadasRecorrentes, 0);
+  const fechadasSemanaCount = Math.min(vagasFechadasSemana, capAposRecorrente);
+  const capDisponivel = Math.max(capAposRecorrente - fechadasSemanaCount, 0);
+  const vagas = Math.max(capDisponivel - cels.length, 0);
 
   return (
     <div className="space-y-0.5 pr-3">
@@ -329,7 +367,7 @@ function CelulaConteudo({
         <div className="flex items-center justify-between gap-1 mb-0.5">
           <span className="text-[10px] uppercase font-bold opacity-70">{ROTULO_TIPO[tipo]}</span>
           <span className="text-[10px] opacity-70">
-            {cels.length}/{capEfetiva}
+            {cels.length}/{capDisponivel}
           </span>
         </div>
       )}
@@ -350,16 +388,42 @@ function CelulaConteudo({
           alunos={alunos}
           onAdicionar={onAdicionar}
           onCriarEAdicionar={onCriarEAdicionar}
+          onFecharVaga={onFecharVaga}
         />
       ))}
-      {Array.from({ length: fechadas }).map((_, i) => (
+      {Array.from({ length: fechadasSemanaCount }).map((_, i) => (
+        <LinhaVagaFechadaSemana key={`fechada-semana-${i}`} onAbrir={onAbrirVaga} />
+      ))}
+      {Array.from({ length: fechadasRecorrentes }).map((_, i) => (
         <div
-          key={`fechada-${i}`}
-          title="Vaga fechada"
+          key={`fechada-recorrente-${i}`}
+          title="Vaga fechada (todas as semanas — mudar em '⋯')"
           className="h-[13px] rounded-sm bg-foreground/10"
         />
       ))}
     </div>
+  );
+}
+
+function LinhaVagaFechadaSemana({ onAbrir }: { onAbrir: () => Promise<void> }) {
+  const [abrindo, setAbrindo] = useState(false);
+  return (
+    <button
+      type="button"
+      disabled={abrindo}
+      onClick={async () => {
+        setAbrindo(true);
+        try {
+          await onAbrir();
+        } finally {
+          setAbrindo(false);
+        }
+      }}
+      title="Vaga fechada só nesta semana — clique para reabrir"
+      className="flex h-[13px] w-full items-center justify-center rounded-sm bg-blue-500/15 text-[9px] uppercase tracking-wide text-blue-600 hover:bg-blue-500/25 disabled:opacity-50 dark:text-blue-400"
+    >
+      fechada
+    </button>
   );
 }
 
@@ -510,10 +574,12 @@ function LinhaVaziaEditavel({
   alunos,
   onAdicionar,
   onCriarEAdicionar,
+  onFecharVaga,
 }: {
   alunos: Aluno[];
   onAdicionar: (alunoId: string) => Promise<void>;
   onCriarEAdicionar: (nome: string, nivel: string) => Promise<void>;
+  onFecharVaga: () => Promise<void>;
 }) {
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState("");
@@ -521,6 +587,7 @@ function LinhaVaziaEditavel({
   const [alunoId, setAlunoId] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [fechando, setFechando] = useState(false);
 
   const sugestoes =
     !alunoId && nome.trim()
@@ -554,13 +621,32 @@ function LinhaVaziaEditavel({
 
   if (!editando) {
     return (
-      <button
-        type="button"
-        onClick={() => setEditando(true)}
-        className="w-full border-b border-dashed border-border/60 text-left text-[11px] leading-relaxed text-transparent hover:border-muted-foreground/40"
-      >
-        &nbsp;
-      </button>
+      <div className="group/vaga flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => setEditando(true)}
+          className="min-w-0 flex-1 border-b border-dashed border-border/60 text-left text-[11px] leading-relaxed text-transparent hover:border-muted-foreground/40"
+        >
+          &nbsp;
+        </button>
+        <button
+          type="button"
+          disabled={fechando}
+          onClick={async (e) => {
+            e.stopPropagation();
+            setFechando(true);
+            try {
+              await onFecharVaga();
+            } finally {
+              setFechando(false);
+            }
+          }}
+          title="Trancar esta vaga só nesta semana"
+          className="shrink-0 opacity-0 group-hover/vaga:opacity-100 text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400 px-1 disabled:opacity-50"
+        >
+          🔒
+        </button>
+      </div>
     );
   }
 
