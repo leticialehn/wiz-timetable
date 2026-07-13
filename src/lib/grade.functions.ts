@@ -340,7 +340,7 @@ export const alternarVagaFechada = createServerFn({ method: "POST" })
     const sb = await admin();
     const { data: cfgRow } = await sb
       .from("horarios_config")
-      .select("vagas_fechadas")
+      .select("tipo, tema, vagas_fechadas")
       .eq("dia_semana", data.dia_semana)
       .eq("periodo", data.periodo)
       .eq("professora_id", data.professora_id)
@@ -352,6 +352,8 @@ export const alternarVagaFechada = createServerFn({ method: "POST" })
         dia_semana: data.dia_semana,
         periodo: data.periodo,
         professora_id: data.professora_id,
+        tipo: cfgRow?.tipo ?? "regular",
+        tema: cfgRow?.tema ?? null,
         vagas_fechadas: novoValor,
       },
       { onConflict: "dia_semana,periodo,professora_id" },
