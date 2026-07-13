@@ -352,7 +352,7 @@ export type Database = {
           periodo: number;
           professora_id: string;
           tema?: string | null;
-          tipo: string;
+          tipo?: string;
           vagas_fechadas?: number;
         };
         Update: {

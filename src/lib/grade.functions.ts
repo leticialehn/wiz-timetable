@@ -10,7 +10,7 @@ import type {
   TipoAula,
   TipoHorario,
 } from "./types";
-import { CAPACIDADE, TIPO_FECHADO, chaveVagaSemana } from "./types";
+import { CAPACIDADE, TIPO_FECHADO } from "./types";
 import {
   datasDaSemana,
   parseISODate,
@@ -162,23 +162,8 @@ export const getGradeSemana = createServerFn({ method: "GET" })
       celulasPorData[iso] = doDia;
     }
 
-    const vagasFechadasSemana: Record<string, number> = {};
-    for (const e of excecoes) {
-      if (e.tipo_excecao !== "fechar_vaga" || !e.professora_id || !e.periodo) continue;
-      const chave = chaveVagaSemana(e.data, e.periodo, e.professora_id);
-      vagasFechadasSemana[chave] = (vagasFechadasSemana[chave] ?? 0) + 1;
-    }
-
     const celulas = Object.values(celulasPorData).flat();
-    return {
-      professoras,
-      alunos,
-      celulas,
-      celulasPorData,
-      horariosConfig,
-      datasSemana: datas,
-      vagasFechadasSemana,
-    };
+    return { professoras, alunos, celulas, celulasPorData, horariosConfig, datasSemana: datas };
   });
 
 // ============ Configuração de tipo de horário (por célula) ============
@@ -273,12 +258,7 @@ export const adicionarAluno = createServerFn({ method: "POST" })
     const ocupadas = (grade.celulasPorData[data.data] ?? []).filter(
       (c) => c.professora_id === data.professora_id && c.periodo === data.periodo,
     ).length;
-    const fechadasSemana =
-      grade.vagasFechadasSemana[chaveVagaSemana(data.data, data.periodo, data.professora_id)] ?? 0;
-    const cap = Math.max(
-      CAPACIDADE[tipoHorario] - (cfgRow?.vagas_fechadas ?? 0) - fechadasSemana,
-      0,
-    );
+    const cap = Math.max(CAPACIDADE[tipoHorario] - (cfgRow?.vagas_fechadas ?? 0), 0);
     if (ocupadas >= cap) {
       throw new Error(`Capacidade máxima atingida (${cap} para ${tipoHorario}).`);
     }
@@ -350,40 +330,32 @@ export const removerCelula = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// ============ Fechar/abrir vaga só nesta semana (varia semana a semana) ============
+// ============ Trancar/destrancar vaga individual (permanente, até destrancar) ============
 
-export const fecharVagaSemana = createServerFn({ method: "POST" })
+export const alternarVagaFechada = createServerFn({ method: "POST" })
   .inputValidator(
-    (data: { data: string; dia_semana: number; periodo: number; professora_id: string }) => data,
+    (data: { dia_semana: number; periodo: number; professora_id: string; fechar: boolean }) => data,
   )
   .handler(async ({ data }) => {
     const sb = await admin();
-    const { error } = await sb.from("excecoes_semana").insert({
-      data: data.data,
-      tipo_excecao: "fechar_vaga",
-      dia_semana: data.dia_semana,
-      periodo: data.periodo,
-      professora_id: data.professora_id,
-    });
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
-
-export const abrirVagaSemana = createServerFn({ method: "POST" })
-  .inputValidator((data: { data: string; periodo: number; professora_id: string }) => data)
-  .handler(async ({ data }) => {
-    const sb = await admin();
-    const { data: linhas, error: selError } = await sb
-      .from("excecoes_semana")
-      .select("id")
-      .eq("data", data.data)
+    const { data: cfgRow } = await sb
+      .from("horarios_config")
+      .select("vagas_fechadas")
+      .eq("dia_semana", data.dia_semana)
       .eq("periodo", data.periodo)
       .eq("professora_id", data.professora_id)
-      .eq("tipo_excecao", "fechar_vaga")
-      .limit(1);
-    if (selError) throw new Error(selError.message);
-    if (!linhas || linhas.length === 0) return { ok: true };
-    const { error } = await sb.from("excecoes_semana").delete().eq("id", linhas[0].id);
+      .maybeSingle();
+    const atual = cfgRow?.vagas_fechadas ?? 0;
+    const novoValor = data.fechar ? atual + 1 : Math.max(atual - 1, 0);
+    const { error } = await sb.from("horarios_config").upsert(
+      {
+        dia_semana: data.dia_semana,
+        periodo: data.periodo,
+        professora_id: data.professora_id,
+        vagas_fechadas: novoValor,
+      },
+      { onConflict: "dia_semana,periodo,professora_id" },
+    );
     if (error) throw new Error(error.message);
     return { ok: true };
   });

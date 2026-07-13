@@ -97,7 +97,7 @@ export type GradeBaseRow = {
 export type ExcecaoSemana = {
   id: string;
   data: string;
-  tipo_excecao: "adicionar" | "remover" | "mover" | "fechar_vaga";
+  tipo_excecao: "adicionar" | "remover" | "mover";
   grade_base_id: string | null;
   professora_id: string | null;
   aluno_id: string | null;
@@ -134,13 +134,7 @@ export type GradeSemana = {
   celulasPorData: Record<string, CelulaAula[]>;
   horariosConfig: HorarioConfig[];
   datasSemana: string[];
-  // Vagas fechadas só para a semana atual (chave: `${data}-${periodo}-${professora_id}`).
-  vagasFechadasSemana: Record<string, number>;
 };
-
-export function chaveVagaSemana(data: string, periodo: number, professora_id: string): string {
-  return `${data}-${periodo}-${professora_id}`;
-}
 
 export const DIAS_SEMANA = [
   { n: 1, nome: "Segunda", curto: "Seg" },

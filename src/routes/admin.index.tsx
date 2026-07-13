@@ -8,8 +8,7 @@ import {
   removerCelula,
   setHorarioConfig,
   removerHorarioConfig,
-  fecharVagaSemana,
-  abrirVagaSemana,
+  alternarVagaFechada,
 } from "@/lib/grade.functions";
 import { criarAluno, atualizarAluno } from "@/lib/cadastros.functions";
 import { getAlertasFaltas } from "@/lib/alertas.functions";
@@ -31,7 +30,6 @@ import {
   TIPO_FECHADO,
   TIPO_MOSTRA_LIVRO,
   configDe,
-  chaveVagaSemana,
   type Aluno,
   type CelulaAula,
   type HorarioConfig,
@@ -84,8 +82,7 @@ function GradePage() {
   const removerFn = useServerFn(removerCelula);
   const criarAlunoFn = useServerFn(criarAluno);
   const atualizarAlunoFn = useServerFn(atualizarAluno);
-  const fecharVagaFn = useServerFn(fecharVagaSemana);
-  const abrirVagaFn = useServerFn(abrirVagaSemana);
+  const alternarVagaFn = useServerFn(alternarVagaFechada);
 
   async function handleAdicionar(professoraId: string, periodo: number, alunoId: string) {
     await adicionarFn({
@@ -129,15 +126,10 @@ function GradePage() {
     qc.invalidateQueries();
   }
 
-  async function handleFecharVaga(professoraId: string, periodo: number) {
-    await fecharVagaFn({
-      data: { data: dataDoDia, dia_semana: diaAtivo, periodo, professora_id: professoraId },
+  async function handleAlternarVaga(professoraId: string, periodo: number, fechar: boolean) {
+    await alternarVagaFn({
+      data: { dia_semana: diaAtivo, periodo, professora_id: professoraId, fechar },
     });
-    qc.invalidateQueries();
-  }
-
-  async function handleAbrirVaga(professoraId: string, periodo: number) {
-    await abrirVagaFn({ data: { data: dataDoDia, periodo, professora_id: professoraId } });
     qc.invalidateQueries();
   }
 
@@ -190,8 +182,6 @@ function GradePage() {
           professoras={data.professoras.filter((p) => p.ativa)}
           celulas={data.celulasPorData[dataDoDia] ?? []}
           horariosConfig={data.horariosConfig}
-          vagasFechadasSemana={data.vagasFechadasSemana}
-          dataDoDia={dataDoDia}
           diaSemana={diaAtivo}
           alertaIds={alertaIds}
           alunos={data.alunos.filter((a) => a.ativo)}
@@ -199,8 +189,7 @@ function GradePage() {
           onCriarEAdicionar={handleCriarEAdicionar}
           onEditarAluno={handleEditarAluno}
           onRemover={handleRemover}
-          onFecharVaga={handleFecharVaga}
-          onAbrirVaga={handleAbrirVaga}
+          onAlternarVaga={handleAlternarVaga}
           onEditarCelula={(professora, periodo) => setEditando({ professora, periodo })}
         />
       )}
@@ -228,8 +217,6 @@ function GradeTabela(props: {
   professoras: Professora[];
   celulas: CelulaAula[];
   horariosConfig: HorarioConfig[];
-  vagasFechadasSemana: Record<string, number>;
-  dataDoDia: string;
   diaSemana: number;
   alertaIds: Set<string>;
   alunos: Aluno[];
@@ -242,8 +229,7 @@ function GradeTabela(props: {
   ) => Promise<void>;
   onEditarAluno: (alunoId: string, nome: string, nivel: string) => Promise<void>;
   onRemover: (c: CelulaAula) => Promise<void>;
-  onFecharVaga: (professoraId: string, periodo: number) => Promise<void>;
-  onAbrirVaga: (professoraId: string, periodo: number) => Promise<void>;
+  onAlternarVaga: (professoraId: string, periodo: number, fechar: boolean) => Promise<void>;
   onEditarCelula: (p: Professora, periodo: number) => void;
 }) {
   const { professoras, celulas, horariosConfig, diaSemana } = props;
@@ -295,17 +281,14 @@ function GradeTabela(props: {
                       cels={cels}
                       alertaIds={props.alertaIds}
                       alunos={props.alunos}
-                      vagasFechadasSemana={
-                        props.vagasFechadasSemana[chaveVagaSemana(props.dataDoDia, per, p.id)] ?? 0
-                      }
                       onAdicionar={(alunoId) => props.onAdicionar(p.id, per, alunoId)}
                       onCriarEAdicionar={(nome, nivel) =>
                         props.onCriarEAdicionar(p.id, per, nome, nivel)
                       }
                       onEditarAluno={props.onEditarAluno}
                       onRemover={props.onRemover}
-                      onFecharVaga={() => props.onFecharVaga(p.id, per)}
-                      onAbrirVaga={() => props.onAbrirVaga(p.id, per)}
+                      onTrancarVaga={() => props.onAlternarVaga(p.id, per, true)}
+                      onDestrancarVaga={() => props.onAlternarVaga(p.id, per, false)}
                     />
                   </td>
                 );
@@ -324,26 +307,24 @@ function CelulaConteudo({
   cels,
   alertaIds,
   alunos,
-  vagasFechadasSemana,
   onAdicionar,
   onCriarEAdicionar,
   onEditarAluno,
   onRemover,
-  onFecharVaga,
-  onAbrirVaga,
+  onTrancarVaga,
+  onDestrancarVaga,
 }: {
   tipo: TipoHorario;
   cfg: HorarioConfig | null;
   cels: CelulaAula[];
   alertaIds: Set<string>;
   alunos: Aluno[];
-  vagasFechadasSemana: number;
   onAdicionar: (alunoId: string) => Promise<void>;
   onCriarEAdicionar: (nome: string, nivel: string) => Promise<void>;
   onEditarAluno: (alunoId: string, nome: string, nivel: string) => Promise<void>;
   onRemover: (c: CelulaAula) => Promise<void>;
-  onFecharVaga: () => Promise<void>;
-  onAbrirVaga: () => Promise<void>;
+  onTrancarVaga: () => Promise<void>;
+  onDestrancarVaga: () => Promise<void>;
 }) {
   if (TIPO_FECHADO[tipo]) {
     return (
@@ -355,10 +336,8 @@ function CelulaConteudo({
   }
   const cap = CAPACIDADE[tipo];
   const mostraLivro = TIPO_MOSTRA_LIVRO[tipo];
-  const fechadasRecorrentes = Math.min(cfg?.vagas_fechadas ?? 0, cap);
-  const capAposRecorrente = Math.max(cap - fechadasRecorrentes, 0);
-  const fechadasSemanaCount = Math.min(vagasFechadasSemana, capAposRecorrente);
-  const capDisponivel = Math.max(capAposRecorrente - fechadasSemanaCount, 0);
+  const fechadas = Math.min(cfg?.vagas_fechadas ?? 0, cap);
+  const capDisponivel = Math.max(cap - fechadas, 0);
   const vagas = Math.max(capDisponivel - cels.length, 0);
 
   return (
@@ -388,41 +367,34 @@ function CelulaConteudo({
           alunos={alunos}
           onAdicionar={onAdicionar}
           onCriarEAdicionar={onCriarEAdicionar}
-          onFecharVaga={onFecharVaga}
+          onTrancarVaga={onTrancarVaga}
         />
       ))}
-      {Array.from({ length: fechadasSemanaCount }).map((_, i) => (
-        <LinhaVagaFechadaSemana key={`fechada-semana-${i}`} onAbrir={onAbrirVaga} />
-      ))}
-      {Array.from({ length: fechadasRecorrentes }).map((_, i) => (
-        <div
-          key={`fechada-recorrente-${i}`}
-          title="Vaga fechada (todas as semanas — mudar em '⋯')"
-          className="h-[13px] rounded-sm bg-foreground/10"
-        />
+      {Array.from({ length: fechadas }).map((_, i) => (
+        <LinhaVagaTrancada key={`trancada-${i}`} onDestrancar={onDestrancarVaga} />
       ))}
     </div>
   );
 }
 
-function LinhaVagaFechadaSemana({ onAbrir }: { onAbrir: () => Promise<void> }) {
-  const [abrindo, setAbrindo] = useState(false);
+function LinhaVagaTrancada({ onDestrancar }: { onDestrancar: () => Promise<void> }) {
+  const [destrancando, setDestrancando] = useState(false);
   return (
     <button
       type="button"
-      disabled={abrindo}
+      disabled={destrancando}
       onClick={async () => {
-        setAbrindo(true);
+        setDestrancando(true);
         try {
-          await onAbrir();
+          await onDestrancar();
         } finally {
-          setAbrindo(false);
+          setDestrancando(false);
         }
       }}
-      title="Vaga fechada só nesta semana — clique para reabrir"
-      className="flex h-[13px] w-full items-center justify-center rounded-sm bg-blue-500/15 text-[9px] uppercase tracking-wide text-blue-600 hover:bg-blue-500/25 disabled:opacity-50 dark:text-blue-400"
+      title="Vaga trancada — clique para destrancar"
+      className="flex h-[13px] w-full items-center justify-center rounded-sm bg-foreground/10 text-[9px] uppercase tracking-wide text-muted-foreground hover:bg-foreground/20 disabled:opacity-50"
     >
-      fechada
+      🔒
     </button>
   );
 }
@@ -574,12 +546,12 @@ function LinhaVaziaEditavel({
   alunos,
   onAdicionar,
   onCriarEAdicionar,
-  onFecharVaga,
+  onTrancarVaga,
 }: {
   alunos: Aluno[];
   onAdicionar: (alunoId: string) => Promise<void>;
   onCriarEAdicionar: (nome: string, nivel: string) => Promise<void>;
-  onFecharVaga: () => Promise<void>;
+  onTrancarVaga: () => Promise<void>;
 }) {
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState("");
@@ -587,7 +559,7 @@ function LinhaVaziaEditavel({
   const [alunoId, setAlunoId] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
-  const [fechando, setFechando] = useState(false);
+  const [trancando, setTrancando] = useState(false);
 
   const sugestoes =
     !alunoId && nome.trim()
@@ -631,18 +603,18 @@ function LinhaVaziaEditavel({
         </button>
         <button
           type="button"
-          disabled={fechando}
+          disabled={trancando}
           onClick={async (e) => {
             e.stopPropagation();
-            setFechando(true);
+            setTrancando(true);
             try {
-              await onFecharVaga();
+              await onTrancarVaga();
             } finally {
-              setFechando(false);
+              setTrancando(false);
             }
           }}
-          title="Trancar esta vaga só nesta semana"
-          className="shrink-0 opacity-0 group-hover/vaga:opacity-100 text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400 px-1 disabled:opacity-50"
+          title="Trancar esta vaga"
+          className="shrink-0 opacity-0 group-hover/vaga:opacity-100 text-muted-foreground hover:text-foreground px-1 disabled:opacity-50"
         >
           🔒
         </button>
@@ -757,7 +729,7 @@ function CelulaEditor(props: {
   const tipoAtual: TipoHorario = props.config?.tipo ?? "regular";
   const [tipo, setTipo] = useState<TipoHorario>(tipoAtual);
   const [tema, setTema] = useState(props.config?.tema ?? "");
-  const [vagasFechadas, setVagasFechadas] = useState(props.config?.vagas_fechadas ?? 0);
+  const vagasFechadas = props.config?.vagas_fechadas ?? 0;
   const [busca, setBusca] = useState("");
   const [horario, setHorario] = useState("");
   const [obs, setObs] = useState("");
@@ -796,25 +768,6 @@ function CelulaEditor(props: {
     }
   }
 
-  async function salvarVagasFechadas(novoValor: number) {
-    setErro(null);
-    try {
-      await setCfgFn({
-        data: {
-          dia_semana: props.diaSemana,
-          periodo: props.periodo,
-          professora_id: props.professora.id,
-          tipo: tipoAtual,
-          tema: props.config?.tema ?? null,
-          vagas_fechadas: novoValor,
-        },
-      });
-      setVagasFechadas(novoValor);
-    } catch (e) {
-      setErro((e as Error).message);
-    }
-  }
-
   async function limparTipo() {
     setErro(null);
     try {
@@ -827,7 +780,6 @@ function CelulaEditor(props: {
       });
       setTipo("regular");
       setTema("");
-      setVagasFechadas(0);
     } catch (e) {
       setErro((e as Error).message);
     }
@@ -978,8 +930,8 @@ function CelulaEditor(props: {
                   <div className="text-xs text-muted-foreground mt-1">
                     Capacidade: até {capEfetiva} aluno{capEfetiva > 1 ? "s" : ""}
                     {vagasFechadas > 0 &&
-                      ` (${vagasFechadas} vaga${vagasFechadas > 1 ? "s" : ""} fechada${vagasFechadas > 1 ? "s" : ""})`}
-                    .
+                      ` (${vagasFechadas} vaga${vagasFechadas > 1 ? "s" : ""} trancada${vagasFechadas > 1 ? "s" : ""})`}
+                    . Trave ou destrave vagas direto na grade (ícone 🔒).
                   </div>
                 )}
               </div>
@@ -989,36 +941,6 @@ function CelulaEditor(props: {
               >
                 Trocar tipo
               </button>
-            </section>
-          )}
-
-          {/* Fechar vagas específicas, sem mudar o tipo */}
-          {!modoTipo && !fechado && (
-            <section className="mb-6 rounded border border-border p-3">
-              <h3 className="font-medium text-sm mb-1">Fechar vagas</h3>
-              <p className="text-xs text-muted-foreground mb-2">
-                Reduz quantas vagas ficam disponíveis nesta célula (vale todas as semanas, até você
-                reabrir).
-              </p>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => salvarVagasFechadas(Math.max(vagasFechadas - 1, 0))}
-                  disabled={vagasFechadas <= 0}
-                  className="rounded border border-border px-2.5 py-1 text-sm hover:bg-accent disabled:opacity-40"
-                >
-                  −
-                </button>
-                <span className="text-sm">
-                  {vagasFechadas} de {cap} fechada{vagasFechadas === 1 ? "" : "s"}
-                </span>
-                <button
-                  onClick={() => salvarVagasFechadas(Math.min(vagasFechadas + 1, cap))}
-                  disabled={vagasFechadas >= cap}
-                  className="rounded border border-border px-2.5 py-1 text-sm hover:bg-accent disabled:opacity-40"
-                >
-                  +
-                </button>
-              </div>
             </section>
           )}
 
