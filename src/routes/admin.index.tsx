@@ -267,6 +267,7 @@ function GradeTabela(props: {
                   <td
                     key={p.id}
                     className={`group relative border border-border align-top p-1.5 min-w-[170px] min-h-[6rem] ${tipoCellBg(tipo)}`}
+                    style={{ borderLeftColor: p.cor, borderLeftWidth: 4 }}
                   >
                     <button
                       onClick={() => props.onEditarCelula(p, per)}
