@@ -455,8 +455,16 @@ function LinhaPreenchida({
     );
   }
 
+  // Horário avulso: aula adicionada só nesta semana, sem vínculo com um horário fixo (grade_base).
+  const horarioAvulso = c.origem === "excecao" && c.grade_base_id === null;
+
   return (
-    <div className="group/linha flex items-center gap-1 text-[11px] leading-tight">
+    <div
+      className={`group/linha flex items-center gap-1 text-[11px] leading-tight ${
+        horarioAvulso ? "text-blue-600 dark:text-blue-400" : ""
+      }`}
+      title={horarioAvulso ? "Aula avulsa (só nesta semana)" : "Horário fixo"}
+    >
       {emAlerta && (
         <span
           className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0"
