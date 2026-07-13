@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { capitalizarNome } from "./utils";
 
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -45,7 +46,7 @@ export const criarAluno = createServerFn({ method: "POST" })
     const sb = await admin();
     const { data: novoAluno, error } = await sb
       .from("alunos")
-      .insert({ nome: data.nome, nivel: data.nivel })
+      .insert({ nome: capitalizarNome(data.nome), nivel: data.nivel })
       .select("id")
       .single();
     if (error || !novoAluno) throw new Error(error?.message ?? "Erro ao criar aluno");
@@ -58,7 +59,7 @@ export const atualizarAluno = createServerFn({ method: "POST" })
     const sb = await admin();
     const { error } = await sb
       .from("alunos")
-      .update({ nome: data.nome, nivel: data.nivel, ativo: data.ativo })
+      .update({ nome: capitalizarNome(data.nome), nivel: data.nivel, ativo: data.ativo })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
