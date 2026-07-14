@@ -126,7 +126,7 @@ export type GradeBaseRow = {
 export type ExcecaoSemana = {
   id: string;
   data: string;
-  tipo_excecao: "adicionar" | "remover" | "mover";
+  tipo_excecao: "adicionar" | "remover" | "mover" | "ausente";
   grade_base_id: string | null;
   professora_id: string | null;
   aluno_id: string | null;
@@ -154,6 +154,9 @@ export type CelulaAula = {
   tipo: TipoAula;
   horario_especifico: string | null;
   observacao: string | null;
+  // Aluno fixo avisou que não vem só neste dia — mantém o horário fixo, mas
+  // libera a vaga pra outro aluno nesse dia específico.
+  avisou_falta: boolean;
 };
 
 export type GradeSemana = {
@@ -193,6 +196,14 @@ export const HORARIO_INICIO_PERIODO: Record<number, string> = {
   11: "19h",
   12: "20h",
 };
+
+// Cada horário de 1h "Online" vira 3 vagas de 20min (ex: 8h -> 8:00, 8:20, 8:40).
+export function slotsOnlinePorPeriodo(periodo: number): string[] {
+  const inicio = HORARIO_INICIO_PERIODO[periodo];
+  const hora = parseInt(inicio, 10);
+  if (Number.isNaN(hora)) return [];
+  return [`${hora}:00`, `${hora}:20`, `${hora}:40`];
+}
 
 export function periodosDoDia(dia_semana: number): readonly number[] {
   return dia_semana === 6 ? PERIODOS_SABADO : PERIODOS;

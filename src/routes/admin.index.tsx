@@ -9,6 +9,7 @@ import {
   setHorarioConfig,
   removerHorarioConfig,
   alternarVagaFechada,
+  alternarAusenciaAvisada,
 } from "@/lib/grade.functions";
 import { criarAluno, atualizarAluno } from "@/lib/cadastros.functions";
 import { getAlertasFaltas } from "@/lib/alertas.functions";
@@ -30,6 +31,7 @@ import {
   TIPO_FECHADO,
   TIPO_MOSTRA_LIVRO,
   NIVEIS,
+  slotsOnlinePorPeriodo,
   configDe,
   type Aluno,
   type CelulaAula,
@@ -84,6 +86,7 @@ function GradePage() {
   const criarAlunoFn = useServerFn(criarAluno);
   const atualizarAlunoFn = useServerFn(atualizarAluno);
   const alternarVagaFn = useServerFn(alternarVagaFechada);
+  const alternarAusenciaFn = useServerFn(alternarAusenciaAvisada);
 
   async function handleAdicionar(
     professoraId: string,
@@ -129,6 +132,14 @@ function GradePage() {
         grade_base_id: c.grade_base_id,
         excecao_id: c.excecao_id,
       },
+    });
+    qc.invalidateQueries();
+  }
+
+  async function handleAlternarAusencia(c: CelulaAula) {
+    if (!c.grade_base_id) return;
+    await alternarAusenciaFn({
+      data: { data: dataDoDia, grade_base_id: c.grade_base_id, avisou: !c.avisou_falta },
     });
     qc.invalidateQueries();
   }
@@ -197,6 +208,7 @@ function GradePage() {
           onEditarAluno={handleEditarAluno}
           onRemover={handleRemover}
           onAlternarVaga={handleAlternarVaga}
+          onAlternarAusencia={handleAlternarAusencia}
           onEditarCelula={(professora, periodo) => setEditando({ professora, periodo })}
         />
       )}
@@ -243,6 +255,7 @@ function GradeTabela(props: {
   onEditarAluno: (alunoId: string, nome: string, nivel: string) => Promise<void>;
   onRemover: (c: CelulaAula) => Promise<void>;
   onAlternarVaga: (professoraId: string, periodo: number, fechar: boolean) => Promise<void>;
+  onAlternarAusencia: (c: CelulaAula) => Promise<void>;
   onEditarCelula: (p: Professora, periodo: number) => void;
 }) {
   const { professoras, celulas, horariosConfig, diaSemana } = props;
@@ -315,6 +328,7 @@ function GradeTabela(props: {
                         }
                         onEditarAluno={props.onEditarAluno}
                         onRemover={props.onRemover}
+                        onAlternarAusencia={props.onAlternarAusencia}
                         onTrancarVaga={() => props.onAlternarVaga(p.id, per, true)}
                         onDestrancarVaga={() => props.onAlternarVaga(p.id, per, false)}
                       />
@@ -340,6 +354,7 @@ function CelulaConteudo({
   onCriarEAdicionar,
   onEditarAluno,
   onRemover,
+  onAlternarAusencia,
   onTrancarVaga,
   onDestrancarVaga,
 }: {
@@ -352,6 +367,7 @@ function CelulaConteudo({
   onCriarEAdicionar: (nome: string, nivel: string, avulso: boolean) => Promise<void>;
   onEditarAluno: (alunoId: string, nome: string, nivel: string) => Promise<void>;
   onRemover: (c: CelulaAula) => Promise<void>;
+  onAlternarAusencia: (c: CelulaAula) => Promise<void>;
   onTrancarVaga: () => Promise<void>;
   onDestrancarVaga: () => Promise<void>;
 }) {
@@ -367,7 +383,9 @@ function CelulaConteudo({
   const mostraLivro = TIPO_MOSTRA_LIVRO[tipo];
   const fechadas = Math.min(cfg?.vagas_fechadas ?? 0, cap);
   const capDisponivel = Math.max(cap - fechadas, 0);
-  const vagas = Math.max(capDisponivel - cels.length, 0);
+  // Alunos que avisaram falta hoje não ocupam vaga, mesmo continuando visíveis (riscados).
+  const ocupamVaga = cels.filter((c) => !c.avisou_falta).length;
+  const vagas = Math.max(capDisponivel - ocupamVaga, 0);
 
   return (
     <div className="space-y-0.5 pr-3">
@@ -375,7 +393,7 @@ function CelulaConteudo({
         <div className="flex items-center justify-between gap-1 mb-0.5">
           <span className="text-[10px] uppercase font-bold opacity-70">{ROTULO_TIPO[tipo]}</span>
           <span className="text-[10px] opacity-70">
-            {cels.length}/{capDisponivel}
+            {ocupamVaga}/{capDisponivel}
           </span>
         </div>
       )}
@@ -388,6 +406,7 @@ function CelulaConteudo({
           emAlerta={!!c.aluno_id && alertaIds.has(c.aluno_id)}
           onEditar={c.aluno_id ? (nome, nivel) => onEditarAluno(c.aluno_id!, nome, nivel) : null}
           onRemover={() => onRemover(c)}
+          onAlternarAusencia={c.origem === "base" ? () => onAlternarAusencia(c) : null}
         />
       ))}
       {Array.from({ length: vagas }).map((_, i) => (
@@ -436,12 +455,14 @@ function LinhaPreenchida({
   emAlerta,
   onEditar,
   onRemover,
+  onAlternarAusencia,
 }: {
   c: CelulaAula;
   mostraLivro: boolean;
   emAlerta: boolean;
   onEditar: ((nome: string, nivel: string) => Promise<void>) | null;
   onRemover: () => void;
+  onAlternarAusencia: (() => Promise<void>) | null;
 }) {
   const [removendo, setRemovendo] = useState(false);
   const [editando, setEditando] = useState(false);
@@ -449,6 +470,7 @@ function LinhaPreenchida({
   const [nivel, setNivel] = useState(c.aluno_nivel);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [alternandoAusencia, setAlternandoAusencia] = useState(false);
 
   function abrirEdicao() {
     if (!onEditar) return;
@@ -535,8 +557,14 @@ function LinhaPreenchida({
     <div
       className={`group/linha flex items-center gap-1 text-[11px] leading-tight ${
         horarioAvulso ? "text-blue-600 dark:text-blue-400" : ""
-      }`}
-      title={horarioAvulso ? "Aula avulsa (só nesta semana)" : "Horário fixo"}
+      } ${c.avisou_falta ? "opacity-50" : ""}`}
+      title={
+        c.avisou_falta
+          ? "Avisou que não vem hoje (horário fixo mantido, vaga liberada)"
+          : horarioAvulso
+            ? "Aula avulsa (só nesta semana)"
+            : "Horário fixo"
+      }
     >
       {emAlerta && (
         <span
@@ -552,12 +580,34 @@ function LinhaPreenchida({
         disabled={!onEditar}
         onClick={abrirEdicao}
         title={onEditar ? "Editar nome/nível" : undefined}
-        className="min-w-0 flex-1 truncate text-left disabled:cursor-default"
+        className={`min-w-0 flex-1 truncate text-left disabled:cursor-default ${
+          c.avisou_falta ? "line-through" : ""
+        }`}
       >
         {c.aluno_nome}
       </button>
       {mostraLivro && c.aluno_nivel && <span className="shrink-0 opacity-70">{c.aluno_nivel}</span>}
       {c.aluno_avulso && <span className="shrink-0 text-[9px] uppercase opacity-70">avulso</span>}
+      {onAlternarAusencia && (
+        <button
+          type="button"
+          disabled={alternandoAusencia}
+          onClick={async () => {
+            setAlternandoAusencia(true);
+            try {
+              await onAlternarAusencia();
+            } finally {
+              setAlternandoAusencia(false);
+            }
+          }}
+          title={c.avisou_falta ? "Desfazer aviso de falta" : "Avisou que não vem hoje"}
+          className={`shrink-0 px-1 text-muted-foreground hover:text-foreground disabled:opacity-50 ${
+            c.avisou_falta ? "" : "opacity-0 group-hover/linha:opacity-100"
+          }`}
+        >
+          🔇
+        </button>
+      )}
       <button
         type="button"
         disabled={removendo}
@@ -855,6 +905,10 @@ function CelulaEditor(props: {
       setErro("Escolha um aluno matriculado ou informe o nome do aluno avulso.");
       return;
     }
+    if (tipo === "online" && !horario) {
+      setErro("Escolha o horário do slot.");
+      return;
+    }
     try {
       await addFn({
         data: {
@@ -1123,12 +1177,26 @@ function CelulaEditor(props: {
                   {(pendingAlunoId || avulsoNome.trim()) && (
                     <div className="mt-3 space-y-2 rounded border border-border p-3">
                       {tipo === "online" && (
-                        <input
+                        <select
                           value={horario}
                           onChange={(e) => setHorario(e.target.value)}
-                          placeholder="Horário do slot (ex: 07:00, 07:20…)"
                           className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-                        />
+                        >
+                          <option value="" disabled>
+                            Horário do slot
+                          </option>
+                          {slotsOnlinePorPeriodo(props.periodo).map((slot) => {
+                            const ocupado = props.celulas.some(
+                              (c) => c.horario_especifico === slot,
+                            );
+                            return (
+                              <option key={slot} value={slot} disabled={ocupado}>
+                                {slot}
+                                {ocupado ? " (ocupado)" : ""}
+                              </option>
+                            );
+                          })}
+                        </select>
                       )}
                       <div className="text-xs text-muted-foreground pt-1">Aplicar:</div>
                       <div className="flex gap-2">

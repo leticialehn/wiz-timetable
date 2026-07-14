@@ -41,7 +41,11 @@ function nomeDoAluno(
   return { nome: row.aluno_nome_avulso ?? "?", nivel: "", avulso: true };
 }
 
-function celulaFromBase(row: GradeBaseRow, alunosById: Map<string, Aluno>): CelulaAula | null {
+function celulaFromBase(
+  row: GradeBaseRow,
+  alunosById: Map<string, Aluno>,
+  avisouFalta: boolean,
+): CelulaAula | null {
   if (!row.aluno_id && !row.aluno_nome_avulso) return null;
   const info = nomeDoAluno(row, alunosById);
   return {
@@ -59,6 +63,7 @@ function celulaFromBase(row: GradeBaseRow, alunosById: Map<string, Aluno>): Celu
     tipo: row.tipo,
     horario_especifico: row.horario_especifico,
     observacao: row.observacao,
+    avisou_falta: avisouFalta,
   };
 }
 
@@ -99,6 +104,11 @@ export const getGradeSemana = createServerFn({ method: "GET" })
           .filter((e) => e.tipo_excecao === "mover" && e.grade_base_id)
           .map((e) => [e.grade_base_id!, e]),
       );
+      const ausentes = new Set(
+        excsDoDia
+          .filter((e) => e.tipo_excecao === "ausente" && e.grade_base_id)
+          .map((e) => e.grade_base_id!),
+      );
 
       const doDia: CelulaAula[] = [];
       for (const row of base.filter((b) => b.dia_semana === dow)) {
@@ -127,10 +137,11 @@ export const getGradeSemana = createServerFn({ method: "GET" })
             tipo: (m.tipo ?? row.tipo) as TipoAula,
             horario_especifico: m.horario_especifico ?? row.horario_especifico,
             observacao: m.observacao ?? row.observacao,
+            avisou_falta: false,
           });
           continue;
         }
-        const c = celulaFromBase(row, alunosById);
+        const c = celulaFromBase(row, alunosById, ausentes.has(row.id));
         if (c) doDia.push(c);
       }
 
@@ -156,6 +167,7 @@ export const getGradeSemana = createServerFn({ method: "GET" })
           tipo: (e.tipo ?? "regular") as TipoAula,
           horario_especifico: e.horario_especifico,
           observacao: e.observacao,
+          avisou_falta: false,
         });
       }
 
@@ -256,7 +268,8 @@ export const adicionarAluno = createServerFn({ method: "POST" })
     const dataSegunda = toISODate(segundaDaSemana(parseISODate(data.data)));
     const grade = await getGradeSemana({ data: { dataSegunda } });
     const ocupadas = (grade.celulasPorData[data.data] ?? []).filter(
-      (c) => c.professora_id === data.professora_id && c.periodo === data.periodo,
+      (c) =>
+        c.professora_id === data.professora_id && c.periodo === data.periodo && !c.avisou_falta,
     ).length;
     const cap = Math.max(CAPACIDADE[tipoHorario] - (cfgRow?.vagas_fechadas ?? 0), 0);
     if (ocupadas >= cap) {
@@ -327,6 +340,35 @@ export const removerCelula = createServerFn({ method: "POST" })
       });
       if (error) throw new Error(error.message);
     }
+    return { ok: true };
+  });
+
+// ============ Avisou falta (só neste dia, mantém o horário fixo e libera a vaga) ============
+
+export const alternarAusenciaAvisada = createServerFn({ method: "POST" })
+  .inputValidator((data: { data: string; grade_base_id: string; avisou: boolean }) => data)
+  .handler(async ({ data }) => {
+    const sb = await admin();
+    if (data.avisou) {
+      const { error } = await sb.from("excecoes_semana").insert({
+        data: data.data,
+        tipo_excecao: "ausente",
+        grade_base_id: data.grade_base_id,
+      });
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+    const { data: linhas, error: selError } = await sb
+      .from("excecoes_semana")
+      .select("id")
+      .eq("data", data.data)
+      .eq("grade_base_id", data.grade_base_id)
+      .eq("tipo_excecao", "ausente")
+      .limit(1);
+    if (selError) throw new Error(selError.message);
+    if (!linhas || linhas.length === 0) return { ok: true };
+    const { error } = await sb.from("excecoes_semana").delete().eq("id", linhas[0].id);
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
 
