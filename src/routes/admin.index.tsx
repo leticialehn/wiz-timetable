@@ -85,10 +85,15 @@ function GradePage() {
   const atualizarAlunoFn = useServerFn(atualizarAluno);
   const alternarVagaFn = useServerFn(alternarVagaFechada);
 
-  async function handleAdicionar(professoraId: string, periodo: number, alunoId: string) {
+  async function handleAdicionar(
+    professoraId: string,
+    periodo: number,
+    alunoId: string,
+    avulso: boolean,
+  ) {
     await adicionarFn({
       data: {
-        escopo: "base",
+        escopo: avulso ? "semana" : "base",
         data: dataDoDia,
         dia_semana: diaAtivo,
         periodo,
@@ -104,9 +109,10 @@ function GradePage() {
     periodo: number,
     nome: string,
     nivel: string,
+    avulso: boolean,
   ) {
     const r = await criarAlunoFn({ data: { nome, nivel } });
-    await handleAdicionar(professoraId, periodo, r.id);
+    await handleAdicionar(professoraId, periodo, r.id, avulso);
   }
 
   async function handleEditarAluno(alunoId: string, nome: string, nivel: string) {
@@ -221,12 +227,18 @@ function GradeTabela(props: {
   diaSemana: number;
   alertaIds: Set<string>;
   alunos: Aluno[];
-  onAdicionar: (professoraId: string, periodo: number, alunoId: string) => Promise<void>;
+  onAdicionar: (
+    professoraId: string,
+    periodo: number,
+    alunoId: string,
+    avulso: boolean,
+  ) => Promise<void>;
   onCriarEAdicionar: (
     professoraId: string,
     periodo: number,
     nome: string,
     nivel: string,
+    avulso: boolean,
   ) => Promise<void>;
   onEditarAluno: (alunoId: string, nome: string, nivel: string) => Promise<void>;
   onRemover: (c: CelulaAula) => Promise<void>;
@@ -294,9 +306,11 @@ function GradeTabela(props: {
                       cels={cels}
                       alertaIds={props.alertaIds}
                       alunos={props.alunos}
-                      onAdicionar={(alunoId) => props.onAdicionar(p.id, per, alunoId)}
-                      onCriarEAdicionar={(nome, nivel) =>
-                        props.onCriarEAdicionar(p.id, per, nome, nivel)
+                      onAdicionar={(alunoId, avulso) =>
+                        props.onAdicionar(p.id, per, alunoId, avulso)
+                      }
+                      onCriarEAdicionar={(nome, nivel, avulso) =>
+                        props.onCriarEAdicionar(p.id, per, nome, nivel, avulso)
                       }
                       onEditarAluno={props.onEditarAluno}
                       onRemover={props.onRemover}
@@ -332,8 +346,8 @@ function CelulaConteudo({
   cels: CelulaAula[];
   alertaIds: Set<string>;
   alunos: Aluno[];
-  onAdicionar: (alunoId: string) => Promise<void>;
-  onCriarEAdicionar: (nome: string, nivel: string) => Promise<void>;
+  onAdicionar: (alunoId: string, avulso: boolean) => Promise<void>;
+  onCriarEAdicionar: (nome: string, nivel: string, avulso: boolean) => Promise<void>;
   onEditarAluno: (alunoId: string, nome: string, nivel: string) => Promise<void>;
   onRemover: (c: CelulaAula) => Promise<void>;
   onTrancarVaga: () => Promise<void>;
@@ -570,13 +584,14 @@ function LinhaVaziaEditavel({
   onTrancarVaga,
 }: {
   alunos: Aluno[];
-  onAdicionar: (alunoId: string) => Promise<void>;
-  onCriarEAdicionar: (nome: string, nivel: string) => Promise<void>;
+  onAdicionar: (alunoId: string, avulso: boolean) => Promise<void>;
+  onCriarEAdicionar: (nome: string, nivel: string, avulso: boolean) => Promise<void>;
   onTrancarVaga: () => Promise<void>;
 }) {
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState("");
   const [nivel, setNivel] = useState("");
+  const [avulso, setAvulso] = useState(false);
   const [alunoId, setAlunoId] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -591,6 +606,7 @@ function LinhaVaziaEditavel({
     setEditando(false);
     setNome("");
     setNivel("");
+    setAvulso(false);
     setAlunoId(null);
     setErro(null);
   }
@@ -607,8 +623,8 @@ function LinhaVaziaEditavel({
     setErro(null);
     setSalvando(true);
     try {
-      if (alunoId) await onAdicionar(alunoId);
-      else await onCriarEAdicionar(nome.trim(), nivel);
+      if (alunoId) await onAdicionar(alunoId, avulso);
+      else await onCriarEAdicionar(nome.trim(), nivel, avulso);
       cancelar();
     } catch (e) {
       setSalvando(false);
@@ -704,6 +720,18 @@ function LinhaVaziaEditavel({
           ))}
         </select>
       </div>
+      <label
+        className="mt-0.5 flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400"
+        title="Marca esse aluno como avulso, só nesta semana (em vez de horário fixo)"
+      >
+        <input
+          type="checkbox"
+          checked={avulso}
+          onChange={(e) => setAvulso(e.target.checked)}
+          className="h-3 w-3"
+        />
+        Avulso (só esta semana)
+      </label>
       {sugestoes.length > 0 && (
         <ul className="absolute left-0 right-0 top-full z-30 mt-0.5 max-h-32 overflow-y-auto rounded border border-border bg-card shadow-lg">
           {sugestoes.map((a) => (
