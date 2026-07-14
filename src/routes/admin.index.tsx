@@ -767,11 +767,10 @@ function CelulaEditor(props: {
   const vagasFechadas = props.config?.vagas_fechadas ?? 0;
   const [busca, setBusca] = useState("");
   const [horario, setHorario] = useState("");
-  const [obs, setObs] = useState("");
   const [pendingAlunoId, setPendingAlunoId] = useState<string | null>(null);
   const [avulsoNome, setAvulsoNome] = useState("");
   const [erro, setErro] = useState<string | null>(null);
-  const [modoTipo, setModoTipo] = useState(!props.config);
+  const [modoTipo, setModoTipo] = useState(false);
 
   const fechado = TIPO_FECHADO[tipo];
   const cap = CAPACIDADE[tipo];
@@ -836,15 +835,14 @@ function CelulaEditor(props: {
           professora_id: props.professora.id,
           aluno_id: pendingAlunoId ?? null,
           aluno_nome_avulso: pendingAlunoId ? null : avulsoNome.trim() || null,
-          horario_especifico: horario || null,
-          observacao: obs || null,
+          horario_especifico: tipo === "online" ? horario || null : null,
+          observacao: null,
         },
       });
       setPendingAlunoId(null);
       setAvulsoNome("");
       setBusca("");
       setHorario("");
-      setObs("");
     } catch (e) {
       setErro((e as Error).message);
     }
@@ -980,7 +978,7 @@ function CelulaEditor(props: {
           )}
 
           {/* Lista de alunos */}
-          {props.config && !modoTipo && !fechado && props.celulas.length > 0 && (
+          {!modoTipo && !fechado && props.celulas.length > 0 && (
             <section className="mb-6">
               <h3 className="font-medium text-sm mb-2 text-muted-foreground">
                 Alunos ({props.celulas.length}/{capEfetiva})
@@ -1031,7 +1029,7 @@ function CelulaEditor(props: {
           )}
 
           {/* Adicionar aluno */}
-          {props.config && !modoTipo && !fechado && (
+          {!modoTipo && !fechado && (
             <section className="mb-6">
               <h3 className="font-medium text-sm mb-2 text-muted-foreground">Adicionar aluno</h3>
               {cheio ? (
@@ -1094,24 +1092,14 @@ function CelulaEditor(props: {
 
                   {(pendingAlunoId || avulsoNome.trim()) && (
                     <div className="mt-3 space-y-2 rounded border border-border p-3">
-                      <div className="flex gap-2">
+                      {tipo === "online" && (
                         <input
                           value={horario}
                           onChange={(e) => setHorario(e.target.value)}
-                          placeholder={
-                            tipo === "online"
-                              ? "Horário do slot (ex: 07:00, 07:20…)"
-                              : "Horário (opcional, ex: 07:30)"
-                          }
-                          className="flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+                          placeholder="Horário do slot (ex: 07:00, 07:20…)"
+                          className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
                         />
-                      </div>
-                      <input
-                        value={obs}
-                        onChange={(e) => setObs(e.target.value)}
-                        placeholder="Observação (opcional)"
-                        className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-                      />
+                      )}
                       <div className="text-xs text-muted-foreground pt-1">Aplicar:</div>
                       <div className="flex gap-2">
                         <button

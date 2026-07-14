@@ -136,6 +136,12 @@ function ProfessoraPage() {
           >
             Semana atual
           </button>
+          <button
+            onClick={() => setDataSegunda(somarSemanas(dataSegunda, 1))}
+            className="text-xs px-3 py-1.5 rounded border border-border hover:bg-accent"
+          >
+            Próxima semana →
+          </button>
           <div className="text-xs text-muted-foreground">
             {formatarDataBR(datas[0])} a {formatarDataBR(datas[5])}
             {eSemanaPassada && (
