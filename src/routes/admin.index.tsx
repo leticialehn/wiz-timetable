@@ -638,7 +638,7 @@ function LinhaVaziaEditavel({
         <button
           type="button"
           onClick={() => setEditando(true)}
-          className="min-w-0 flex-1 border-b-2 border-dashed border-muted-foreground/60 text-left text-[11px] leading-relaxed text-transparent hover:border-muted-foreground"
+          className="min-w-0 flex-1 border-b border-dashed border-muted-foreground text-left text-[11px] leading-relaxed text-transparent hover:border-foreground"
         >
           &nbsp;
         </button>
