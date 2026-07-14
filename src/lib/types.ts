@@ -59,7 +59,7 @@ export type TipoAula = Exclude<TipoHorario, "break" | "preparacao_homework" | "s
 export const CAPACIDADE: Record<TipoHorario, number> = {
   regular: 7,
   online: 3,
-  vip: 1,
+  vip: 2,
   reforco: 4,
   conversacao: 6,
   break: 0,

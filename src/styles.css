@@ -99,10 +99,10 @@
   /* Tipos de horário */
   --tipo-regular-bg: oklch(1 0 0);
   --tipo-regular-fg: oklch(0.2 0.02 260);
-  --tipo-online-bg: oklch(0.9 0.06 230);
-  --tipo-online-fg: oklch(0.25 0.08 230);
-  --tipo-vip-bg: oklch(0.9 0.12 85);
-  --tipo-vip-fg: oklch(0.28 0.08 85);
+  --tipo-online-bg: oklch(0.9 0.12 85);
+  --tipo-online-fg: oklch(0.28 0.08 85);
+  --tipo-vip-bg: oklch(0.9 0.06 230);
+  --tipo-vip-fg: oklch(0.25 0.08 230);
   --tipo-reforco-bg: oklch(0.9 0.09 30);
   --tipo-reforco-fg: oklch(0.3 0.1 30);
   --tipo-conversacao-bg: oklch(0.88 0.09 160);
