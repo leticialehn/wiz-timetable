@@ -272,7 +272,7 @@ function GradeTabela(props: {
               <td
                 className="border border-border bg-muted text-center text-sm font-medium p-2"
                 style={{
-                  borderBottomWidth: per === 4 && diaSemana !== 6 ? 10 : undefined,
+                  borderBottomWidth: per === 4 && diaSemana !== 6 ? 16 : undefined,
                   borderBottomColor: per === 4 && diaSemana !== 6 ? "var(--border)" : undefined,
                 }}
               >
@@ -290,7 +290,7 @@ function GradeTabela(props: {
                       borderLeftColor: p.cor,
                       borderLeftWidth: 4,
                       borderBottomColor: p.cor,
-                      borderBottomWidth: per === 4 && diaSemana !== 6 ? 10 : 4,
+                      borderBottomWidth: per === 4 && diaSemana !== 6 ? 16 : 4,
                     }}
                   >
                     <div className="group relative min-h-[9rem]">
