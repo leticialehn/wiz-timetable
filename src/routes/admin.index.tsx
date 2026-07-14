@@ -285,7 +285,7 @@ function GradeTabela(props: {
                 return (
                   <td
                     key={p.id}
-                    className={`group relative border border-border align-top p-1.5 min-w-[170px] min-h-[6rem] ${tipoCellBg(tipo)}`}
+                    className={`border border-border align-top p-1.5 min-w-[170px] ${tipoCellBg(tipo)}`}
                     style={{
                       borderLeftColor: p.cor,
                       borderLeftWidth: 4,
@@ -293,30 +293,32 @@ function GradeTabela(props: {
                       borderBottomWidth: per === 4 && diaSemana !== 6 ? 10 : 4,
                     }}
                   >
-                    <button
-                      onClick={() => props.onEditarCelula(p, per)}
-                      title="Configurar tipo / opções avançadas"
-                      className="absolute right-0.5 top-0.5 z-10 rounded px-1 text-[10px] leading-none text-muted-foreground opacity-0 hover:bg-accent group-hover:opacity-100"
-                    >
-                      ⋯
-                    </button>
-                    <CelulaConteudo
-                      tipo={tipo}
-                      cfg={cfg}
-                      cels={cels}
-                      alertaIds={props.alertaIds}
-                      alunos={props.alunos}
-                      onAdicionar={(alunoId, avulso) =>
-                        props.onAdicionar(p.id, per, alunoId, avulso)
-                      }
-                      onCriarEAdicionar={(nome, nivel, avulso) =>
-                        props.onCriarEAdicionar(p.id, per, nome, nivel, avulso)
-                      }
-                      onEditarAluno={props.onEditarAluno}
-                      onRemover={props.onRemover}
-                      onTrancarVaga={() => props.onAlternarVaga(p.id, per, true)}
-                      onDestrancarVaga={() => props.onAlternarVaga(p.id, per, false)}
-                    />
+                    <div className="group relative min-h-[9rem]">
+                      <button
+                        onClick={() => props.onEditarCelula(p, per)}
+                        title="Configurar tipo / opções avançadas"
+                        className="absolute right-0.5 top-0.5 z-10 rounded px-1 text-[10px] leading-none text-muted-foreground opacity-0 hover:bg-accent group-hover:opacity-100"
+                      >
+                        ⋯
+                      </button>
+                      <CelulaConteudo
+                        tipo={tipo}
+                        cfg={cfg}
+                        cels={cels}
+                        alertaIds={props.alertaIds}
+                        alunos={props.alunos}
+                        onAdicionar={(alunoId, avulso) =>
+                          props.onAdicionar(p.id, per, alunoId, avulso)
+                        }
+                        onCriarEAdicionar={(nome, nivel, avulso) =>
+                          props.onCriarEAdicionar(p.id, per, nome, nivel, avulso)
+                        }
+                        onEditarAluno={props.onEditarAluno}
+                        onRemover={props.onRemover}
+                        onTrancarVaga={() => props.onAlternarVaga(p.id, per, true)}
+                        onDestrancarVaga={() => props.onAlternarVaga(p.id, per, false)}
+                      />
+                    </div>
                   </td>
                 );
               })}
