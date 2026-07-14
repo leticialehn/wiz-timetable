@@ -17,6 +17,7 @@ export type Aluno = {
 export const NIVEIS = [
   "K2",
   "K4",
+  "NG",
   "PTeens",
   "T2",
   "T4",
@@ -28,6 +29,16 @@ export const NIVEIS = [
   "W8",
   "W10",
   "W12",
+  "E2",
+  "E4",
+  "E6",
+  "A2",
+  "A4",
+  "A6",
+  "I2",
+  "I4",
+  "I6",
+  "CONV",
 ] as const;
 export type Nivel = (typeof NIVEIS)[number];
 
