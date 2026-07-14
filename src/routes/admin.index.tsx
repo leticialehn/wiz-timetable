@@ -93,6 +93,7 @@ function GradePage() {
     periodo: number,
     alunoId: string,
     avulso: boolean,
+    horarioEspecifico: string | null,
   ) {
     await adicionarFn({
       data: {
@@ -102,6 +103,7 @@ function GradePage() {
         periodo,
         professora_id: professoraId,
         aluno_id: alunoId,
+        horario_especifico: horarioEspecifico,
       },
     });
     qc.invalidateQueries();
@@ -113,9 +115,10 @@ function GradePage() {
     nome: string,
     nivel: string,
     avulso: boolean,
+    horarioEspecifico: string | null,
   ) {
     const r = await criarAlunoFn({ data: { nome, nivel } });
-    await handleAdicionar(professoraId, periodo, r.id, avulso);
+    await handleAdicionar(professoraId, periodo, r.id, avulso, horarioEspecifico);
   }
 
   async function handleEditarAluno(alunoId: string, nome: string, nivel: string) {
@@ -244,6 +247,7 @@ function GradeTabela(props: {
     periodo: number,
     alunoId: string,
     avulso: boolean,
+    horarioEspecifico: string | null,
   ) => Promise<void>;
   onCriarEAdicionar: (
     professoraId: string,
@@ -251,6 +255,7 @@ function GradeTabela(props: {
     nome: string,
     nivel: string,
     avulso: boolean,
+    horarioEspecifico: string | null,
   ) => Promise<void>;
   onEditarAluno: (alunoId: string, nome: string, nivel: string) => Promise<void>;
   onRemover: (c: CelulaAula) => Promise<void>;
@@ -316,15 +321,16 @@ function GradeTabela(props: {
                       </button>
                       <CelulaConteudo
                         tipo={tipo}
+                        periodo={per}
                         cfg={cfg}
                         cels={cels}
                         alertaIds={props.alertaIds}
                         alunos={props.alunos}
-                        onAdicionar={(alunoId, avulso) =>
-                          props.onAdicionar(p.id, per, alunoId, avulso)
+                        onAdicionar={(alunoId, avulso, horarioEspecifico) =>
+                          props.onAdicionar(p.id, per, alunoId, avulso, horarioEspecifico)
                         }
-                        onCriarEAdicionar={(nome, nivel, avulso) =>
-                          props.onCriarEAdicionar(p.id, per, nome, nivel, avulso)
+                        onCriarEAdicionar={(nome, nivel, avulso, horarioEspecifico) =>
+                          props.onCriarEAdicionar(p.id, per, nome, nivel, avulso, horarioEspecifico)
                         }
                         onEditarAluno={props.onEditarAluno}
                         onRemover={props.onRemover}
@@ -346,6 +352,7 @@ function GradeTabela(props: {
 
 function CelulaConteudo({
   tipo,
+  periodo,
   cfg,
   cels,
   alertaIds,
@@ -359,12 +366,22 @@ function CelulaConteudo({
   onDestrancarVaga,
 }: {
   tipo: TipoHorario;
+  periodo: number;
   cfg: HorarioConfig | null;
   cels: CelulaAula[];
   alertaIds: Set<string>;
   alunos: Aluno[];
-  onAdicionar: (alunoId: string, avulso: boolean) => Promise<void>;
-  onCriarEAdicionar: (nome: string, nivel: string, avulso: boolean) => Promise<void>;
+  onAdicionar: (
+    alunoId: string,
+    avulso: boolean,
+    horarioEspecifico: string | null,
+  ) => Promise<void>;
+  onCriarEAdicionar: (
+    nome: string,
+    nivel: string,
+    avulso: boolean,
+    horarioEspecifico: string | null,
+  ) => Promise<void>;
   onEditarAluno: (alunoId: string, nome: string, nivel: string) => Promise<void>;
   onRemover: (c: CelulaAula) => Promise<void>;
   onAlternarAusencia: (c: CelulaAula) => Promise<void>;
@@ -413,6 +430,9 @@ function CelulaConteudo({
         <LinhaVaziaEditavel
           key={`vaga-${i}`}
           alunos={alunos}
+          tipo={tipo}
+          periodo={periodo}
+          horariosOcupados={cels.map((c) => c.horario_especifico).filter((h): h is string => !!h)}
           onAdicionar={onAdicionar}
           onCriarEAdicionar={onCriarEAdicionar}
           onTrancarVaga={onTrancarVaga}
@@ -631,13 +651,28 @@ function LinhaPreenchida({
 
 function LinhaVaziaEditavel({
   alunos,
+  tipo,
+  periodo,
+  horariosOcupados,
   onAdicionar,
   onCriarEAdicionar,
   onTrancarVaga,
 }: {
   alunos: Aluno[];
-  onAdicionar: (alunoId: string, avulso: boolean) => Promise<void>;
-  onCriarEAdicionar: (nome: string, nivel: string, avulso: boolean) => Promise<void>;
+  tipo: TipoHorario;
+  periodo: number;
+  horariosOcupados: string[];
+  onAdicionar: (
+    alunoId: string,
+    avulso: boolean,
+    horarioEspecifico: string | null,
+  ) => Promise<void>;
+  onCriarEAdicionar: (
+    nome: string,
+    nivel: string,
+    avulso: boolean,
+    horarioEspecifico: string | null,
+  ) => Promise<void>;
   onTrancarVaga: () => Promise<void>;
 }) {
   const [editando, setEditando] = useState(false);
@@ -645,9 +680,12 @@ function LinhaVaziaEditavel({
   const [nivel, setNivel] = useState("");
   const [avulso, setAvulso] = useState(false);
   const [alunoId, setAlunoId] = useState<string | null>(null);
+  const [horario, setHorario] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [trancando, setTrancando] = useState(false);
+
+  const ehOnline = tipo === "online";
 
   const sugestoes =
     !alunoId && nome.trim()
@@ -660,6 +698,7 @@ function LinhaVaziaEditavel({
     setNivel("");
     setAvulso(false);
     setAlunoId(null);
+    setHorario("");
     setErro(null);
   }
 
@@ -672,11 +711,16 @@ function LinhaVaziaEditavel({
       setErro("Escolha um nível.");
       return;
     }
+    if (ehOnline && !horario) {
+      setErro("Escolha o horário do slot.");
+      return;
+    }
     setErro(null);
     setSalvando(true);
     try {
-      if (alunoId) await onAdicionar(alunoId, avulso);
-      else await onCriarEAdicionar(nome.trim(), nivel, avulso);
+      const horarioEspecifico = ehOnline ? horario : null;
+      if (alunoId) await onAdicionar(alunoId, avulso, horarioEspecifico);
+      else await onCriarEAdicionar(nome.trim(), nivel, avulso, horarioEspecifico);
       cancelar();
     } catch (e) {
       setSalvando(false);
@@ -772,6 +816,30 @@ function LinhaVaziaEditavel({
           ))}
         </select>
       </div>
+      {ehOnline && (
+        <select
+          value={horario}
+          onChange={(e) => setHorario(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              confirmar();
+            }
+            if (e.key === "Escape") cancelar();
+          }}
+          className="mt-0.5 w-full rounded border border-input bg-background px-1 py-0.5 text-[11px]"
+        >
+          <option value="" disabled>
+            Horário do slot
+          </option>
+          {slotsOnlinePorPeriodo(periodo).map((slot) => (
+            <option key={slot} value={slot} disabled={horariosOcupados.includes(slot)}>
+              {slot}
+              {horariosOcupados.includes(slot) ? " (ocupado)" : ""}
+            </option>
+          ))}
+        </select>
+      )}
       <label
         className="mt-0.5 flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400"
         title="Marca esse aluno como avulso, só nesta semana (em vez de horário fixo)"
