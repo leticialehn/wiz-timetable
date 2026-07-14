@@ -18,7 +18,7 @@ export const NIVEIS = [
   "K2",
   "K4",
   "NG",
-  "PTeens",
+  "PreT",
   "T2",
   "T4",
   "T6",

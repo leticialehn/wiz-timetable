@@ -1,13 +1,13 @@
 import type { Nivel } from "./types";
 
 // Em que lição global (contando desde o início da trilha) cada nível começa.
-// Independentes (K2, K4, NG, PTeens) sempre começam do zero.
+// Independentes (K2, K4, NG, PreT) sempre começam do zero.
 // Trilhas contínuas (T, W, E, A, I) somam 60 lições a cada nível seguinte.
 export const BLOCO_INICIO: Partial<Record<Nivel, number>> = {
   K2: 1,
   K4: 1,
   NG: 1,
-  PTeens: 1,
+  PreT: 1,
   T2: 1,
   T4: 61,
   T6: 121,
