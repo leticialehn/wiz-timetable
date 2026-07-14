@@ -3,7 +3,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { getGradeSemana } from "@/lib/grade.functions";
-import { getLancamentosSemana, setPresenca, setNota } from "@/lib/presenca.functions";
+import {
+  getLancamentosSemana,
+  getUltimasLicoes,
+  setPresenca,
+  setNota,
+  setLicao,
+} from "@/lib/presenca.functions";
+import { temTrackingDeLicao, licaoSugerida } from "@/lib/licoes";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
 import {
   DIAS_SEMANA,
@@ -12,11 +19,13 @@ import {
   TIPO_MOSTRA_LIVRO,
   CONCEITOS,
   CAMPOS_NOTA,
+  HORARIO_INICIO_PERIODO,
   configDe,
   type CampoNota,
   type CelulaAula,
   type ConceitoNota,
   type HorarioConfig,
+  type LicaoRow,
   type NotaRow,
   type PresencaRow,
   type Professora,
@@ -78,6 +87,21 @@ function ProfessoraPage() {
       }),
   });
 
+  const cels = (grade?.celulasPorData[dataDoDia] ?? []).filter(
+    (c) => c.professora_id === professoraId,
+  );
+  const alunoIdsHoje = useMemo(
+    () => [...new Set(cels.filter((c) => c.aluno_id).map((c) => c.aluno_id as string))],
+    [cels],
+  );
+
+  const getUltimasLicoesFn = useServerFn(getUltimasLicoes);
+  const { data: ultimasLicoes } = useQuery({
+    queryKey: ["ultimas-licoes", dataDoDia, alunoIdsHoje],
+    enabled: alunoIdsHoje.length > 0,
+    queryFn: () => getUltimasLicoesFn({ data: { aluno_ids: alunoIdsHoje, antesDe: dataDoDia } }),
+  });
+
   if (!mounted) return null;
 
   if (!professoraId || !grade?.professoras.find((p) => p.id === professoraId)) {
@@ -93,11 +117,9 @@ function ProfessoraPage() {
   }
 
   const professora = grade.professoras.find((p) => p.id === professoraId)!;
-  const cels = (grade.celulasPorData[dataDoDia] ?? []).filter(
-    (c) => c.professora_id === professoraId,
-  );
   const presencasDoDia = (lanc?.presencas ?? []).filter((p) => p.data === dataDoDia);
   const notasDoDia = (lanc?.notas ?? []).filter((n) => n.data === dataDoDia);
+  const licoesDoDia = (lanc?.licoes ?? []).filter((l) => l.data === dataDoDia);
 
   const semanaAtualIso = toISODate(segundaDaSemana());
   const eSemanaPassada = dataSegunda < semanaAtualIso;
@@ -181,7 +203,7 @@ function ProfessoraPage() {
             Nenhuma aula agendada neste dia.
           </div>
         ) : (
-          <ol className="space-y-3">
+          <ol className="space-y-2">
             {agruparPorPeriodo(cels).map(({ periodo, celsPer }) => {
               const cfg = configDe(grade.horariosConfig, diaAtivo, periodo, professoraId);
               const tipo: TipoHorario = cfg?.tipo ?? "regular";
@@ -194,9 +216,12 @@ function ProfessoraPage() {
                   cels={celsPer}
                   presencas={presencasDoDia}
                   notas={notasDoDia}
+                  licoes={licoesDoDia}
+                  ultimasLicoes={ultimasLicoes ?? {}}
                   dataDoDia={dataDoDia}
                   diaSemana={diaAtivo}
                   professoraId={professoraId}
+                  professora={professora}
                 />
               );
             })}
@@ -231,9 +256,12 @@ function AulaCard({
   cels,
   presencas,
   notas,
+  licoes,
+  ultimasLicoes,
   dataDoDia,
   diaSemana,
   professoraId,
+  professora,
 }: {
   periodo: number;
   tipo: TipoHorario;
@@ -241,62 +269,74 @@ function AulaCard({
   cels: CelulaAula[];
   presencas: PresencaRow[];
   notas: NotaRow[];
+  licoes: LicaoRow[];
+  ultimasLicoes: Record<string, { licao: string; nivel_no_momento: string }>;
   dataDoDia: string;
   diaSemana: number;
   professoraId: string;
+  professora: Professora;
 }) {
   const mostraLivro = TIPO_MOSTRA_LIVRO[tipo];
+  const mostraNotasELicao = tipo !== "conversacao";
   const cls = tipoCardBg(tipo);
   const fechado = TIPO_FECHADO[tipo];
 
   return (
-    <li className="rounded-xl border border-border bg-card overflow-hidden">
-      <div className="flex items-stretch">
-        <div className="w-14 bg-muted flex items-center justify-center text-2xl font-bold text-muted-foreground">
-          {periodo}
+    <li
+      className="rounded-lg border border-border bg-card overflow-hidden"
+      style={{ borderLeftColor: professora.cor, borderLeftWidth: 6 }}
+    >
+      <div className="p-2 space-y-1.5">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-bold text-muted-foreground">
+            {HORARIO_INICIO_PERIODO[periodo] ?? periodo}
+          </span>
+          <span
+            className={`text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded ${cls}`}
+          >
+            {ROTULO_TIPO[tipo]}
+          </span>
+          {cfg?.tema && <span className="text-xs italic text-muted-foreground">{cfg.tema}</span>}
         </div>
-        <div className="flex-1 p-3 space-y-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span
-              className={`text-[11px] uppercase font-bold tracking-wider px-2 py-0.5 rounded ${cls}`}
-            >
-              {ROTULO_TIPO[tipo]}
-            </span>
-            {cfg?.tema && <span className="text-sm italic text-muted-foreground">{cfg.tema}</span>}
-          </div>
 
-          {fechado ? (
-            <div className={`rounded-lg px-4 py-3 text-center font-bold ${cls}`}>
-              {ROTULO_TIPO[tipo].toUpperCase()}
-            </div>
-          ) : (
-            <ul className="space-y-2">
-              {cels.map((c) => (
-                <AlunoLinha
-                  key={c.id}
-                  c={c}
-                  mostraLivro={mostraLivro}
-                  presenca={
-                    c.aluno_id
-                      ? (presencas.find(
-                          (p) => p.aluno_id === c.aluno_id && p.periodo === periodo,
-                        ) ?? null)
-                      : null
-                  }
-                  nota={
-                    c.aluno_id
-                      ? (notas.find((n) => n.aluno_id === c.aluno_id && n.periodo === periodo) ??
-                        null)
-                      : null
-                  }
-                  dataDoDia={dataDoDia}
-                  diaSemana={diaSemana}
-                  professoraId={professoraId}
-                />
-              ))}
-            </ul>
-          )}
-        </div>
+        {fechado ? (
+          <div className={`rounded px-3 py-2 text-center text-sm font-bold ${cls}`}>
+            {ROTULO_TIPO[tipo].toUpperCase()}
+          </div>
+        ) : (
+          <ul className="space-y-1">
+            {cels.map((c) => (
+              <AlunoLinha
+                key={`${c.id}-${dataDoDia}`}
+                c={c}
+                mostraLivro={mostraLivro}
+                mostraNotasELicao={mostraNotasELicao}
+                presenca={
+                  c.aluno_id
+                    ? (presencas.find((p) => p.aluno_id === c.aluno_id && p.periodo === periodo) ??
+                      null)
+                    : null
+                }
+                nota={
+                  c.aluno_id
+                    ? (notas.find((n) => n.aluno_id === c.aluno_id && n.periodo === periodo) ??
+                      null)
+                    : null
+                }
+                licao={
+                  c.aluno_id
+                    ? (licoes.find((l) => l.aluno_id === c.aluno_id && l.periodo === periodo) ??
+                      null)
+                    : null
+                }
+                ultimaLicao={c.aluno_id ? (ultimasLicoes[c.aluno_id] ?? null) : null}
+                dataDoDia={dataDoDia}
+                diaSemana={diaSemana}
+                professoraId={professoraId}
+              />
+            ))}
+          </ul>
+        )}
       </div>
     </li>
   );
@@ -305,16 +345,22 @@ function AulaCard({
 function AlunoLinha({
   c,
   mostraLivro,
+  mostraNotasELicao,
   presenca,
   nota,
+  licao,
+  ultimaLicao,
   dataDoDia,
   diaSemana,
   professoraId,
 }: {
   c: CelulaAula;
   mostraLivro: boolean;
+  mostraNotasELicao: boolean;
   presenca: PresencaRow | null;
   nota: NotaRow | null;
+  licao: LicaoRow | null;
+  ultimaLicao: { licao: string; nivel_no_momento: string } | null;
   dataDoDia: string;
   diaSemana: number;
   professoraId: string;
@@ -322,48 +368,100 @@ function AlunoLinha({
   const qc = useQueryClient();
   const presencaFn = useServerFn(setPresenca);
   const notaFn = useServerFn(setNota);
+  const licaoFn = useServerFn(setLicao);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
-  async function marcarPresenca(status: StatusPresenca) {
-    if (!c.aluno_id) return;
-    setErro(null);
-    setSalvando(true);
-    try {
-      await presencaFn({
-        data: {
-          data: dataDoDia,
-          professora_id: professoraId,
-          aluno_id: c.aluno_id,
-          periodo: c.periodo,
-          dia_semana: diaSemana,
-          status,
-        },
-      });
-      qc.invalidateQueries({ queryKey: ["lancamentos-semana"] });
-    } catch (e) {
-      setErro((e as Error).message);
-    } finally {
-      setSalvando(false);
-    }
-  }
+  const licaoOriginal = licao?.licao ?? "";
+  const licaoSugestao = temTrackingDeLicao(c.aluno_nivel)
+    ? licaoSugerida(c.aluno_nivel, ultimaLicao)
+    : "";
 
-  async function marcarNota(campo: CampoNota, valor: ConceitoNota | null) {
+  // Estado local: marcar vários conceitos só atualiza a tela; nada é enviado
+  // ao servidor até clicar em "Salvar" — evita esperar uma rede a cada clique.
+  const [presencaLocal, setPresencaLocal] = useState<StatusPresenca | null>(
+    presenca?.status ?? null,
+  );
+  const [notasLocal, setNotasLocal] = useState<Record<CampoNota, ConceitoNota | null>>({
+    fala: nota?.fala ?? null,
+    audicao: nota?.audicao ?? null,
+    leitura: nota?.leitura ?? null,
+    escrita: nota?.escrita ?? null,
+  });
+  const [licaoLocal, setLicaoLocal] = useState(licaoOriginal || licaoSugestao);
+  const [licaoEditadaManualmente, setLicaoEditadaManualmente] = useState(false);
+
+  // A sugestão de lição depende de uma consulta que carrega depois da grade
+  // (getUltimasLicoes). Se ela chegar após o primeiro render, atualiza o
+  // valor mostrado — a menos que a professora já tenha mexido no campo.
+  useEffect(() => {
+    if (!licaoEditadaManualmente) {
+      setLicaoLocal(licaoOriginal || licaoSugestao);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [licaoOriginal, licaoSugestao]);
+
+  const alterado =
+    presencaLocal !== (presenca?.status ?? null) ||
+    CAMPOS_NOTA.some(({ key }) => notasLocal[key] !== (nota?.[key] ?? null)) ||
+    licaoLocal !== licaoOriginal;
+
+  async function salvar() {
     if (!c.aluno_id) return;
     setErro(null);
     setSalvando(true);
     try {
-      await notaFn({
-        data: {
-          data: dataDoDia,
-          professora_id: professoraId,
-          aluno_id: c.aluno_id,
-          periodo: c.periodo,
-          campo,
-          valor,
-        },
-      });
+      const chamadas: Promise<unknown>[] = [];
+      if (presencaLocal && presencaLocal !== (presenca?.status ?? null)) {
+        chamadas.push(
+          presencaFn({
+            data: {
+              data: dataDoDia,
+              professora_id: professoraId,
+              aluno_id: c.aluno_id,
+              periodo: c.periodo,
+              dia_semana: diaSemana,
+              status: presencaLocal,
+            },
+          }),
+        );
+      }
+      if (mostraNotasELicao) {
+        for (const { key } of CAMPOS_NOTA) {
+          const original = nota?.[key] ?? null;
+          if (notasLocal[key] !== original) {
+            chamadas.push(
+              notaFn({
+                data: {
+                  data: dataDoDia,
+                  professora_id: professoraId,
+                  aluno_id: c.aluno_id!,
+                  periodo: c.periodo,
+                  campo: key,
+                  valor: notasLocal[key],
+                },
+              }),
+            );
+          }
+        }
+        if (licaoLocal && licaoLocal !== licaoOriginal) {
+          chamadas.push(
+            licaoFn({
+              data: {
+                data: dataDoDia,
+                professora_id: professoraId,
+                aluno_id: c.aluno_id!,
+                periodo: c.periodo,
+                licao: licaoLocal,
+                nivel_no_momento: c.aluno_nivel,
+              },
+            }),
+          );
+        }
+      }
+      await Promise.all(chamadas);
       qc.invalidateQueries({ queryKey: ["lancamentos-semana"] });
+      qc.invalidateQueries({ queryKey: ["ultimas-licoes"] });
     } catch (e) {
       setErro((e as Error).message);
     } finally {
@@ -372,67 +470,83 @@ function AlunoLinha({
   }
 
   return (
-    <li className="rounded-lg px-3 py-2 bg-secondary">
-      <div className="flex items-baseline gap-2 flex-wrap">
-        {c.horario_especifico && <span className="text-lg font-bold">{c.horario_especifico}</span>}
-        <span className="text-xl font-semibold">{c.aluno_nome}</span>
+    <li className="rounded-lg px-2 py-1.5 bg-secondary">
+      <div className="flex items-baseline gap-1.5 flex-wrap">
+        {c.horario_especifico && <span className="text-sm font-bold">{c.horario_especifico}</span>}
+        <span className="text-base font-semibold">{c.aluno_nome}</span>
         {mostraLivro && c.aluno_nivel && (
-          <span className="text-base opacity-70">— {c.aluno_nivel}</span>
+          <span className="text-xs opacity-70">— {c.aluno_nivel}</span>
+        )}
+        {mostraNotasELicao && !c.aluno_avulso && temTrackingDeLicao(c.aluno_nivel) && (
+          <input
+            value={licaoLocal}
+            disabled={salvando}
+            onChange={(e) => {
+              setLicaoLocal(e.target.value);
+              setLicaoEditadaManualmente(true);
+            }}
+            placeholder={licaoSugestao || "Lição"}
+            title="Lição dada/avaliada hoje"
+            className="w-16 rounded border border-input bg-card px-1 py-0.5 text-xs font-bold text-center"
+          />
         )}
         {c.aluno_avulso && (
-          <span className="text-[10px] uppercase font-bold ml-auto tracking-wider opacity-70">
+          <span className="text-[9px] uppercase font-bold ml-auto tracking-wider opacity-70">
             avulso
           </span>
         )}
       </div>
 
       {c.aluno_avulso ? (
-        <div className="text-xs text-muted-foreground mt-1 italic">
+        <div className="text-xs text-muted-foreground mt-0.5 italic">
           Aluno avulso — sem lançamento de presença/notas.
         </div>
       ) : (
-        <div className="mt-2 space-y-2">
-          <div className="flex gap-2 items-center">
-            <span className="text-xs uppercase font-bold text-muted-foreground w-20">Presença</span>
+        <div className="mt-1 flex items-center gap-3 flex-wrap">
+          <div className="flex gap-1">
             <button
+              title="Presente"
               disabled={salvando}
-              onClick={() => marcarPresenca("presente")}
-              className={`px-3 py-1 rounded text-sm font-medium border-2 ${
-                presenca?.status === "presente"
+              onClick={() => setPresencaLocal("presente")}
+              className={`w-7 h-7 rounded text-sm font-bold border-2 ${
+                presencaLocal === "presente"
                   ? "bg-emerald-500 border-emerald-600 text-white"
                   : "border-border bg-card hover:bg-accent"
               }`}
             >
-              Presente
+              ✓
             </button>
             <button
+              title="Falta"
               disabled={salvando}
-              onClick={() => marcarPresenca("falta")}
-              className={`px-3 py-1 rounded text-sm font-medium border-2 ${
-                presenca?.status === "falta"
+              onClick={() => setPresencaLocal("falta")}
+              className={`w-7 h-7 rounded text-sm font-bold border-2 ${
+                presencaLocal === "falta"
                   ? "bg-rose-500 border-rose-600 text-white"
                   : "border-border bg-card hover:bg-accent"
               }`}
             >
-              Falta
+              ✗
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {CAMPOS_NOTA.map(({ key, label }) => {
-              const atual = nota?.[key] ?? null;
+          {mostraNotasELicao &&
+            CAMPOS_NOTA.map(({ key, label }) => {
+              const atual = notasLocal[key];
               return (
-                <div key={key} className="flex items-center gap-1.5">
-                  <span className="text-xs uppercase font-bold text-muted-foreground w-16">
-                    {label}
+                <div key={key} className="flex items-center gap-0.5" title={label}>
+                  <span className="text-[10px] font-bold text-muted-foreground w-3">
+                    {key.charAt(0).toUpperCase()}
                   </span>
-                  <div className="flex gap-1 flex-1">
+                  <div className="flex gap-0.5">
                     {CONCEITOS.map((v) => (
                       <button
                         key={v}
                         disabled={salvando}
-                        onClick={() => marcarNota(key, atual === v ? null : v)}
-                        className={`flex-1 px-2 py-1 rounded text-xs font-bold border ${
+                        onClick={() =>
+                          setNotasLocal((prev) => ({ ...prev, [key]: atual === v ? null : v }))
+                        }
+                        className={`w-6 h-6 rounded text-[10px] font-bold border ${
                           atual === v
                             ? "bg-primary border-primary text-primary-foreground"
                             : "border-border bg-card hover:bg-accent"
@@ -445,9 +559,20 @@ function AlunoLinha({
                 </div>
               );
             })}
-          </div>
 
-          {erro && <div className="text-xs text-destructive">{erro}</div>}
+          <button
+            disabled={!alterado || salvando}
+            onClick={salvar}
+            className={`ml-auto text-xs px-2.5 py-1 rounded font-medium ${
+              alterado
+                ? "bg-primary text-primary-foreground hover:opacity-90"
+                : "bg-muted text-muted-foreground"
+            } disabled:opacity-50`}
+          >
+            {salvando ? "Salvando…" : "Salvar"}
+          </button>
+
+          {erro && <div className="w-full text-xs text-destructive">{erro}</div>}
         </div>
       )}
     </li>

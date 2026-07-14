@@ -279,3 +279,13 @@ export type NotaRow = {
   leitura: ConceitoNota | null;
   escrita: ConceitoNota | null;
 };
+
+export type LicaoRow = {
+  id: string;
+  data: string;
+  professora_id: string;
+  aluno_id: string;
+  periodo: number;
+  licao: string;
+  nivel_no_momento: string;
+};

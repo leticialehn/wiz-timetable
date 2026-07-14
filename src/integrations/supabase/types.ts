@@ -143,6 +143,57 @@ export type Database = {
           },
         ];
       };
+      aulas_licoes: {
+        Row: {
+          aluno_id: string;
+          created_at: string;
+          data: string;
+          id: string;
+          licao: string;
+          nivel_no_momento: string;
+          periodo: number;
+          professora_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          aluno_id: string;
+          created_at?: string;
+          data: string;
+          id?: string;
+          licao: string;
+          nivel_no_momento: string;
+          periodo: number;
+          professora_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          aluno_id?: string;
+          created_at?: string;
+          data?: string;
+          id?: string;
+          licao?: string;
+          nivel_no_momento?: string;
+          periodo?: number;
+          professora_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "aulas_licoes_aluno_id_fkey";
+            columns: ["aluno_id"];
+            isOneToOne: false;
+            referencedRelation: "alunos";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "aulas_licoes_professora_id_fkey";
+            columns: ["professora_id"];
+            isOneToOne: false;
+            referencedRelation: "professoras";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       excecoes_semana: {
         Row: {
           aluno_id: string | null;

@@ -1,5 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { CampoNota, ConceitoNota, StatusPresenca, PresencaRow, NotaRow } from "./types";
+import type {
+  CampoNota,
+  ConceitoNota,
+  StatusPresenca,
+  PresencaRow,
+  NotaRow,
+  LicaoRow,
+} from "./types";
 
 async function sb() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -73,24 +80,88 @@ export const setNota = createServerFn({ method: "POST" })
 
 export const getLancamentosSemana = createServerFn({ method: "GET" })
   .inputValidator((data: { dataSegunda: string; professora_id: string; dataFim: string }) => data)
-  .handler(async ({ data }): Promise<{ presencas: PresencaRow[]; notas: NotaRow[] }> => {
+  .handler(
+    async ({
+      data,
+    }): Promise<{ presencas: PresencaRow[]; notas: NotaRow[]; licoes: LicaoRow[] }> => {
+      const client = await sb();
+      const [presRes, notasRes, licoesRes] = await Promise.all([
+        client
+          .from("aulas_presenca")
+          .select("*")
+          .eq("professora_id", data.professora_id)
+          .gte("data", data.dataSegunda)
+          .lte("data", data.dataFim),
+        client
+          .from("aulas_notas")
+          .select("*")
+          .eq("professora_id", data.professora_id)
+          .gte("data", data.dataSegunda)
+          .lte("data", data.dataFim),
+        client
+          .from("aulas_licoes")
+          .select("*")
+          .eq("professora_id", data.professora_id)
+          .gte("data", data.dataSegunda)
+          .lte("data", data.dataFim),
+      ]);
+      return {
+        presencas: (presRes.data ?? []) as PresencaRow[],
+        notas: (notasRes.data ?? []) as NotaRow[],
+        licoes: (licoesRes.data ?? []) as LicaoRow[],
+      };
+    },
+  );
+
+export const setLicao = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      data: string;
+      professora_id: string;
+      aluno_id: string;
+      periodo: number;
+      licao: string;
+      nivel_no_momento: string;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
     const client = await sb();
-    const [presRes, notasRes] = await Promise.all([
-      client
-        .from("aulas_presenca")
-        .select("*")
-        .eq("professora_id", data.professora_id)
-        .gte("data", data.dataSegunda)
-        .lte("data", data.dataFim),
-      client
-        .from("aulas_notas")
-        .select("*")
-        .eq("professora_id", data.professora_id)
-        .gte("data", data.dataSegunda)
-        .lte("data", data.dataFim),
-    ]);
-    return {
-      presencas: (presRes.data ?? []) as PresencaRow[],
-      notas: (notasRes.data ?? []) as NotaRow[],
-    };
+    const { error } = await client.from("aulas_licoes").upsert(
+      {
+        data: data.data,
+        professora_id: data.professora_id,
+        aluno_id: data.aluno_id,
+        periodo: data.periodo,
+        licao: data.licao,
+        nivel_no_momento: data.nivel_no_momento,
+      },
+      { onConflict: "data,professora_id,aluno_id,periodo" },
+    );
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
+
+// Última lição registrada de cada aluno (de qualquer data anterior a hoje),
+// usada para sugerir automaticamente a próxima lição.
+export const getUltimasLicoes = createServerFn({ method: "GET" })
+  .inputValidator((data: { aluno_ids: string[]; antesDe: string }) => data)
+  .handler(
+    async ({ data }): Promise<Record<string, { licao: string; nivel_no_momento: string }>> => {
+      if (data.aluno_ids.length === 0) return {};
+      const client = await sb();
+      const { data: rows, error } = await client
+        .from("aulas_licoes")
+        .select("aluno_id, licao, nivel_no_momento, data")
+        .in("aluno_id", data.aluno_ids)
+        .lt("data", data.antesDe)
+        .order("data", { ascending: false });
+      if (error) throw new Error(error.message);
+      const resultado: Record<string, { licao: string; nivel_no_momento: string }> = {};
+      for (const row of rows ?? []) {
+        if (!resultado[row.aluno_id]) {
+          resultado[row.aluno_id] = { licao: row.licao, nivel_no_momento: row.nivel_no_momento };
+        }
+      }
+      return resultado;
+    },
+  );
