@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   getGradeSemana,
   adicionarAluno,
@@ -404,6 +404,105 @@ function CelulaConteudo({
   const ocupamVaga = cels.filter((c) => !c.avisou_falta).length;
   const vagas = Math.max(capDisponivel - ocupamVaga, 0);
 
+  const linhaPreenchida = (c: CelulaAula) => (
+    <LinhaPreenchida
+      key={c.id}
+      c={c}
+      mostraLivro={mostraLivro}
+      emAlerta={!!c.aluno_id && alertaIds.has(c.aluno_id)}
+      onEditar={c.aluno_id ? (nome, nivel) => onEditarAluno(c.aluno_id!, nome, nivel) : null}
+      onRemover={() => onRemover(c)}
+      onAlternarAusencia={c.origem === "base" ? () => onAlternarAusencia(c) : null}
+    />
+  );
+
+  let linhas: ReactNode[];
+
+  if (tipo === "online") {
+    // Cada linha da célula é presa a um horário fixo (X:00/X:20/X:40) pela sua
+    // posição — digitar ali já grava aquele horário, sem escolher em nada.
+    const slots = slotsOnlinePorPeriodo(periodo);
+    const porSlot = new Map<string, CelulaAula>();
+    const semSlot: CelulaAula[] = [];
+    for (const c of cels) {
+      if (
+        c.horario_especifico &&
+        slots.includes(c.horario_especifico) &&
+        !porSlot.has(c.horario_especifico)
+      ) {
+        porSlot.set(c.horario_especifico, c);
+      } else {
+        semSlot.push(c);
+      }
+    }
+    let fechadasRestantes = fechadas;
+    linhas = slots.map((slot) => {
+      const cel = porSlot.get(slot) ?? semSlot.shift() ?? null;
+      if (cel) {
+        return (
+          <div key={`slot-${slot}`} className="space-y-0.5">
+            {linhaPreenchida(cel)}
+            {cel.avisou_falta && (
+              <LinhaVaziaEditavel
+                alunos={alunos}
+                tipo={tipo}
+                periodo={periodo}
+                horarioFixo={slot}
+                horariosOcupados={[]}
+                onAdicionar={onAdicionar}
+                onCriarEAdicionar={onCriarEAdicionar}
+                onTrancarVaga={onTrancarVaga}
+              />
+            )}
+          </div>
+        );
+      }
+      if (fechadasRestantes > 0) {
+        fechadasRestantes--;
+        return <LinhaVagaTrancada key={`trancada-${slot}`} onDestrancar={onDestrancarVaga} />;
+      }
+      return (
+        <LinhaVaziaEditavel
+          key={`vaga-${slot}`}
+          alunos={alunos}
+          tipo={tipo}
+          periodo={periodo}
+          horarioFixo={slot}
+          horariosOcupados={[]}
+          onAdicionar={onAdicionar}
+          onCriarEAdicionar={onCriarEAdicionar}
+          onTrancarVaga={onTrancarVaga}
+        />
+      );
+    });
+    for (const c of semSlot) linhas.push(linhaPreenchida(c));
+    for (let i = 0; i < fechadasRestantes; i++) {
+      linhas.push(
+        <LinhaVagaTrancada key={`trancada-extra-${i}`} onDestrancar={onDestrancarVaga} />,
+      );
+    }
+  } else {
+    linhas = [
+      ...cels.map(linhaPreenchida),
+      ...Array.from({ length: vagas }).map((_, i) => (
+        <LinhaVaziaEditavel
+          key={`vaga-${i}`}
+          alunos={alunos}
+          tipo={tipo}
+          periodo={periodo}
+          horarioFixo={null}
+          horariosOcupados={[]}
+          onAdicionar={onAdicionar}
+          onCriarEAdicionar={onCriarEAdicionar}
+          onTrancarVaga={onTrancarVaga}
+        />
+      )),
+      ...Array.from({ length: fechadas }).map((_, i) => (
+        <LinhaVagaTrancada key={`trancada-${i}`} onDestrancar={onDestrancarVaga} />
+      )),
+    ];
+  }
+
   return (
     <div className="space-y-0.5 pr-3">
       {tipo !== "regular" && (
@@ -415,32 +514,7 @@ function CelulaConteudo({
         </div>
       )}
       {cfg?.tema && <div className="text-[11px] italic opacity-80 leading-tight">{cfg.tema}</div>}
-      {cels.map((c) => (
-        <LinhaPreenchida
-          key={c.id}
-          c={c}
-          mostraLivro={mostraLivro}
-          emAlerta={!!c.aluno_id && alertaIds.has(c.aluno_id)}
-          onEditar={c.aluno_id ? (nome, nivel) => onEditarAluno(c.aluno_id!, nome, nivel) : null}
-          onRemover={() => onRemover(c)}
-          onAlternarAusencia={c.origem === "base" ? () => onAlternarAusencia(c) : null}
-        />
-      ))}
-      {Array.from({ length: vagas }).map((_, i) => (
-        <LinhaVaziaEditavel
-          key={`vaga-${i}`}
-          alunos={alunos}
-          tipo={tipo}
-          periodo={periodo}
-          horariosOcupados={cels.map((c) => c.horario_especifico).filter((h): h is string => !!h)}
-          onAdicionar={onAdicionar}
-          onCriarEAdicionar={onCriarEAdicionar}
-          onTrancarVaga={onTrancarVaga}
-        />
-      ))}
-      {Array.from({ length: fechadas }).map((_, i) => (
-        <LinhaVagaTrancada key={`trancada-${i}`} onDestrancar={onDestrancarVaga} />
-      ))}
+      {linhas}
     </div>
   );
 }
@@ -653,6 +727,7 @@ function LinhaVaziaEditavel({
   alunos,
   tipo,
   periodo,
+  horarioFixo,
   horariosOcupados,
   onAdicionar,
   onCriarEAdicionar,
@@ -661,6 +736,9 @@ function LinhaVaziaEditavel({
   alunos: Aluno[];
   tipo: TipoHorario;
   periodo: number;
+  // Quando definido, esta linha já pertence a este horário (posição na célula) —
+  // não pede escolha nenhuma, digitar o nome já grava nesse horário.
+  horarioFixo: string | null;
   horariosOcupados: string[];
   onAdicionar: (
     alunoId: string,
@@ -686,6 +764,7 @@ function LinhaVaziaEditavel({
   const [trancando, setTrancando] = useState(false);
 
   const ehOnline = tipo === "online";
+  const precisaEscolherHorario = ehOnline && !horarioFixo;
 
   const sugestoes =
     !alunoId && nome.trim()
@@ -711,14 +790,14 @@ function LinhaVaziaEditavel({
       setErro("Escolha um nível.");
       return;
     }
-    if (ehOnline && !horario) {
+    if (precisaEscolherHorario && !horario) {
       setErro("Escolha o horário do slot.");
       return;
     }
     setErro(null);
     setSalvando(true);
     try {
-      const horarioEspecifico = ehOnline ? horario : null;
+      const horarioEspecifico = ehOnline ? (horarioFixo ?? horario) : null;
       if (alunoId) await onAdicionar(alunoId, avulso, horarioEspecifico);
       else await onCriarEAdicionar(nome.trim(), nivel, avulso, horarioEspecifico);
       cancelar();
@@ -816,7 +895,7 @@ function LinhaVaziaEditavel({
           ))}
         </select>
       </div>
-      {ehOnline && (
+      {precisaEscolherHorario && (
         <select
           value={horario}
           onChange={(e) => setHorario(e.target.value)}
