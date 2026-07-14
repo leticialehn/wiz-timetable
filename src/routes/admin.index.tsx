@@ -257,7 +257,13 @@ function GradeTabela(props: {
         <tbody>
           {periodos.map((per) => (
             <tr key={per}>
-              <td className="border border-border bg-muted text-center text-sm font-medium p-2">
+              <td
+                className="border border-border bg-muted text-center text-sm font-medium p-2"
+                style={{
+                  borderBottomWidth: per === 4 && diaSemana !== 6 ? 10 : undefined,
+                  borderBottomColor: per === 4 && diaSemana !== 6 ? "var(--border)" : undefined,
+                }}
+              >
                 {HORARIO_INICIO_PERIODO[per]}
               </td>
               {professoras.map((p) => {
@@ -268,7 +274,12 @@ function GradeTabela(props: {
                   <td
                     key={p.id}
                     className={`group relative border border-border align-top p-1.5 min-w-[170px] min-h-[6rem] ${tipoCellBg(tipo)}`}
-                    style={{ borderLeftColor: p.cor, borderLeftWidth: 4 }}
+                    style={{
+                      borderLeftColor: p.cor,
+                      borderLeftWidth: 4,
+                      borderBottomColor: p.cor,
+                      borderBottomWidth: per === 4 && diaSemana !== 6 ? 10 : 4,
+                    }}
                   >
                     <button
                       onClick={() => props.onEditarCelula(p, per)}
