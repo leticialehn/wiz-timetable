@@ -618,7 +618,7 @@ function LinhaPreenchida({
               }
               if (e.key === "Escape") cancelar();
             }}
-            className="min-w-0 flex-1 rounded border border-input bg-background px-1 py-0.5 text-[11px]"
+            className="min-w-0 flex-1 rounded border border-input bg-background px-1 py-0.5 text-[12px]"
           />
           <select
             value={nivel}
@@ -630,7 +630,7 @@ function LinhaPreenchida({
               }
               if (e.key === "Escape") cancelar();
             }}
-            className="w-16 shrink-0 rounded border border-input bg-background px-1 py-0.5 text-[11px]"
+            className="w-16 shrink-0 rounded border border-input bg-background px-1 py-0.5 text-[12px]"
           >
             {NIVEIS.map((n) => (
               <option key={n} value={n}>
@@ -649,7 +649,7 @@ function LinhaPreenchida({
 
   return (
     <div
-      className={`group/linha flex items-center gap-1 text-[11px] leading-tight ${
+      className={`group/linha flex items-center gap-1 text-[12px] leading-tight ${
         horarioAvulso ? "text-blue-600 dark:text-blue-400" : ""
       } ${c.avisou_falta ? "opacity-50" : ""}`}
       title={
@@ -682,7 +682,7 @@ function LinhaPreenchida({
       </button>
       {mostraLivro && c.aluno_nivel && <span className="shrink-0 opacity-70">{c.aluno_nivel}</span>}
       {c.aluno_avulso && <span className="shrink-0 text-[9px] uppercase opacity-70">avulso</span>}
-      {onAlternarAusencia && (
+      {onAlternarAusencia ? (
         <button
           type="button"
           disabled={alternandoAusencia}
@@ -701,6 +701,11 @@ function LinhaPreenchida({
         >
           🔇
         </button>
+      ) : (
+        // Espaço reservado pra manter o nível alinhado com as linhas fixas (que têm o botão 🔇).
+        <span className="shrink-0 px-1 opacity-0" aria-hidden="true">
+          🔇
+        </span>
       )}
       <button
         type="button"
@@ -813,7 +818,7 @@ function LinhaVaziaEditavel({
         <button
           type="button"
           onClick={() => setEditando(true)}
-          className="min-w-0 flex-1 border-b border-dashed border-muted-foreground text-left text-[11px] leading-relaxed text-transparent hover:border-foreground"
+          className="min-w-0 flex-1 border-b border-dashed border-muted-foreground text-left text-[12px] leading-relaxed text-transparent hover:border-foreground"
         >
           &nbsp;
         </button>
@@ -871,7 +876,7 @@ function LinhaVaziaEditavel({
             }
           }}
           placeholder="Nome…"
-          className="min-w-0 flex-1 rounded border border-input bg-background px-1 py-0.5 text-[11px]"
+          className="min-w-0 flex-1 rounded border border-input bg-background px-1 py-0.5 text-[12px]"
         />
         <select
           value={nivel}
@@ -883,7 +888,7 @@ function LinhaVaziaEditavel({
             }
             if (e.key === "Escape") cancelar();
           }}
-          className="w-16 shrink-0 rounded border border-input bg-background px-1 py-0.5 text-[11px]"
+          className="w-16 shrink-0 rounded border border-input bg-background px-1 py-0.5 text-[12px]"
         >
           <option value="" disabled>
             Nível
