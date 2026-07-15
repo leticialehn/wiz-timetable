@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { getGradeSemana } from "@/lib/grade.functions";
 import {
   getLancamentosSemana,
@@ -532,6 +532,20 @@ function AlunoLinha({
     }
   }
 
+  const botaoSalvar = (
+    <button
+      disabled={!alterado || salvando}
+      onClick={salvar}
+      className={`ml-auto shrink-0 text-xs px-2.5 py-1 rounded font-medium ${
+        alterado
+          ? "bg-primary text-primary-foreground hover:opacity-90"
+          : "bg-muted text-muted-foreground"
+      } disabled:opacity-50`}
+    >
+      {salvando ? "Salvando…" : "Salvar"}
+    </button>
+  );
+
   return (
     <li className="rounded-lg px-2 py-1.5 bg-secondary">
       <div className="flex items-baseline gap-1.5 flex-wrap">
@@ -575,6 +589,7 @@ function AlunoLinha({
                 ? () => setLicaoExtraAtiva(true)
                 : undefined
             }
+            salvarSlot={!mostraParte2 ? botaoSalvar : undefined}
           />
           {mostraParte2 && (
             <BlocoLancamento
@@ -584,22 +599,10 @@ function AlunoLinha({
               mostraLicao={mostraNotasELicao && temLicao}
               mostraPresenca={ehOnline}
               estado={parte2}
+              salvarSlot={botaoSalvar}
             />
           )}
-          <div className="mt-1 flex items-center gap-2">
-            <button
-              disabled={!alterado || salvando}
-              onClick={salvar}
-              className={`ml-auto text-xs px-2.5 py-1 rounded font-medium ${
-                alterado
-                  ? "bg-primary text-primary-foreground hover:opacity-90"
-                  : "bg-muted text-muted-foreground"
-              } disabled:opacity-50`}
-            >
-              {salvando ? "Salvando…" : "Salvar"}
-            </button>
-          </div>
-          {erro && <div className="w-full text-xs text-destructive">{erro}</div>}
+          {erro && <div className="w-full text-xs text-destructive mt-1">{erro}</div>}
         </>
       )}
     </li>
@@ -614,6 +617,7 @@ function BlocoLancamento({
   mostraPresenca,
   estado,
   onAdicionarExtra,
+  salvarSlot,
 }: {
   rotulo: string | null;
   salvando: boolean;
@@ -622,6 +626,7 @@ function BlocoLancamento({
   mostraPresenca: boolean;
   estado: EstadoParte;
   onAdicionarExtra?: () => void;
+  salvarSlot?: ReactNode;
 }) {
   return (
     <div className="mt-1 flex items-center gap-3 flex-wrap">
@@ -714,6 +719,8 @@ function BlocoLancamento({
           + lição extra
         </button>
       )}
+
+      {salvarSlot}
     </div>
   );
 }
