@@ -95,6 +95,9 @@ function HistoricoAlunoPage() {
                   {item.licao && (
                     <span className="text-xs font-bold px-2 py-0.5 rounded bg-muted">
                       {item.licao}
+                      {item.praticado === false && (
+                        <span className="text-amber-600 dark:text-amber-400"> ⏳ pendente</span>
+                      )}
                     </span>
                   )}
                   {item.presenca && (

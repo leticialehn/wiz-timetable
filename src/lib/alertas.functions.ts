@@ -70,3 +70,72 @@ export const getAlertasFaltas = createServerFn({ method: "GET" }).handler(
     return alertas;
   },
 );
+
+export type AlunoLicaoPendente = {
+  aluno_id: string;
+  nome: string;
+  nivel: string;
+  licao: string;
+  data: string;
+  professora_nome: string;
+};
+
+type RegistroLicao = {
+  aluno_id: string;
+  data: string;
+  periodo: number;
+  parte: number;
+  licao: string;
+  nivel_no_momento: string;
+  praticado: boolean;
+  professora_id: string;
+};
+
+// Aluno que só fez o estudo individual (praticado=false) fica "pendente" pra
+// qualquer professora, em qualquer dia, até alguém lançar uma lição nova nele
+// marcando praticado — o que naturalmente vira o registro mais recente e some
+// com o alerta.
+export const getAlertasLicaoPendente = createServerFn({ method: "GET" }).handler(
+  async (): Promise<AlunoLicaoPendente[]> => {
+    const sb = await publicClient();
+    const [alunosRes, licoesRes, profRes] = await Promise.all([
+      sb.from("alunos").select("*").eq("ativo", true),
+      sb
+        .from("aulas_licoes")
+        .select("aluno_id,data,periodo,parte,licao,nivel_no_momento,praticado,professora_id")
+        .order("data", { ascending: false })
+        .order("periodo", { ascending: false })
+        .order("parte", { ascending: false }),
+      sb.from("professoras").select("id,nome"),
+    ]);
+
+    const alunos = (alunosRes.data ?? []) as Aluno[];
+    const licoes = (licoesRes.data ?? []) as RegistroLicao[];
+    const professoras = (profRes.data ?? []) as { id: string; nome: string }[];
+    const nomeProf = new Map(professoras.map((p) => [p.id, p.nome]));
+
+    const maisRecentePorAluno = new Map<string, RegistroLicao>();
+    for (const l of licoes) {
+      if (!maisRecentePorAluno.has(l.aluno_id)) maisRecentePorAluno.set(l.aluno_id, l);
+    }
+
+    const pendentes: AlunoLicaoPendente[] = [];
+    for (const aluno of alunos) {
+      const ultima = maisRecentePorAluno.get(aluno.id);
+      // Só conta se o nível não mudou desde então — mudança de nível já reinicia
+      // a trilha, então uma pendência do nível anterior deixa de fazer sentido.
+      if (!ultima || ultima.praticado || ultima.nivel_no_momento !== aluno.nivel) continue;
+      pendentes.push({
+        aluno_id: aluno.id,
+        nome: aluno.nome,
+        nivel: aluno.nivel,
+        licao: ultima.licao,
+        data: ultima.data,
+        professora_nome: nomeProf.get(ultima.professora_id) ?? "?",
+      });
+    }
+
+    pendentes.sort((a, b) => a.nome.localeCompare(b.nome));
+    return pendentes;
+  },
+);

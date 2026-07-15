@@ -83,10 +83,12 @@ function posicaoDoLabel(labelBruto: string, blockStart: number): number | null {
 // histórico de lições dele, do mais recente pro mais antigo (de qualquer data
 // anterior). A sugestão sempre continua a partir da MAIOR lição já atingida
 // neste nível — se o aluno refizer uma lição anterior, isso não "volta" a
-// sugestão; ela continua de onde ele já tinha chegado.
+// sugestão; ela continua de onde ele já tinha chegado. Lições com
+// praticado=false (só estudo individual, ainda sem prática com a professora)
+// não contam como "atingidas" — a sugestão trava nelas até serem concluídas.
 export function licaoSugerida(
   nivelAtual: string,
-  historico: { licao: string; nivel_no_momento: string }[],
+  historico: { licao: string; nivel_no_momento: string; praticado: boolean }[],
 ): string {
   const blockStart = BLOCO_INICIO[nivelAtual as Nivel];
   if (blockStart === undefined) return "";
@@ -98,17 +100,19 @@ export function licaoSugerida(
     return labelDaPosicao(1, blockStart);
   }
 
-  // Maior posição já atingida entre os lançamentos deste nível, andando do mais
+  // Maior posição já PRATICADA entre os lançamentos deste nível, andando do mais
   // recente pro mais antigo até achar uma entrada de um nível diferente (troca).
   let maiorPos: number | null = null;
   for (const h of historico) {
     if (h.nivel_no_momento !== nivelAtual) break;
+    if (!h.praticado) continue;
     const pos = posicaoDoLabel(h.licao, blockStart);
     if (pos !== null && (maiorPos === null || pos > maiorPos)) maiorPos = pos;
   }
 
   if (maiorPos === null) {
-    // Nenhum lançamento reconhecido (HW, Extra…) neste nível — repete o mais recente.
+    // Nenhum lançamento reconhecido e praticado (HW, Extra, pendente…) neste
+    // nível — repete o mais recente.
     return maisRecente.licao;
   }
   if (maiorPos >= POSICOES_POR_BLOCO) return maisRecente.licao;

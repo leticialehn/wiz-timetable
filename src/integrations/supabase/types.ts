@@ -159,6 +159,7 @@ export type Database = {
           nivel_no_momento: string;
           parte: number;
           periodo: number;
+          praticado: boolean;
           professora_id: string;
           updated_at: string;
         };
@@ -171,6 +172,7 @@ export type Database = {
           nivel_no_momento: string;
           parte?: number;
           periodo: number;
+          praticado?: boolean;
           professora_id: string;
           updated_at?: string;
         };
@@ -183,6 +185,7 @@ export type Database = {
           nivel_no_momento?: string;
           parte?: number;
           periodo?: number;
+          praticado?: boolean;
           professora_id?: string;
           updated_at?: string;
         };

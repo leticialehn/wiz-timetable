@@ -17,6 +17,7 @@ export type HistoricoItem = {
   presenca: StatusPresenca | null;
   notas: Record<CampoNota, ConceitoNota | null> | null;
   licao: string | null;
+  praticado: boolean | null;
   observacao: string | null;
 };
 
@@ -63,7 +64,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
         .eq("aluno_id", data.aluno_id),
       sb
         .from("aulas_licoes")
-        .select("data,periodo,parte,professora_id,licao")
+        .select("data,periodo,parte,professora_id,licao,praticado")
         .eq("aluno_id", data.aluno_id),
       sb.from("professoras").select("id,nome"),
     ]);
@@ -95,6 +96,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
       parte: number;
       professora_id: string;
       licao: string;
+      praticado: boolean;
     }[];
     const professoras = (profRes.data ?? []) as { id: string; nome: string }[];
     const nomeProf = new Map(professoras.map((p) => [p.id, p.nome]));
@@ -112,6 +114,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
         presenca: p.status,
         notas: null,
         licao: null,
+        praticado: null,
         observacao: p.observacao,
       });
     }
@@ -137,6 +140,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
           presenca: null,
           notas: notasValores,
           licao: null,
+          praticado: null,
           observacao: null,
         });
       }
@@ -146,6 +150,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
       const existente = porChave.get(chave);
       if (existente) {
         existente.licao = l.licao;
+        existente.praticado = l.praticado;
       } else {
         porChave.set(chave, {
           chave,
@@ -157,6 +162,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
           presenca: null,
           notas: null,
           licao: l.licao,
+          praticado: l.praticado,
           observacao: null,
         });
       }

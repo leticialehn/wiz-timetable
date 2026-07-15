@@ -127,6 +127,7 @@ export const setLicao = createServerFn({ method: "POST" })
       parte: number;
       licao: string;
       nivel_no_momento: string;
+      praticado: boolean;
     }) => data,
   )
   .handler(async ({ data }) => {
@@ -140,6 +141,7 @@ export const setLicao = createServerFn({ method: "POST" })
         parte: data.parte,
         licao: data.licao,
         nivel_no_momento: data.nivel_no_momento,
+        praticado: data.praticado,
       },
       { onConflict: "data,professora_id,aluno_id,periodo,parte" },
     );
@@ -153,21 +155,32 @@ export const setLicao = createServerFn({ method: "POST" })
 export const getHistoricoLicoes = createServerFn({ method: "GET" })
   .inputValidator((data: { aluno_ids: string[]; antesDe: string }) => data)
   .handler(
-    async ({ data }): Promise<Record<string, { licao: string; nivel_no_momento: string }[]>> => {
+    async ({
+      data,
+    }): Promise<
+      Record<string, { licao: string; nivel_no_momento: string; praticado: boolean }[]>
+    > => {
       if (data.aluno_ids.length === 0) return {};
       const client = await sb();
       const { data: rows, error } = await client
         .from("aulas_licoes")
-        .select("aluno_id, licao, nivel_no_momento, data, parte")
+        .select("aluno_id, licao, nivel_no_momento, praticado, data, parte")
         .in("aluno_id", data.aluno_ids)
         .lt("data", data.antesDe)
         .order("data", { ascending: false })
         .order("parte", { ascending: false });
       if (error) throw new Error(error.message);
-      const resultado: Record<string, { licao: string; nivel_no_momento: string }[]> = {};
+      const resultado: Record<
+        string,
+        { licao: string; nivel_no_momento: string; praticado: boolean }[]
+      > = {};
       for (const row of rows ?? []) {
         if (!resultado[row.aluno_id]) resultado[row.aluno_id] = [];
-        resultado[row.aluno_id].push({ licao: row.licao, nivel_no_momento: row.nivel_no_momento });
+        resultado[row.aluno_id].push({
+          licao: row.licao,
+          nivel_no_momento: row.nivel_no_momento,
+          praticado: row.praticado,
+        });
       }
       return resultado;
     },

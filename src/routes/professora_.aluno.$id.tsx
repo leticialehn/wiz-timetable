@@ -102,6 +102,9 @@ function HistoricoAlunoProfessoraPage() {
                           ) : (
                             (item.licao ?? "—")
                           )}
+                          {item.praticado === false && (
+                            <span className="text-amber-600 dark:text-amber-400"> ⏳</span>
+                          )}
                         </td>
                         {CAMPOS_NOTA.map(({ key }) => (
                           <td key={key} className="px-2 py-1.5">

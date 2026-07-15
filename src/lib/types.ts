@@ -304,4 +304,7 @@ export type LicaoRow = {
   parte: number;
   licao: string;
   nivel_no_momento: string;
+  // false = aluno só fez o estudo individual, ainda não praticou com a
+  // professora — trava a progressão e avisa qualquer professora que o pegar depois.
+  praticado: boolean;
 };

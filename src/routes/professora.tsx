@@ -10,6 +10,7 @@ import {
   setNota,
   setLicao,
 } from "@/lib/presenca.functions";
+import { getAlertasLicaoPendente, type AlunoLicaoPendente } from "@/lib/alertas.functions";
 import { temTrackingDeLicao, licaoSugerida, normalizarLicao } from "@/lib/licoes";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
 import {
@@ -101,6 +102,16 @@ function ProfessoraPage() {
     enabled: alunoIdsHoje.length > 0,
     queryFn: () => getHistoricoLicoesFn({ data: { aluno_ids: alunoIdsHoje, antesDe: dataDoDia } }),
   });
+
+  const getLicaoPendenteFn = useServerFn(getAlertasLicaoPendente);
+  const { data: licoesPendentes } = useQuery({
+    queryKey: ["licoes-pendentes"],
+    queryFn: () => getLicaoPendenteFn(),
+  });
+  const pendenciasPorAluno = useMemo(
+    () => new Map((licoesPendentes ?? []).map((p) => [p.aluno_id, p])),
+    [licoesPendentes],
+  );
 
   if (!mounted) return null;
 
@@ -220,6 +231,7 @@ function ProfessoraPage() {
                   notas={notasDoDia}
                   licoes={licoesDoDia}
                   historicoLicoes={historicoLicoes ?? {}}
+                  pendenciasPorAluno={pendenciasPorAluno}
                   dataDoDia={dataDoDia}
                   diaSemana={diaAtivo}
                   professoraId={professoraId}
@@ -254,6 +266,7 @@ function AulaCard({
   notas,
   licoes,
   historicoLicoes,
+  pendenciasPorAluno,
   dataDoDia,
   diaSemana,
   professoraId,
@@ -266,7 +279,11 @@ function AulaCard({
   presencas: PresencaRow[];
   notas: NotaRow[];
   licoes: LicaoRow[];
-  historicoLicoes: Record<string, { licao: string; nivel_no_momento: string }[]>;
+  historicoLicoes: Record<
+    string,
+    { licao: string; nivel_no_momento: string; praticado: boolean }[]
+  >;
+  pendenciasPorAluno: Map<string, AlunoLicaoPendente>;
   dataDoDia: string;
   diaSemana: number;
   professoraId: string;
@@ -323,6 +340,7 @@ function AulaCard({
                     : []
                 }
                 historicoLicao={c.aluno_id ? (historicoLicoes[c.aluno_id] ?? []) : []}
+                pendencia={c.aluno_id ? pendenciasPorAluno.get(c.aluno_id) : undefined}
                 dataDoDia={dataDoDia}
                 diaSemana={diaSemana}
                 professoraId={professoraId}
@@ -346,6 +364,7 @@ function useParte(
   },
 ) {
   const licaoOriginal = registro.licao?.licao ?? "";
+  const praticadoOriginal = registro.licao?.praticado ?? true;
   const [presencaLocal, setPresencaLocal] = useState<StatusPresenca | null>(
     registro.presenca?.status ?? null,
   );
@@ -357,6 +376,7 @@ function useParte(
   });
   const [licaoLocal, setLicaoLocal] = useState(licaoOriginal || registro.licaoSugestao);
   const [licaoEditadaManualmente, setLicaoEditadaManualmente] = useState(false);
+  const [praticadoLocal, setPraticadoLocal] = useState(praticadoOriginal);
 
   // A sugestão de lição depende de uma consulta que carrega depois da grade
   // (getHistoricoLicoes), ou — na parte 2 — do valor digitado na parte 1. Se ela
@@ -372,7 +392,8 @@ function useParte(
   const alterado =
     presencaLocal !== (registro.presenca?.status ?? null) ||
     CAMPOS_NOTA.some(({ key }) => notasLocal[key] !== (registro.nota?.[key] ?? null)) ||
-    licaoLocal !== licaoOriginal;
+    licaoLocal !== licaoOriginal ||
+    praticadoLocal !== praticadoOriginal;
 
   return {
     parte,
@@ -387,6 +408,9 @@ function useParte(
     },
     licaoOriginal,
     licaoSugestao: registro.licaoSugestao,
+    praticadoLocal,
+    setPraticadoLocal,
+    praticadoOriginal,
     presencaOriginal: registro.presenca?.status ?? null,
     notaOriginal: registro.nota,
     alterado,
@@ -403,6 +427,7 @@ function AlunoLinha({
   notas,
   licoes,
   historicoLicao,
+  pendencia,
   dataDoDia,
   diaSemana,
   professoraId,
@@ -413,7 +438,8 @@ function AlunoLinha({
   presencas: PresencaRow[];
   notas: NotaRow[];
   licoes: LicaoRow[];
-  historicoLicao: { licao: string; nivel_no_momento: string }[];
+  historicoLicao: { licao: string; nivel_no_momento: string; praticado: boolean }[];
+  pendencia: AlunoLicaoPendente | undefined;
   dataDoDia: string;
   diaSemana: number;
   professoraId: string;
@@ -445,7 +471,11 @@ function AlunoLinha({
   // junto com o histórico, pra não "voltar" se a parte 1 for uma repetição.
   const licaoSugestao2 = temLicao
     ? licaoSugerida(c.aluno_nivel, [
-        { licao: parte1.licaoLocal || licaoSugestao1, nivel_no_momento: c.aluno_nivel },
+        {
+          licao: parte1.licaoLocal || licaoSugestao1,
+          nivel_no_momento: c.aluno_nivel,
+          praticado: parte1.praticadoLocal,
+        },
         ...historicoLicao,
       ])
     : "";
@@ -494,7 +524,11 @@ function AlunoLinha({
           );
         }
       }
-      if (estado.licaoLocal && estado.licaoLocal !== estado.licaoOriginal) {
+      if (
+        estado.licaoLocal &&
+        (estado.licaoLocal !== estado.licaoOriginal ||
+          estado.praticadoLocal !== estado.praticadoOriginal)
+      ) {
         chamadas.push(
           licaoFn({
             data: {
@@ -505,6 +539,7 @@ function AlunoLinha({
               parte: estado.parte,
               licao: estado.licaoLocal,
               nivel_no_momento: c.aluno_nivel,
+              praticado: estado.praticadoLocal,
             },
           }),
         );
@@ -525,6 +560,7 @@ function AlunoLinha({
       await Promise.all(chamadas);
       qc.invalidateQueries({ queryKey: ["lancamentos-semana"] });
       qc.invalidateQueries({ queryKey: ["historico-licoes"] });
+      qc.invalidateQueries({ queryKey: ["licoes-pendentes"] });
     } catch (e) {
       setErro((e as Error).message);
     } finally {
@@ -563,6 +599,14 @@ function AlunoLinha({
           >
             Histórico
           </Link>
+        )}
+        {pendencia && (
+          <span
+            className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 shrink-0"
+            title={`Estudou mas ainda não praticou com a professora — ${pendencia.licao}, lançado por ${pendencia.professora_nome} em ${formatarDataBR(pendencia.data)}`}
+          >
+            ⏳ {pendencia.licao} pendente
+          </span>
         )}
         {c.aluno_avulso && (
           <span className="text-[9px] uppercase font-bold ml-auto tracking-wider opacity-70">
@@ -675,8 +719,26 @@ function BlocoLancamento({
           onChange={(e) => estado.setLicaoLocal(normalizarLicao(e.target.value))}
           placeholder={estado.licaoSugestao || "Lição"}
           title="Lição dada/avaliada hoje"
-          className="w-16 rounded border border-input bg-card px-1 py-0.5 text-xs font-bold text-center"
+          className={`w-16 rounded border bg-card px-1 py-0.5 text-xs font-bold text-center ${
+            estado.praticadoLocal ? "border-input" : "border-amber-500"
+          }`}
         />
+      )}
+
+      {mostraLicao && (
+        <label
+          className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0"
+          title="Desmarque se o aluno só fez o estudo individual e ainda não praticou com a professora"
+        >
+          <input
+            type="checkbox"
+            checked={estado.praticadoLocal}
+            disabled={salvando}
+            onChange={(e) => estado.setPraticadoLocal(e.target.checked)}
+            className="h-3 w-3"
+          />
+          Praticou
+        </label>
       )}
 
       {mostraNotasELicao &&
