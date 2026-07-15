@@ -209,8 +209,14 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
       const existente = statusPorChave.get(chave);
 
       if (contagemAtual < LIMIAR_ALERTA[tipo]) {
-        // Não está mais em alerta agora. Se já tinha um episódio (pendente ou
-        // resolvido), mantém no histórico como está — não mexe.
+        if (existente?.status === "pendente") {
+          // Situação corrigida antes de alguém ter agido (ex.: falta virou
+          // "avisou que não vem", ou dado foi corrigido) — não precisava de
+          // contato, então some sozinho em vez de ficar pendente pra sempre.
+          atualizacoes.push(sb.from("alertas_status").delete().eq("id", existente.id));
+          return;
+        }
+        // Já resolvido: mantém no histórico como está — não mexe.
         if (existente) resultado.push(paraAlertaAtivo(existente, aluno));
         return;
       }
