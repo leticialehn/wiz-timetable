@@ -594,8 +594,10 @@ function AlunoLinha({
           <Link
             to="/professora/aluno/$id"
             params={{ id: c.aluno_id }}
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-xs text-muted-foreground underline shrink-0"
-            title="Ver histórico de lições e notas"
+            title="Ver histórico de lições e notas (abre em outra aba, sem perder o que você já marcou aqui)"
           >
             Histórico
           </Link>
