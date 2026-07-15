@@ -241,7 +241,7 @@ export function configDe(
 }
 
 // ============ Presença e notas ============
-export type StatusPresenca = "presente" | "falta";
+export type StatusPresenca = "presente" | "falta" | "falta_avisada";
 export type ConceitoNota = "O" | "MB" | "B" | "R";
 export type CampoNota = "fala" | "audicao" | "leitura" | "escrita";
 

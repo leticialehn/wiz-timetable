@@ -12,9 +12,8 @@ import {
 } from "@/lib/presenca.functions";
 import {
   getAlertasLicaoPendente,
-  getAlertasFaltas,
+  getAlertasAtivos,
   type AlunoLicaoPendente,
-  type AlunoEmAlerta,
 } from "@/lib/alertas.functions";
 import { temTrackingDeLicao, licaoSugerida, normalizarLicao } from "@/lib/licoes";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
@@ -149,16 +148,14 @@ function ProfessoraPage() {
     [licoesPendentes],
   );
 
-  // Alerta de faltas consecutivas: só a coordenação vê (hoje, só a Letícia).
-  const getAlertasFaltasFn = useServerFn(getAlertasFaltas);
-  const { data: alertasFaltas } = useQuery({
-    queryKey: ["alertas-faltas"],
-    queryFn: () => getAlertasFaltasFn(),
+  // Alertas de faltas/nota baixa: não aparecem na grade — só na aba própria de
+  // Alertas, e só pra coordenação (hoje, só a Letícia).
+  const getAlertasAtivosFn = useServerFn(getAlertasAtivos);
+  const { data: alertasAtivos } = useQuery({
+    queryKey: ["alertas-ativos"],
+    queryFn: () => getAlertasAtivosFn(),
   });
-  const faltasPorAluno = useMemo(
-    () => new Map((alertasFaltas ?? []).map((a) => [a.aluno_id, a])),
-    [alertasFaltas],
-  );
+  const alertasPendentes = (alertasAtivos ?? []).filter((a) => a.status === "pendente").length;
 
   if (!mounted) return null;
 
@@ -190,15 +187,30 @@ function ProfessoraPage() {
             <div className="text-xs opacity-70">Professora</div>
             <h1 className="text-2xl font-bold">{professora.nome}</h1>
           </div>
-          <button
-            onClick={() => {
-              localStorage.removeItem(STORAGE_KEY);
-              setProfessoraId(null);
-            }}
-            className="text-xs px-3 py-1.5 rounded bg-black/10 hover:bg-black/20"
-          >
-            Trocar
-          </button>
+          <div className="flex items-center gap-2">
+            {professora.coordenadora && (
+              <Link
+                to="/professora/alertas"
+                className="text-xs px-3 py-1.5 rounded bg-black/10 hover:bg-black/20 flex items-center gap-1"
+              >
+                Alertas
+                {alertasPendentes > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500 text-white font-bold">
+                    {alertasPendentes}
+                  </span>
+                )}
+              </Link>
+            )}
+            <button
+              onClick={() => {
+                localStorage.removeItem(STORAGE_KEY);
+                setProfessoraId(null);
+              }}
+              className="text-xs px-3 py-1.5 rounded bg-black/10 hover:bg-black/20"
+            >
+              Trocar
+            </button>
+          </div>
         </div>
       </header>
 
@@ -287,7 +299,6 @@ function ProfessoraPage() {
                     licoes={licoesDoDia}
                     historicoLicoes={historicoLicoes ?? {}}
                     pendenciasPorAluno={pendenciasPorAluno}
-                    faltasPorAluno={professora.coordenadora ? faltasPorAluno : undefined}
                     dataDoDia={dataDoDia}
                     diaSemana={diaAtivo}
                     professoraId={professoraId}
@@ -325,7 +336,6 @@ function AulaCard({
   licoes,
   historicoLicoes,
   pendenciasPorAluno,
-  faltasPorAluno,
   dataDoDia,
   diaSemana,
   professoraId,
@@ -344,7 +354,6 @@ function AulaCard({
     { licao: string; nivel_no_momento: string; praticado: boolean }[]
   >;
   pendenciasPorAluno: Map<string, AlunoLicaoPendente>;
-  faltasPorAluno: Map<string, AlunoEmAlerta> | undefined;
   dataDoDia: string;
   diaSemana: number;
   professoraId: string;
@@ -403,7 +412,6 @@ function AulaCard({
                 }
                 historicoLicao={c.aluno_id ? (historicoLicoes[c.aluno_id] ?? []) : []}
                 pendencia={c.aluno_id ? pendenciasPorAluno.get(c.aluno_id) : undefined}
-                alertaFaltas={c.aluno_id ? faltasPorAluno?.get(c.aluno_id) : undefined}
                 dataDoDia={dataDoDia}
                 diaSemana={diaSemana}
                 professoraId={professoraId}
@@ -492,7 +500,6 @@ function AlunoLinha({
   licoes,
   historicoLicao,
   pendencia,
-  alertaFaltas,
   dataDoDia,
   diaSemana,
   professoraId,
@@ -506,7 +513,6 @@ function AlunoLinha({
   licoes: LicaoRow[];
   historicoLicao: { licao: string; nivel_no_momento: string; praticado: boolean }[];
   pendencia: AlunoLicaoPendente | undefined;
-  alertaFaltas: AlunoEmAlerta | undefined;
   dataDoDia: string;
   diaSemana: number;
   professoraId: string;
@@ -521,6 +527,11 @@ function AlunoLinha({
   // Raro: aluno adiantado faz 2 lições na mesma hora de aula regular — a
   // professora aciona manualmente, sem duplicar presença (é a mesma visita).
   const [licaoExtraAtiva, setLicaoExtraAtiva] = useState(false);
+  // Aluno avisou com antecedência que não vem — não é falta (não conta pro
+  // alerta de faltas seguidas) e não há presença/notas/lição pra lançar.
+  const avisadoOriginal =
+    (presencas.find((p) => p.parte === 1)?.status ?? null) === "falta_avisada";
+  const [avisado, setAvisado] = useState(avisadoOriginal);
 
   const ehOnline = c.tipo === "online";
   const mostraParte2 = ehOnline || licaoExtraAtiva;
@@ -554,7 +565,9 @@ function AlunoLinha({
     licaoSugestao: licaoSugestao2,
   });
 
-  const alterado = parte1.alterado || (mostraParte2 && parte2.alterado);
+  const alterado =
+    avisado !== avisadoOriginal ||
+    (!avisado && (parte1.alterado || (mostraParte2 && parte2.alterado)));
 
   async function salvarParte(estado: EstadoParte) {
     const chamadas: Promise<unknown>[] = [];
@@ -621,10 +634,21 @@ function AlunoLinha({
     setErro(null);
     setSalvando(true);
     try {
-      const chamadas = [
-        ...(await salvarParte(parte1)),
-        ...(mostraParte2 ? await salvarParte(parte2) : []),
-      ];
+      const chamadas = avisado
+        ? [1, ...(ehOnline ? [2] : [])].map((parte) =>
+            presencaFn({
+              data: {
+                data: dataDoDia,
+                professora_id: professoraId,
+                aluno_id: c.aluno_id!,
+                periodo: c.periodo,
+                parte,
+                dia_semana: diaSemana,
+                status: "falta_avisada" as const,
+              },
+            }),
+          )
+        : [...(await salvarParte(parte1)), ...(mostraParte2 ? await salvarParte(parte2) : [])];
       await Promise.all(chamadas);
       qc.invalidateQueries({ queryKey: ["lancamentos-semana"] });
       qc.invalidateQueries({ queryKey: ["historico-licoes"] });
@@ -667,7 +691,11 @@ function AlunoLinha({
       </button>
       <div className="flex items-baseline gap-1.5 flex-wrap">
         {c.horario_especifico && <span className="text-sm font-bold">{c.horario_especifico}</span>}
-        <span className="text-base font-semibold">{c.aluno_nome}</span>
+        <span
+          className={`text-base font-semibold ${avisado ? "line-through text-muted-foreground" : ""}`}
+        >
+          {c.aluno_nome}
+        </span>
         {mostraLivro && c.aluno_nivel && (
           <span className="text-xs opacity-70">— {c.aluno_nivel}</span>
         )}
@@ -683,24 +711,24 @@ function AlunoLinha({
             Histórico
           </Link>
         )}
+        {c.aluno_id && !c.aluno_avulso && (
+          <button
+            type="button"
+            onClick={() => setAvisado((v) => !v)}
+            title="Aluno avisou com antecedência que não vem nessa aula"
+            className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+              avisado ? "bg-amber-500 text-white" : "bg-muted text-muted-foreground hover:bg-accent"
+            }`}
+          >
+            avisou que não vem
+          </button>
+        )}
         {pendencia && (
           <span
             className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-400 shrink-0"
             title={`Estudou mas ainda não praticou com a professora — ${pendencia.licao}, lançado por ${pendencia.professora_nome} em ${formatarDataBR(pendencia.data)}`}
           >
             ⏳ {pendencia.licao} pendente
-          </span>
-        )}
-        {alertaFaltas && (
-          <span
-            className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-700 dark:text-rose-400 shrink-0"
-            title={`${alertaFaltas.faltas_seguidas} faltas seguidas${
-              alertaFaltas.ultima_presenca
-                ? ` — última presença em ${formatarDataBR(alertaFaltas.ultima_presenca)}`
-                : ""
-            }`}
-          >
-            ⚠ {alertaFaltas.faltas_seguidas} faltas seguidas
           </span>
         )}
         {c.aluno_avulso && (
@@ -713,6 +741,13 @@ function AlunoLinha({
       {c.aluno_avulso ? (
         <div className="text-xs text-muted-foreground mt-0.5 italic">
           Aluno avulso — sem lançamento de presença/notas.
+        </div>
+      ) : avisado ? (
+        <div className="mt-1 flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground italic">
+            Avisou que não vem — sem lançamento de presença/notas nessa aula.
+          </span>
+          {botaoSalvar}
         </div>
       ) : (
         <>

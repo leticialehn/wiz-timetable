@@ -161,6 +161,10 @@ function HistoricoAlunoProfessoraPage() {
                         <td className="px-2 py-1.5 whitespace-nowrap">
                           {item.presenca === "falta" ? (
                             <span className="text-rose-600 font-medium">Faltou</span>
+                          ) : item.presenca === "falta_avisada" ? (
+                            <span className="text-muted-foreground font-medium">
+                              Faltou (avisou)
+                            </span>
                           ) : (
                             (item.licao ?? "—")
                           )}
