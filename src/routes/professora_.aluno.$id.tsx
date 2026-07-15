@@ -1,24 +1,86 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
-import { getHistoricoAluno } from "@/lib/historico.functions";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { getHistoricoAluno, type HistoricoItem } from "@/lib/historico.functions";
+import { setNota } from "@/lib/presenca.functions";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
 import { formatarDataBR } from "@/lib/date-utils";
-import { HORARIO_INICIO_PERIODO, CAMPOS_NOTA } from "@/lib/types";
+import {
+  HORARIO_INICIO_PERIODO,
+  CAMPOS_NOTA,
+  CONCEITOS,
+  type CampoNota,
+  type ConceitoNota,
+} from "@/lib/types";
 
 export const Route = createFileRoute("/professora_/aluno/$id")({
   component: HistoricoAlunoProfessoraPage,
   head: () => ({ meta: [{ title: "Histórico do aluno" }] }),
 });
 
+function NotaEditavel({
+  valor,
+  disabled,
+  onSelecionar,
+}: {
+  valor: ConceitoNota | null;
+  disabled: boolean;
+  onSelecionar: (v: ConceitoNota | null) => void;
+}) {
+  return (
+    <div className="flex gap-0.5">
+      {CONCEITOS.map((c) => (
+        <button
+          key={c}
+          type="button"
+          disabled={disabled}
+          onClick={() => onSelecionar(valor === c ? null : c)}
+          className={`w-6 h-6 rounded text-[10px] font-bold border disabled:opacity-50 ${
+            valor === c
+              ? "bg-primary border-primary text-primary-foreground"
+              : "border-border bg-card hover:bg-accent"
+          }`}
+        >
+          {c}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function HistoricoAlunoProfessoraPage() {
   useRealtimeGrade();
   const { id } = Route.useParams();
+  const qc = useQueryClient();
   const getFn = useServerFn(getHistoricoAluno);
+  const notaFn = useServerFn(setNota);
+  const [salvandoCelula, setSalvandoCelula] = useState<string | null>(null);
   const { data, isLoading } = useQuery({
     queryKey: ["historico-aluno", id],
     queryFn: () => getFn({ data: { aluno_id: id } }),
   });
+
+  async function salvarNota(item: HistoricoItem, campo: CampoNota, valor: ConceitoNota | null) {
+    const chaveCelula = `${item.chave}-${campo}`;
+    setSalvandoCelula(chaveCelula);
+    try {
+      await notaFn({
+        data: {
+          data: item.data,
+          professora_id: item.professora_id,
+          aluno_id: id,
+          periodo: item.periodo,
+          parte: item.parte,
+          campo,
+          valor,
+        },
+      });
+      qc.invalidateQueries({ queryKey: ["historico-aluno", id] });
+    } finally {
+      setSalvandoCelula(null);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-background max-w-2xl mx-auto px-4 py-4">
@@ -108,7 +170,11 @@ function HistoricoAlunoProfessoraPage() {
                         </td>
                         {CAMPOS_NOTA.map(({ key }) => (
                           <td key={key} className="px-2 py-1.5">
-                            {item.notas?.[key] ?? "—"}
+                            <NotaEditavel
+                              valor={item.notas?.[key] ?? null}
+                              disabled={salvandoCelula === `${item.chave}-${key}`}
+                              onSelecionar={(v) => salvarNota(item, key, v)}
+                            />
                           </td>
                         ))}
                       </tr>
