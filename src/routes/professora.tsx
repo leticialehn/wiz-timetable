@@ -96,6 +96,37 @@ function ProfessoraPage() {
     [cels],
   );
 
+  // Alunos que a professora já lançou nota/presença e tirou da tela hoje —
+  // some da lista pra não precisar rolar por quem já terminou. Reseta sozinho
+  // a cada dia (guardado por professora+data).
+  const [ocultos, setOcultos] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!professoraId) return;
+    const raw = localStorage.getItem(`escola:ocultos:${professoraId}:${dataDoDia}`);
+    setOcultos(raw ? new Set(JSON.parse(raw) as string[]) : new Set());
+  }, [professoraId, dataDoDia]);
+
+  function ocultarCelula(celulaId: string) {
+    setOcultos((prev) => {
+      const next = new Set(prev);
+      next.add(celulaId);
+      if (professoraId) {
+        localStorage.setItem(
+          `escola:ocultos:${professoraId}:${dataDoDia}`,
+          JSON.stringify([...next]),
+        );
+      }
+      return next;
+    });
+  }
+
+  function mostrarOcultos() {
+    setOcultos(new Set());
+    if (professoraId) {
+      localStorage.removeItem(`escola:ocultos:${professoraId}:${dataDoDia}`);
+    }
+  }
+
   const getHistoricoLicoesFn = useServerFn(getHistoricoLicoes);
   const { data: historicoLicoes } = useQuery({
     queryKey: ["historico-licoes", dataDoDia, alunoIdsHoje],
@@ -211,34 +242,44 @@ function ProfessoraPage() {
           })}
         </div>
 
+        {ocultos.size > 0 && (
+          <button onClick={mostrarOcultos} className="text-xs text-muted-foreground underline mb-2">
+            {ocultos.size} aluno{ocultos.size > 1 ? "s" : ""} concluído
+            {ocultos.size > 1 ? "s" : ""} hoje ocultos — mostrar todos
+          </button>
+        )}
+
         {cels.length === 0 ? (
           <div className="text-muted-foreground text-center py-12">
             Nenhuma aula agendada neste dia.
           </div>
         ) : (
           <ol className="space-y-2">
-            {agruparPorPeriodo(cels).map(({ periodo, celsPer }) => {
-              const cfg = configDe(grade.horariosConfig, diaAtivo, periodo, professoraId);
-              const tipo: TipoHorario = cfg?.tipo ?? "regular";
-              return (
-                <AulaCard
-                  key={periodo}
-                  periodo={periodo}
-                  tipo={tipo}
-                  cfg={cfg}
-                  cels={celsPer}
-                  presencas={presencasDoDia}
-                  notas={notasDoDia}
-                  licoes={licoesDoDia}
-                  historicoLicoes={historicoLicoes ?? {}}
-                  pendenciasPorAluno={pendenciasPorAluno}
-                  dataDoDia={dataDoDia}
-                  diaSemana={diaAtivo}
-                  professoraId={professoraId}
-                  professora={professora}
-                />
-              );
-            })}
+            {agruparPorPeriodo(cels.filter((c) => !ocultos.has(c.id))).map(
+              ({ periodo, celsPer }) => {
+                const cfg = configDe(grade.horariosConfig, diaAtivo, periodo, professoraId);
+                const tipo: TipoHorario = cfg?.tipo ?? "regular";
+                return (
+                  <AulaCard
+                    key={periodo}
+                    periodo={periodo}
+                    tipo={tipo}
+                    cfg={cfg}
+                    cels={celsPer}
+                    presencas={presencasDoDia}
+                    notas={notasDoDia}
+                    licoes={licoesDoDia}
+                    historicoLicoes={historicoLicoes ?? {}}
+                    pendenciasPorAluno={pendenciasPorAluno}
+                    dataDoDia={dataDoDia}
+                    diaSemana={diaAtivo}
+                    professoraId={professoraId}
+                    professora={professora}
+                    onOcultar={ocultarCelula}
+                  />
+                );
+              },
+            )}
           </ol>
         )}
       </div>
@@ -271,6 +312,7 @@ function AulaCard({
   diaSemana,
   professoraId,
   professora,
+  onOcultar,
 }: {
   periodo: number;
   tipo: TipoHorario;
@@ -288,6 +330,7 @@ function AulaCard({
   diaSemana: number;
   professoraId: string;
   professora: Professora;
+  onOcultar: (celulaId: string) => void;
 }) {
   const mostraLivro = TIPO_MOSTRA_LIVRO[tipo];
   const mostraNotasELicao = tipo !== "conversacao";
@@ -344,6 +387,7 @@ function AulaCard({
                 dataDoDia={dataDoDia}
                 diaSemana={diaSemana}
                 professoraId={professoraId}
+                onOcultar={() => onOcultar(c.id)}
               />
             ))}
           </ul>
@@ -431,6 +475,7 @@ function AlunoLinha({
   dataDoDia,
   diaSemana,
   professoraId,
+  onOcultar,
 }: {
   c: CelulaAula;
   mostraLivro: boolean;
@@ -443,6 +488,7 @@ function AlunoLinha({
   dataDoDia: string;
   diaSemana: number;
   professoraId: string;
+  onOcultar: () => void;
 }) {
   const qc = useQueryClient();
   const presencaFn = useServerFn(setPresenca);
@@ -583,7 +629,20 @@ function AlunoLinha({
   );
 
   return (
-    <li className="rounded-lg px-2 py-1.5 bg-secondary">
+    <li className="relative rounded-lg px-2 py-1.5 pr-7 bg-secondary">
+      <button
+        type="button"
+        onClick={() => {
+          if (alterado && !confirm("Tem alterações não salvas nesse aluno. Ocultar mesmo assim?")) {
+            return;
+          }
+          onOcultar();
+        }}
+        title="Já terminei com esse aluno hoje — tirar da tela"
+        className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center text-white bg-rose-500 hover:bg-rose-600 text-xs font-bold leading-none"
+      >
+        ×
+      </button>
       <div className="flex items-baseline gap-1.5 flex-wrap">
         {c.horario_especifico && <span className="text-sm font-bold">{c.horario_especifico}</span>}
         <span className="text-base font-semibold">{c.aluno_nome}</span>
