@@ -34,9 +34,12 @@ function HistoricoAlunoProfessoraPage() {
 
       {data && (
         <>
-          <h1 className="text-xl font-bold mb-4">
+          <h1 className="text-xl font-bold mb-1">
             {data.aluno.nome} - {data.aluno.nivel}
           </h1>
+          <p className="text-[10px] text-muted-foreground mb-4">
+            O - Ótimo &nbsp; MB - Muito Bom &nbsp; B - Bom &nbsp; R - Regular
+          </p>
 
           <div className="grid grid-cols-3 gap-2 mb-5">
             <div className="rounded-lg border border-border p-2 text-center">
@@ -75,27 +78,31 @@ function HistoricoAlunoProfessoraPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.timeline.map((item) => (
-                    <tr key={item.chave} className="border-t border-border">
-                      <td className="px-2 py-1.5 whitespace-nowrap">{formatarDataBR(item.data)}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap">
-                        {HORARIO_INICIO_PERIODO[item.periodo] ?? item.periodo}
-                        {item.parte === 2 && " (2ª)"}
-                      </td>
-                      <td className="px-2 py-1.5 whitespace-nowrap">
-                        {item.presenca === "falta" ? (
-                          <span className="text-rose-600 font-medium">Faltou</span>
-                        ) : (
-                          (item.licao ?? "—")
-                        )}
-                      </td>
-                      {CAMPOS_NOTA.map(({ key }) => (
-                        <td key={key} className="px-2 py-1.5">
-                          {item.notas?.[key] ?? "—"}
+                  {data.timeline.map((item) => {
+                    const periodoExibido = item.parte === 2 ? item.periodo + 1 : item.periodo;
+                    return (
+                      <tr key={item.chave} className="border-t border-border">
+                        <td className="px-2 py-1.5 whitespace-nowrap">
+                          {formatarDataBR(item.data)}
                         </td>
-                      ))}
-                    </tr>
-                  ))}
+                        <td className="px-2 py-1.5 whitespace-nowrap">
+                          {HORARIO_INICIO_PERIODO[periodoExibido] ?? periodoExibido}
+                        </td>
+                        <td className="px-2 py-1.5 whitespace-nowrap">
+                          {item.presenca === "falta" ? (
+                            <span className="text-rose-600 font-medium">Faltou</span>
+                          ) : (
+                            (item.licao ?? "—")
+                          )}
+                        </td>
+                        {CAMPOS_NOTA.map(({ key }) => (
+                          <td key={key} className="px-2 py-1.5">
+                            {item.notas?.[key] ?? "—"}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
