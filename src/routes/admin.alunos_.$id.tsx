@@ -89,6 +89,7 @@ function HistoricoAlunoPage() {
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="font-medium">
                   {formatarDataBR(item.data)} · Período {item.periodo} · {item.professora_nome}
+                  {item.parte === 2 && " · 2ª aula"}
                 </div>
                 {item.presenca && (
                   <span

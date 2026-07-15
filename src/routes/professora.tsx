@@ -227,12 +227,6 @@ function ProfessoraPage() {
             })}
           </ol>
         )}
-
-        <div className="mt-8 text-center">
-          <Link to="/" className="text-xs text-muted-foreground underline">
-            Voltar ao início
-          </Link>
-        </div>
       </div>
     </div>
   );
@@ -311,23 +305,20 @@ function AulaCard({
                 c={c}
                 mostraLivro={mostraLivro}
                 mostraNotasELicao={mostraNotasELicao}
-                presenca={
+                presencas={
                   c.aluno_id
-                    ? (presencas.find((p) => p.aluno_id === c.aluno_id && p.periodo === periodo) ??
-                      null)
-                    : null
+                    ? presencas.filter((p) => p.aluno_id === c.aluno_id && p.periodo === periodo)
+                    : []
                 }
-                nota={
+                notas={
                   c.aluno_id
-                    ? (notas.find((n) => n.aluno_id === c.aluno_id && n.periodo === periodo) ??
-                      null)
-                    : null
+                    ? notas.filter((n) => n.aluno_id === c.aluno_id && n.periodo === periodo)
+                    : []
                 }
-                licao={
+                licoes={
                   c.aluno_id
-                    ? (licoes.find((l) => l.aluno_id === c.aluno_id && l.periodo === periodo) ??
-                      null)
-                    : null
+                    ? licoes.filter((l) => l.aluno_id === c.aluno_id && l.periodo === periodo)
+                    : []
                 }
                 ultimaLicao={c.aluno_id ? (ultimasLicoes[c.aluno_id] ?? null) : null}
                 dataDoDia={dataDoDia}
@@ -342,13 +333,73 @@ function AulaCard({
   );
 }
 
+// Alunos de "Aula online" fazem 2 lições no mesmo horário — parte 1 e parte 2.
+function useParte(
+  parte: number,
+  registro: {
+    presenca: PresencaRow | null;
+    nota: NotaRow | null;
+    licao: LicaoRow | null;
+    licaoSugestao: string;
+  },
+) {
+  const licaoOriginal = registro.licao?.licao ?? "";
+  const [presencaLocal, setPresencaLocal] = useState<StatusPresenca | null>(
+    registro.presenca?.status ?? null,
+  );
+  const [notasLocal, setNotasLocal] = useState<Record<CampoNota, ConceitoNota | null>>({
+    fala: registro.nota?.fala ?? null,
+    audicao: registro.nota?.audicao ?? null,
+    leitura: registro.nota?.leitura ?? null,
+    escrita: registro.nota?.escrita ?? null,
+  });
+  const [licaoLocal, setLicaoLocal] = useState(licaoOriginal || registro.licaoSugestao);
+  const [licaoEditadaManualmente, setLicaoEditadaManualmente] = useState(false);
+
+  // A sugestão de lição depende de uma consulta que carrega depois da grade
+  // (getUltimasLicoes), ou — na parte 2 — do valor digitado na parte 1. Se ela
+  // mudar depois do primeiro render, atualiza o valor mostrado — a menos que a
+  // professora já tenha mexido no campo.
+  useEffect(() => {
+    if (!licaoEditadaManualmente) {
+      setLicaoLocal(licaoOriginal || registro.licaoSugestao);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [licaoOriginal, registro.licaoSugestao]);
+
+  const alterado =
+    presencaLocal !== (registro.presenca?.status ?? null) ||
+    CAMPOS_NOTA.some(({ key }) => notasLocal[key] !== (registro.nota?.[key] ?? null)) ||
+    licaoLocal !== licaoOriginal;
+
+  return {
+    parte,
+    presencaLocal,
+    setPresencaLocal,
+    notasLocal,
+    setNotasLocal,
+    licaoLocal,
+    setLicaoLocal: (v: string) => {
+      setLicaoLocal(v);
+      setLicaoEditadaManualmente(true);
+    },
+    licaoOriginal,
+    licaoSugestao: registro.licaoSugestao,
+    presencaOriginal: registro.presenca?.status ?? null,
+    notaOriginal: registro.nota,
+    alterado,
+  };
+}
+
+type EstadoParte = ReturnType<typeof useParte>;
+
 function AlunoLinha({
   c,
   mostraLivro,
   mostraNotasELicao,
-  presenca,
-  nota,
-  licao,
+  presencas,
+  notas,
+  licoes,
   ultimaLicao,
   dataDoDia,
   diaSemana,
@@ -357,9 +408,9 @@ function AlunoLinha({
   c: CelulaAula;
   mostraLivro: boolean;
   mostraNotasELicao: boolean;
-  presenca: PresencaRow | null;
-  nota: NotaRow | null;
-  licao: LicaoRow | null;
+  presencas: PresencaRow[];
+  notas: NotaRow[];
+  licoes: LicaoRow[];
   ultimaLicao: { licao: string; nivel_no_momento: string } | null;
   dataDoDia: string;
   diaSemana: number;
@@ -372,93 +423,98 @@ function AlunoLinha({
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
-  const licaoOriginal = licao?.licao ?? "";
-  const licaoSugestao = temTrackingDeLicao(c.aluno_nivel)
-    ? licaoSugerida(c.aluno_nivel, ultimaLicao)
-    : "";
+  const ehOnline = c.tipo === "online";
+  const temLicao = temTrackingDeLicao(c.aluno_nivel);
 
-  // Estado local: marcar vários conceitos só atualiza a tela; nada é enviado
-  // ao servidor até clicar em "Salvar" — evita esperar uma rede a cada clique.
-  const [presencaLocal, setPresencaLocal] = useState<StatusPresenca | null>(
-    presenca?.status ?? null,
-  );
-  const [notasLocal, setNotasLocal] = useState<Record<CampoNota, ConceitoNota | null>>({
-    fala: nota?.fala ?? null,
-    audicao: nota?.audicao ?? null,
-    leitura: nota?.leitura ?? null,
-    escrita: nota?.escrita ?? null,
+  const licaoSugestao1 = temLicao ? licaoSugerida(c.aluno_nivel, ultimaLicao) : "";
+  const parte1 = useParte(1, {
+    presenca: presencas.find((p) => p.parte === 1) ?? null,
+    nota: notas.find((n) => n.parte === 1) ?? null,
+    licao: licoes.find((l) => l.parte === 1) ?? null,
+    licaoSugestao: licaoSugestao1,
   });
-  const [licaoLocal, setLicaoLocal] = useState(licaoOriginal || licaoSugestao);
-  const [licaoEditadaManualmente, setLicaoEditadaManualmente] = useState(false);
 
-  // A sugestão de lição depende de uma consulta que carrega depois da grade
-  // (getUltimasLicoes). Se ela chegar após o primeiro render, atualiza o
-  // valor mostrado — a menos que a professora já tenha mexido no campo.
-  useEffect(() => {
-    if (!licaoEditadaManualmente) {
-      setLicaoLocal(licaoOriginal || licaoSugestao);
+  // A 2ª lição é sempre a seguinte à 1ª — encadeia a partir do valor (editado
+  // ou sugerido) que está na parte 1 agora mesmo.
+  const licaoSugestao2 = temLicao
+    ? licaoSugerida(c.aluno_nivel, {
+        licao: parte1.licaoLocal || licaoSugestao1,
+        nivel_no_momento: c.aluno_nivel,
+      })
+    : "";
+  const parte2 = useParte(2, {
+    presenca: presencas.find((p) => p.parte === 2) ?? null,
+    nota: notas.find((n) => n.parte === 2) ?? null,
+    licao: licoes.find((l) => l.parte === 2) ?? null,
+    licaoSugestao: licaoSugestao2,
+  });
+
+  const alterado = parte1.alterado || (ehOnline && parte2.alterado);
+
+  async function salvarParte(estado: EstadoParte) {
+    const chamadas: Promise<unknown>[] = [];
+    if (estado.presencaLocal && estado.presencaLocal !== estado.presencaOriginal) {
+      chamadas.push(
+        presencaFn({
+          data: {
+            data: dataDoDia,
+            professora_id: professoraId,
+            aluno_id: c.aluno_id!,
+            periodo: c.periodo,
+            parte: estado.parte,
+            dia_semana: diaSemana,
+            status: estado.presencaLocal,
+          },
+        }),
+      );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [licaoOriginal, licaoSugestao]);
-
-  const alterado =
-    presencaLocal !== (presenca?.status ?? null) ||
-    CAMPOS_NOTA.some(({ key }) => notasLocal[key] !== (nota?.[key] ?? null)) ||
-    licaoLocal !== licaoOriginal;
+    if (mostraNotasELicao) {
+      for (const { key } of CAMPOS_NOTA) {
+        const original = estado.notaOriginal?.[key] ?? null;
+        if (estado.notasLocal[key] !== original) {
+          chamadas.push(
+            notaFn({
+              data: {
+                data: dataDoDia,
+                professora_id: professoraId,
+                aluno_id: c.aluno_id!,
+                periodo: c.periodo,
+                parte: estado.parte,
+                campo: key,
+                valor: estado.notasLocal[key],
+              },
+            }),
+          );
+        }
+      }
+      if (estado.licaoLocal && estado.licaoLocal !== estado.licaoOriginal) {
+        chamadas.push(
+          licaoFn({
+            data: {
+              data: dataDoDia,
+              professora_id: professoraId,
+              aluno_id: c.aluno_id!,
+              periodo: c.periodo,
+              parte: estado.parte,
+              licao: estado.licaoLocal,
+              nivel_no_momento: c.aluno_nivel,
+            },
+          }),
+        );
+      }
+    }
+    return chamadas;
+  }
 
   async function salvar() {
     if (!c.aluno_id) return;
     setErro(null);
     setSalvando(true);
     try {
-      const chamadas: Promise<unknown>[] = [];
-      if (presencaLocal && presencaLocal !== (presenca?.status ?? null)) {
-        chamadas.push(
-          presencaFn({
-            data: {
-              data: dataDoDia,
-              professora_id: professoraId,
-              aluno_id: c.aluno_id,
-              periodo: c.periodo,
-              dia_semana: diaSemana,
-              status: presencaLocal,
-            },
-          }),
-        );
-      }
-      if (mostraNotasELicao) {
-        for (const { key } of CAMPOS_NOTA) {
-          const original = nota?.[key] ?? null;
-          if (notasLocal[key] !== original) {
-            chamadas.push(
-              notaFn({
-                data: {
-                  data: dataDoDia,
-                  professora_id: professoraId,
-                  aluno_id: c.aluno_id!,
-                  periodo: c.periodo,
-                  campo: key,
-                  valor: notasLocal[key],
-                },
-              }),
-            );
-          }
-        }
-        if (licaoLocal && licaoLocal !== licaoOriginal) {
-          chamadas.push(
-            licaoFn({
-              data: {
-                data: dataDoDia,
-                professora_id: professoraId,
-                aluno_id: c.aluno_id!,
-                periodo: c.periodo,
-                licao: licaoLocal,
-                nivel_no_momento: c.aluno_nivel,
-              },
-            }),
-          );
-        }
-      }
+      const chamadas = [
+        ...(await salvarParte(parte1)),
+        ...(ehOnline ? await salvarParte(parte2) : []),
+      ];
       await Promise.all(chamadas);
       qc.invalidateQueries({ queryKey: ["lancamentos-semana"] });
       qc.invalidateQueries({ queryKey: ["ultimas-licoes"] });
@@ -477,19 +533,6 @@ function AlunoLinha({
         {mostraLivro && c.aluno_nivel && (
           <span className="text-xs opacity-70">— {c.aluno_nivel}</span>
         )}
-        {mostraNotasELicao && !c.aluno_avulso && temTrackingDeLicao(c.aluno_nivel) && (
-          <input
-            value={licaoLocal}
-            disabled={salvando}
-            onChange={(e) => {
-              setLicaoLocal(e.target.value);
-              setLicaoEditadaManualmente(true);
-            }}
-            placeholder={licaoSugestao || "Lição"}
-            title="Lição dada/avaliada hoje"
-            className="w-16 rounded border border-input bg-card px-1 py-0.5 text-xs font-bold text-center"
-          />
-        )}
         {c.aluno_avulso && (
           <span className="text-[9px] uppercase font-bold ml-auto tracking-wider opacity-70">
             avulso
@@ -502,80 +545,131 @@ function AlunoLinha({
           Aluno avulso — sem lançamento de presença/notas.
         </div>
       ) : (
-        <div className="mt-1 flex items-center gap-3 flex-wrap">
-          <div className="flex gap-1">
+        <>
+          <BlocoLancamento
+            rotulo={ehOnline ? "1ª lição" : null}
+            salvando={salvando}
+            mostraNotasELicao={mostraNotasELicao}
+            mostraLicao={mostraNotasELicao && temLicao}
+            estado={parte1}
+          />
+          {ehOnline && (
+            <BlocoLancamento
+              rotulo="2ª lição"
+              salvando={salvando}
+              mostraNotasELicao={mostraNotasELicao}
+              mostraLicao={mostraNotasELicao && temLicao}
+              estado={parte2}
+            />
+          )}
+          <div className="mt-1 flex items-center gap-2">
             <button
-              title="Presente"
-              disabled={salvando}
-              onClick={() => setPresencaLocal("presente")}
-              className={`w-7 h-7 rounded text-sm font-bold border-2 ${
-                presencaLocal === "presente"
-                  ? "bg-emerald-500 border-emerald-600 text-white"
-                  : "border-border bg-card hover:bg-accent"
-              }`}
+              disabled={!alterado || salvando}
+              onClick={salvar}
+              className={`ml-auto text-xs px-2.5 py-1 rounded font-medium ${
+                alterado
+                  ? "bg-primary text-primary-foreground hover:opacity-90"
+                  : "bg-muted text-muted-foreground"
+              } disabled:opacity-50`}
             >
-              ✓
-            </button>
-            <button
-              title="Falta"
-              disabled={salvando}
-              onClick={() => setPresencaLocal("falta")}
-              className={`w-7 h-7 rounded text-sm font-bold border-2 ${
-                presencaLocal === "falta"
-                  ? "bg-rose-500 border-rose-600 text-white"
-                  : "border-border bg-card hover:bg-accent"
-              }`}
-            >
-              ✗
+              {salvando ? "Salvando…" : "Salvar"}
             </button>
           </div>
-
-          {mostraNotasELicao &&
-            CAMPOS_NOTA.map(({ key, label }) => {
-              const atual = notasLocal[key];
-              return (
-                <div key={key} className="flex items-center gap-0.5" title={label}>
-                  <span className="text-[10px] font-bold text-muted-foreground w-3">
-                    {key.charAt(0).toUpperCase()}
-                  </span>
-                  <div className="flex gap-0.5">
-                    {CONCEITOS.map((v) => (
-                      <button
-                        key={v}
-                        disabled={salvando}
-                        onClick={() =>
-                          setNotasLocal((prev) => ({ ...prev, [key]: atual === v ? null : v }))
-                        }
-                        className={`w-6 h-6 rounded text-[10px] font-bold border ${
-                          atual === v
-                            ? "bg-primary border-primary text-primary-foreground"
-                            : "border-border bg-card hover:bg-accent"
-                        }`}
-                      >
-                        {v}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-
-          <button
-            disabled={!alterado || salvando}
-            onClick={salvar}
-            className={`ml-auto text-xs px-2.5 py-1 rounded font-medium ${
-              alterado
-                ? "bg-primary text-primary-foreground hover:opacity-90"
-                : "bg-muted text-muted-foreground"
-            } disabled:opacity-50`}
-          >
-            {salvando ? "Salvando…" : "Salvar"}
-          </button>
-
           {erro && <div className="w-full text-xs text-destructive">{erro}</div>}
-        </div>
+        </>
       )}
     </li>
+  );
+}
+
+function BlocoLancamento({
+  rotulo,
+  salvando,
+  mostraNotasELicao,
+  mostraLicao,
+  estado,
+}: {
+  rotulo: string | null;
+  salvando: boolean;
+  mostraNotasELicao: boolean;
+  mostraLicao: boolean;
+  estado: EstadoParte;
+}) {
+  return (
+    <div className="mt-1 flex items-center gap-3 flex-wrap">
+      {rotulo && (
+        <span className="text-[10px] font-bold uppercase text-muted-foreground w-12 shrink-0">
+          {rotulo}
+        </span>
+      )}
+      <div className="flex gap-1">
+        <button
+          title="Presente"
+          disabled={salvando}
+          onClick={() => estado.setPresencaLocal("presente")}
+          className={`w-7 h-7 rounded text-sm font-bold border-2 ${
+            estado.presencaLocal === "presente"
+              ? "bg-emerald-500 border-emerald-600 text-white"
+              : "border-border bg-card hover:bg-accent"
+          }`}
+        >
+          ✓
+        </button>
+        <button
+          title="Falta"
+          disabled={salvando}
+          onClick={() => estado.setPresencaLocal("falta")}
+          className={`w-7 h-7 rounded text-sm font-bold border-2 ${
+            estado.presencaLocal === "falta"
+              ? "bg-rose-500 border-rose-600 text-white"
+              : "border-border bg-card hover:bg-accent"
+          }`}
+        >
+          ✗
+        </button>
+      </div>
+
+      {mostraLicao && (
+        <input
+          value={estado.licaoLocal}
+          disabled={salvando}
+          onChange={(e) => estado.setLicaoLocal(e.target.value)}
+          placeholder={estado.licaoSugestao || "Lição"}
+          title="Lição dada/avaliada hoje"
+          className="w-16 rounded border border-input bg-card px-1 py-0.5 text-xs font-bold text-center"
+        />
+      )}
+
+      {mostraNotasELicao &&
+        CAMPOS_NOTA.map(({ key, label }) => {
+          const atual = estado.notasLocal[key];
+          return (
+            <div key={key} className="flex items-center gap-0.5" title={label}>
+              <span className="text-[10px] font-bold text-muted-foreground w-3">
+                {key.charAt(0).toUpperCase()}
+              </span>
+              <div className="flex gap-0.5">
+                {CONCEITOS.map((v) => (
+                  <button
+                    key={v}
+                    disabled={salvando}
+                    onClick={() =>
+                      estado.setNotasLocal((prev) => ({ ...prev, [key]: atual === v ? null : v }))
+                    }
+                    className={`w-6 h-6 rounded text-[10px] font-bold border ${
+                      atual === v
+                        ? "bg-primary border-primary text-primary-foreground"
+                        : "border-border bg-card hover:bg-accent"
+                    }`}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+    </div>
   );
 }
 
@@ -608,6 +702,14 @@ function SelecaoProfessora({
           Escolha o seu nome para ver a grade.
         </p>
         <ul className="space-y-2">
+          <li>
+            <Link
+              to="/admin"
+              className="block w-full rounded-xl px-5 py-4 text-left text-lg font-semibold border-2 border-border bg-foreground text-background hover:opacity-90 transition-opacity"
+            >
+              Secretaria
+            </Link>
+          </li>
           {professoras.length === 0 && (
             <li className="text-muted-foreground text-center">Carregando…</li>
           )}
@@ -625,11 +727,6 @@ function SelecaoProfessora({
               </li>
             ))}
         </ul>
-        <div className="mt-6 text-center">
-          <Link to="/" className="text-xs text-muted-foreground underline">
-            Voltar
-          </Link>
-        </div>
       </div>
     </main>
   );

@@ -33,7 +33,10 @@ export const getAlertasFaltas = createServerFn({ method: "GET" }).handler(
       sb.from("alunos").select("*").eq("ativo", true),
       sb
         .from("aulas_presenca")
+        // Alunos online lançam 2 partes por horário — usamos só a parte 1 aqui pra
+        // cada dia contar como 1 falta (e não 2) na sequência de faltas seguidas.
         .select("aluno_id,data,periodo,status")
+        .eq("parte", 1)
         .order("data", { ascending: false })
         .order("periodo", { ascending: false }),
     ]);

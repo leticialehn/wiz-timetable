@@ -20,6 +20,7 @@ export const setPresenca = createServerFn({ method: "POST" })
       professora_id: string;
       aluno_id: string;
       periodo: number;
+      parte: number;
       dia_semana: number;
       status: StatusPresenca | null;
       observacao?: string | null;
@@ -39,11 +40,12 @@ export const setPresenca = createServerFn({ method: "POST" })
         professora_id: data.professora_id,
         aluno_id: data.aluno_id,
         periodo: data.periodo,
+        parte: data.parte,
         dia_semana: data.dia_semana,
         status: data.status,
         observacao: data.observacao ?? null,
       },
-      { onConflict: "data,professora_id,aluno_id,periodo" },
+      { onConflict: "data,professora_id,aluno_id,periodo,parte" },
     );
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -56,6 +58,7 @@ export const setNota = createServerFn({ method: "POST" })
       professora_id: string;
       aluno_id: string;
       periodo: number;
+      parte: number;
       campo: CampoNota;
       valor: ConceitoNota | null;
     }) => data,
@@ -68,12 +71,13 @@ export const setNota = createServerFn({ method: "POST" })
       professora_id: data.professora_id,
       aluno_id: data.aluno_id,
       periodo: data.periodo,
+      parte: data.parte,
     };
     row[data.campo] = data.valor;
     const { error } = await client
       .from("aulas_notas")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .upsert(row as any, { onConflict: "data,professora_id,aluno_id,periodo" });
+      .upsert(row as any, { onConflict: "data,professora_id,aluno_id,periodo,parte" });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -120,6 +124,7 @@ export const setLicao = createServerFn({ method: "POST" })
       professora_id: string;
       aluno_id: string;
       periodo: number;
+      parte: number;
       licao: string;
       nivel_no_momento: string;
     }) => data,
@@ -132,17 +137,19 @@ export const setLicao = createServerFn({ method: "POST" })
         professora_id: data.professora_id,
         aluno_id: data.aluno_id,
         periodo: data.periodo,
+        parte: data.parte,
         licao: data.licao,
         nivel_no_momento: data.nivel_no_momento,
       },
-      { onConflict: "data,professora_id,aluno_id,periodo" },
+      { onConflict: "data,professora_id,aluno_id,periodo,parte" },
     );
     if (error) throw new Error(error.message);
     return { ok: true };
   });
 
 // Última lição registrada de cada aluno (de qualquer data anterior a hoje),
-// usada para sugerir automaticamente a próxima lição.
+// usada para sugerir automaticamente a próxima lição. Quando o dia anterior
+// foi de aula online (2 partes), pega a parte 2 — a lição mais avançada.
 export const getUltimasLicoes = createServerFn({ method: "GET" })
   .inputValidator((data: { aluno_ids: string[]; antesDe: string }) => data)
   .handler(
@@ -151,10 +158,11 @@ export const getUltimasLicoes = createServerFn({ method: "GET" })
       const client = await sb();
       const { data: rows, error } = await client
         .from("aulas_licoes")
-        .select("aluno_id, licao, nivel_no_momento, data")
+        .select("aluno_id, licao, nivel_no_momento, data, parte")
         .in("aluno_id", data.aluno_ids)
         .lt("data", data.antesDe)
-        .order("data", { ascending: false });
+        .order("data", { ascending: false })
+        .order("parte", { ascending: false });
       if (error) throw new Error(error.message);
       const resultado: Record<string, { licao: string; nivel_no_momento: string }> = {};
       for (const row of rows ?? []) {

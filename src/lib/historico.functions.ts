@@ -11,6 +11,7 @@ export type HistoricoItem = {
   chave: string;
   data: string;
   periodo: number;
+  parte: number;
   professora_id: string;
   professora_nome: string;
   presenca: StatusPresenca | null;
@@ -35,8 +36,8 @@ export type HistoricoAluno = {
 const CAMPOS: CampoNota[] = ["fala", "audicao", "leitura", "escrita"];
 const CONCEITOS: ConceitoNota[] = ["O", "MB", "B", "R"];
 
-function chaveDe(r: { data: string; periodo: number; professora_id: string }) {
-  return `${r.data}-${r.periodo}-${r.professora_id}`;
+function chaveDe(r: { data: string; periodo: number; professora_id: string; parte: number }) {
+  return `${r.data}-${r.periodo}-${r.professora_id}-${r.parte}`;
 }
 
 // Ordena mais recente primeiro: data desc, depois período desc.
@@ -53,11 +54,11 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
       sb.from("alunos").select("*").eq("id", data.aluno_id).maybeSingle(),
       sb
         .from("aulas_presenca")
-        .select("data,periodo,professora_id,status,observacao")
+        .select("data,periodo,parte,professora_id,status,observacao")
         .eq("aluno_id", data.aluno_id),
       sb
         .from("aulas_notas")
-        .select("data,periodo,professora_id,fala,audicao,leitura,escrita")
+        .select("data,periodo,parte,professora_id,fala,audicao,leitura,escrita")
         .eq("aluno_id", data.aluno_id),
       sb.from("professoras").select("id,nome"),
     ]);
@@ -68,6 +69,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
     const presencas = (presRes.data ?? []) as {
       data: string;
       periodo: number;
+      parte: number;
       professora_id: string;
       status: StatusPresenca;
       observacao: string | null;
@@ -75,6 +77,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
     const notas = (notasRes.data ?? []) as {
       data: string;
       periodo: number;
+      parte: number;
       professora_id: string;
       fala: ConceitoNota | null;
       audicao: ConceitoNota | null;
@@ -91,6 +94,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
         chave,
         data: p.data,
         periodo: p.periodo,
+        parte: p.parte,
         professora_id: p.professora_id,
         professora_nome: nomeProf.get(p.professora_id) ?? "?",
         presenca: p.status,
@@ -114,6 +118,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
           chave,
           data: n.data,
           periodo: n.periodo,
+          parte: n.parte,
           professora_id: n.professora_id,
           professora_nome: nomeProf.get(n.professora_id) ?? "?",
           presenca: null,
@@ -130,7 +135,9 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
     const totalPresencas = presencas.filter((p) => p.status === "presente").length;
     const totalFaltas = presencas.filter((p) => p.status === "falta").length;
 
-    const presencasOrdenadas = [...presencas].sort(porDataDesc);
+    // Sequência de faltas seguidas conta por dia (parte 1), pra um dia inteiro de
+    // aula online faltada não valer como 2 faltas seguidas.
+    const presencasOrdenadas = [...presencas.filter((p) => p.parte === 1)].sort(porDataDesc);
     let sequenciaFaltas = 0;
     for (const p of presencasOrdenadas) {
       if (p.status === "falta") sequenciaFaltas++;

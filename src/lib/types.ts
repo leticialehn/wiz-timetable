@@ -268,12 +268,15 @@ export type UsuarioAutenticado = {
   ativo: boolean;
 };
 
+// Alunos de "Aula online" fazem 2 lições no mesmo horário — parte 1 e parte 2.
+// Todo outro tipo usa sempre parte 1.
 export type PresencaRow = {
   id: string;
   data: string;
   professora_id: string;
   aluno_id: string;
   periodo: number;
+  parte: number;
   dia_semana: number;
   status: StatusPresenca;
   observacao: string | null;
@@ -285,6 +288,7 @@ export type NotaRow = {
   professora_id: string;
   aluno_id: string;
   periodo: number;
+  parte: number;
   fala: ConceitoNota | null;
   audicao: ConceitoNota | null;
   leitura: ConceitoNota | null;
@@ -297,6 +301,7 @@ export type LicaoRow = {
   professora_id: string;
   aluno_id: string;
   periodo: number;
+  parte: number;
   licao: string;
   nivel_no_momento: string;
 };

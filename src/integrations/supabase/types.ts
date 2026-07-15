@@ -42,6 +42,7 @@ export type Database = {
           fala: string | null;
           id: string;
           leitura: string | null;
+          parte: number;
           periodo: number;
           professora_id: string;
           updated_at: string;
@@ -55,6 +56,7 @@ export type Database = {
           fala?: string | null;
           id?: string;
           leitura?: string | null;
+          parte?: number;
           periodo: number;
           professora_id: string;
           updated_at?: string;
@@ -68,6 +70,7 @@ export type Database = {
           fala?: string | null;
           id?: string;
           leitura?: string | null;
+          parte?: number;
           periodo?: number;
           professora_id?: string;
           updated_at?: string;
@@ -97,6 +100,7 @@ export type Database = {
           dia_semana: number;
           id: string;
           observacao: string | null;
+          parte: number;
           periodo: number;
           professora_id: string;
           status: string;
@@ -109,6 +113,7 @@ export type Database = {
           dia_semana: number;
           id?: string;
           observacao?: string | null;
+          parte?: number;
           periodo: number;
           professora_id: string;
           status: string;
@@ -121,6 +126,7 @@ export type Database = {
           dia_semana?: number;
           id?: string;
           observacao?: string | null;
+          parte?: number;
           periodo?: number;
           professora_id?: string;
           status?: string;
@@ -151,6 +157,7 @@ export type Database = {
           id: string;
           licao: string;
           nivel_no_momento: string;
+          parte: number;
           periodo: number;
           professora_id: string;
           updated_at: string;
@@ -162,6 +169,7 @@ export type Database = {
           id?: string;
           licao: string;
           nivel_no_momento: string;
+          parte?: number;
           periodo: number;
           professora_id: string;
           updated_at?: string;
@@ -173,6 +181,7 @@ export type Database = {
           id?: string;
           licao?: string;
           nivel_no_momento?: string;
+          parte?: number;
           periodo?: number;
           professora_id?: string;
           updated_at?: string;
