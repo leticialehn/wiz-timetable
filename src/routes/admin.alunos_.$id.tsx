@@ -91,17 +91,24 @@ function HistoricoAlunoPage() {
                   {formatarDataBR(item.data)} · Período {item.periodo} · {item.professora_nome}
                   {item.parte === 2 && " · 2ª aula"}
                 </div>
-                {item.presenca && (
-                  <span
-                    className={`text-xs font-bold uppercase px-2 py-0.5 rounded ${
-                      item.presenca === "presente"
-                        ? "bg-emerald-500/15 text-emerald-600"
-                        : "bg-rose-500/15 text-rose-600"
-                    }`}
-                  >
-                    {item.presenca}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {item.licao && (
+                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-muted">
+                      {item.licao}
+                    </span>
+                  )}
+                  {item.presenca && (
+                    <span
+                      className={`text-xs font-bold uppercase px-2 py-0.5 rounded ${
+                        item.presenca === "presente"
+                          ? "bg-emerald-500/15 text-emerald-600"
+                          : "bg-rose-500/15 text-rose-600"
+                      }`}
+                    >
+                      {item.presenca}
+                    </span>
+                  )}
+                </div>
               </div>
               {item.notas && (
                 <div className="flex gap-2 mt-2 flex-wrap text-xs">

@@ -80,23 +80,37 @@ function posicaoDoLabel(labelBruto: string, blockStart: number): number | null {
 }
 
 // Calcula a lição sugerida para hoje, a partir do nível atual do aluno e do
-// último registro de lição dele (de qualquer data anterior).
+// histórico de lições dele, do mais recente pro mais antigo (de qualquer data
+// anterior). A sugestão sempre continua a partir da MAIOR lição já atingida
+// neste nível — se o aluno refizer uma lição anterior, isso não "volta" a
+// sugestão; ela continua de onde ele já tinha chegado.
 export function licaoSugerida(
   nivelAtual: string,
-  ultimo: { licao: string; nivel_no_momento: string } | null,
+  historico: { licao: string; nivel_no_momento: string }[],
 ): string {
   const blockStart = BLOCO_INICIO[nivelAtual as Nivel];
   if (blockStart === undefined) return "";
-  if (!ultimo) return "";
-  if (ultimo.nivel_no_momento !== nivelAtual) {
+  if (historico.length === 0) return "";
+
+  const maisRecente = historico[0];
+  if (maisRecente.nivel_no_momento !== nivelAtual) {
     // Mudou de nível: começa do zero na trilha nova, sem precisar de lançamento manual.
     return labelDaPosicao(1, blockStart);
   }
-  const posAnterior = posicaoDoLabel(ultimo.licao, blockStart);
-  if (posAnterior === null) {
-    // Valor anterior não era L/R reconhecido (HW, Extra, repetição) — repete.
-    return ultimo.licao;
+
+  // Maior posição já atingida entre os lançamentos deste nível, andando do mais
+  // recente pro mais antigo até achar uma entrada de um nível diferente (troca).
+  let maiorPos: number | null = null;
+  for (const h of historico) {
+    if (h.nivel_no_momento !== nivelAtual) break;
+    const pos = posicaoDoLabel(h.licao, blockStart);
+    if (pos !== null && (maiorPos === null || pos > maiorPos)) maiorPos = pos;
   }
-  if (posAnterior >= POSICOES_POR_BLOCO) return ultimo.licao;
-  return labelDaPosicao(posAnterior + 1, blockStart);
+
+  if (maiorPos === null) {
+    // Nenhum lançamento reconhecido (HW, Extra…) neste nível — repete o mais recente.
+    return maisRecente.licao;
+  }
+  if (maiorPos >= POSICOES_POR_BLOCO) return maisRecente.licao;
+  return labelDaPosicao(maiorPos + 1, blockStart);
 }

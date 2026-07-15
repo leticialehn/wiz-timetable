@@ -147,13 +147,13 @@ export const setLicao = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// Última lição registrada de cada aluno (de qualquer data anterior a hoje),
-// usada para sugerir automaticamente a próxima lição. Quando o dia anterior
-// foi de aula online (2 partes), pega a parte 2 — a lição mais avançada.
-export const getUltimasLicoes = createServerFn({ method: "GET" })
+// Histórico de lições de cada aluno (de qualquer data anterior a hoje), do
+// mais recente pro mais antigo — usado pra sugerir automaticamente a próxima
+// lição a partir da maior posição já atingida (não só a mais recente).
+export const getHistoricoLicoes = createServerFn({ method: "GET" })
   .inputValidator((data: { aluno_ids: string[]; antesDe: string }) => data)
   .handler(
-    async ({ data }): Promise<Record<string, { licao: string; nivel_no_momento: string }>> => {
+    async ({ data }): Promise<Record<string, { licao: string; nivel_no_momento: string }[]>> => {
       if (data.aluno_ids.length === 0) return {};
       const client = await sb();
       const { data: rows, error } = await client
@@ -164,11 +164,10 @@ export const getUltimasLicoes = createServerFn({ method: "GET" })
         .order("data", { ascending: false })
         .order("parte", { ascending: false });
       if (error) throw new Error(error.message);
-      const resultado: Record<string, { licao: string; nivel_no_momento: string }> = {};
+      const resultado: Record<string, { licao: string; nivel_no_momento: string }[]> = {};
       for (const row of rows ?? []) {
-        if (!resultado[row.aluno_id]) {
-          resultado[row.aluno_id] = { licao: row.licao, nivel_no_momento: row.nivel_no_momento };
-        }
+        if (!resultado[row.aluno_id]) resultado[row.aluno_id] = [];
+        resultado[row.aluno_id].push({ licao: row.licao, nivel_no_momento: row.nivel_no_momento });
       }
       return resultado;
     },

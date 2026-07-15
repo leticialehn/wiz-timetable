@@ -16,6 +16,7 @@ export type HistoricoItem = {
   professora_nome: string;
   presenca: StatusPresenca | null;
   notas: Record<CampoNota, ConceitoNota | null> | null;
+  licao: string | null;
   observacao: string | null;
 };
 
@@ -50,7 +51,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
   .inputValidator((data: { aluno_id: string }) => data)
   .handler(async ({ data }): Promise<HistoricoAluno | null> => {
     const sb = await publicClient();
-    const [alunoRes, presRes, notasRes, profRes] = await Promise.all([
+    const [alunoRes, presRes, notasRes, licoesRes, profRes] = await Promise.all([
       sb.from("alunos").select("*").eq("id", data.aluno_id).maybeSingle(),
       sb
         .from("aulas_presenca")
@@ -59,6 +60,10 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
       sb
         .from("aulas_notas")
         .select("data,periodo,parte,professora_id,fala,audicao,leitura,escrita")
+        .eq("aluno_id", data.aluno_id),
+      sb
+        .from("aulas_licoes")
+        .select("data,periodo,parte,professora_id,licao")
         .eq("aluno_id", data.aluno_id),
       sb.from("professoras").select("id,nome"),
     ]);
@@ -84,6 +89,13 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
       leitura: ConceitoNota | null;
       escrita: ConceitoNota | null;
     }[];
+    const licoes = (licoesRes.data ?? []) as {
+      data: string;
+      periodo: number;
+      parte: number;
+      professora_id: string;
+      licao: string;
+    }[];
     const professoras = (profRes.data ?? []) as { id: string; nome: string }[];
     const nomeProf = new Map(professoras.map((p) => [p.id, p.nome]));
 
@@ -99,6 +111,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
         professora_nome: nomeProf.get(p.professora_id) ?? "?",
         presenca: p.status,
         notas: null,
+        licao: null,
         observacao: p.observacao,
       });
     }
@@ -123,6 +136,27 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
           professora_nome: nomeProf.get(n.professora_id) ?? "?",
           presenca: null,
           notas: notasValores,
+          licao: null,
+          observacao: null,
+        });
+      }
+    }
+    for (const l of licoes) {
+      const chave = chaveDe(l);
+      const existente = porChave.get(chave);
+      if (existente) {
+        existente.licao = l.licao;
+      } else {
+        porChave.set(chave, {
+          chave,
+          data: l.data,
+          periodo: l.periodo,
+          parte: l.parte,
+          professora_id: l.professora_id,
+          professora_nome: nomeProf.get(l.professora_id) ?? "?",
+          presenca: null,
+          notas: null,
+          licao: l.licao,
           observacao: null,
         });
       }

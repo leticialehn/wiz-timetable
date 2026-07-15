@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getGradeSemana } from "@/lib/grade.functions";
 import {
   getLancamentosSemana,
-  getUltimasLicoes,
+  getHistoricoLicoes,
   setPresenca,
   setNota,
   setLicao,
@@ -95,11 +95,11 @@ function ProfessoraPage() {
     [cels],
   );
 
-  const getUltimasLicoesFn = useServerFn(getUltimasLicoes);
-  const { data: ultimasLicoes } = useQuery({
-    queryKey: ["ultimas-licoes", dataDoDia, alunoIdsHoje],
+  const getHistoricoLicoesFn = useServerFn(getHistoricoLicoes);
+  const { data: historicoLicoes } = useQuery({
+    queryKey: ["historico-licoes", dataDoDia, alunoIdsHoje],
     enabled: alunoIdsHoje.length > 0,
-    queryFn: () => getUltimasLicoesFn({ data: { aluno_ids: alunoIdsHoje, antesDe: dataDoDia } }),
+    queryFn: () => getHistoricoLicoesFn({ data: { aluno_ids: alunoIdsHoje, antesDe: dataDoDia } }),
   });
 
   if (!mounted) return null;
@@ -219,7 +219,7 @@ function ProfessoraPage() {
                   presencas={presencasDoDia}
                   notas={notasDoDia}
                   licoes={licoesDoDia}
-                  ultimasLicoes={ultimasLicoes ?? {}}
+                  historicoLicoes={historicoLicoes ?? {}}
                   dataDoDia={dataDoDia}
                   diaSemana={diaAtivo}
                   professoraId={professoraId}
@@ -253,7 +253,7 @@ function AulaCard({
   presencas,
   notas,
   licoes,
-  ultimasLicoes,
+  historicoLicoes,
   dataDoDia,
   diaSemana,
   professoraId,
@@ -266,7 +266,7 @@ function AulaCard({
   presencas: PresencaRow[];
   notas: NotaRow[];
   licoes: LicaoRow[];
-  ultimasLicoes: Record<string, { licao: string; nivel_no_momento: string }>;
+  historicoLicoes: Record<string, { licao: string; nivel_no_momento: string }[]>;
   dataDoDia: string;
   diaSemana: number;
   professoraId: string;
@@ -322,7 +322,7 @@ function AulaCard({
                     ? licoes.filter((l) => l.aluno_id === c.aluno_id && l.periodo === periodo)
                     : []
                 }
-                ultimaLicao={c.aluno_id ? (ultimasLicoes[c.aluno_id] ?? null) : null}
+                historicoLicao={c.aluno_id ? (historicoLicoes[c.aluno_id] ?? []) : []}
                 dataDoDia={dataDoDia}
                 diaSemana={diaSemana}
                 professoraId={professoraId}
@@ -359,7 +359,7 @@ function useParte(
   const [licaoEditadaManualmente, setLicaoEditadaManualmente] = useState(false);
 
   // A sugestão de lição depende de uma consulta que carrega depois da grade
-  // (getUltimasLicoes), ou — na parte 2 — do valor digitado na parte 1. Se ela
+  // (getHistoricoLicoes), ou — na parte 2 — do valor digitado na parte 1. Se ela
   // mudar depois do primeiro render, atualiza o valor mostrado — a menos que a
   // professora já tenha mexido no campo.
   useEffect(() => {
@@ -402,7 +402,7 @@ function AlunoLinha({
   presencas,
   notas,
   licoes,
-  ultimaLicao,
+  historicoLicao,
   dataDoDia,
   diaSemana,
   professoraId,
@@ -413,7 +413,7 @@ function AlunoLinha({
   presencas: PresencaRow[];
   notas: NotaRow[];
   licoes: LicaoRow[];
-  ultimaLicao: { licao: string; nivel_no_momento: string } | null;
+  historicoLicao: { licao: string; nivel_no_momento: string }[];
   dataDoDia: string;
   diaSemana: number;
   professoraId: string;
@@ -428,7 +428,7 @@ function AlunoLinha({
   const ehOnline = c.tipo === "online";
   const temLicao = temTrackingDeLicao(c.aluno_nivel);
 
-  const licaoSugestao1 = temLicao ? licaoSugerida(c.aluno_nivel, ultimaLicao) : "";
+  const licaoSugestao1 = temLicao ? licaoSugerida(c.aluno_nivel, historicoLicao) : "";
   const parte1 = useParte(1, {
     presenca: presencas.find((p) => p.parte === 1) ?? null,
     nota: notas.find((n) => n.parte === 1) ?? null,
@@ -436,13 +436,14 @@ function AlunoLinha({
     licaoSugestao: licaoSugestao1,
   });
 
-  // A 2ª lição é sempre a seguinte à 1ª — encadeia a partir do valor (editado
-  // ou sugerido) que está na parte 1 agora mesmo.
+  // A 2ª lição é sempre a seguinte à maior lição já atingida — encadeia a
+  // partir do valor (editado ou sugerido) que está na parte 1 agora mesmo,
+  // junto com o histórico, pra não "voltar" se a parte 1 for uma repetição.
   const licaoSugestao2 = temLicao
-    ? licaoSugerida(c.aluno_nivel, {
-        licao: parte1.licaoLocal || licaoSugestao1,
-        nivel_no_momento: c.aluno_nivel,
-      })
+    ? licaoSugerida(c.aluno_nivel, [
+        { licao: parte1.licaoLocal || licaoSugestao1, nivel_no_momento: c.aluno_nivel },
+        ...historicoLicao,
+      ])
     : "";
   const parte2 = useParte(2, {
     presenca: presencas.find((p) => p.parte === 2) ?? null,
@@ -519,7 +520,7 @@ function AlunoLinha({
       ];
       await Promise.all(chamadas);
       qc.invalidateQueries({ queryKey: ["lancamentos-semana"] });
-      qc.invalidateQueries({ queryKey: ["ultimas-licoes"] });
+      qc.invalidateQueries({ queryKey: ["historico-licoes"] });
     } catch (e) {
       setErro((e as Error).message);
     } finally {
@@ -534,6 +535,16 @@ function AlunoLinha({
         <span className="text-base font-semibold">{c.aluno_nome}</span>
         {mostraLivro && c.aluno_nivel && (
           <span className="text-xs opacity-70">— {c.aluno_nivel}</span>
+        )}
+        {c.aluno_id && (
+          <Link
+            to="/professora/aluno/$id"
+            params={{ id: c.aluno_id }}
+            className="text-xs text-muted-foreground underline shrink-0"
+            title="Ver histórico de lições e notas"
+          >
+            Histórico
+          </Link>
         )}
         {c.aluno_avulso && (
           <span className="text-[9px] uppercase font-bold ml-auto tracking-wider opacity-70">
