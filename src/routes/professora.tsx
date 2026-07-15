@@ -424,8 +424,12 @@ function AlunoLinha({
   const licaoFn = useServerFn(setLicao);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // Raro: aluno adiantado faz 2 lições na mesma hora de aula regular — a
+  // professora aciona manualmente, sem duplicar presença (é a mesma visita).
+  const [licaoExtraAtiva, setLicaoExtraAtiva] = useState(false);
 
   const ehOnline = c.tipo === "online";
+  const mostraParte2 = ehOnline || licaoExtraAtiva;
   const temLicao = temTrackingDeLicao(c.aluno_nivel);
 
   const licaoSugestao1 = temLicao ? licaoSugerida(c.aluno_nivel, historicoLicao) : "";
@@ -452,7 +456,7 @@ function AlunoLinha({
     licaoSugestao: licaoSugestao2,
   });
 
-  const alterado = parte1.alterado || (ehOnline && parte2.alterado);
+  const alterado = parte1.alterado || (mostraParte2 && parte2.alterado);
 
   async function salvarParte(estado: EstadoParte) {
     const chamadas: Promise<unknown>[] = [];
@@ -516,7 +520,7 @@ function AlunoLinha({
     try {
       const chamadas = [
         ...(await salvarParte(parte1)),
-        ...(ehOnline ? await salvarParte(parte2) : []),
+        ...(mostraParte2 ? await salvarParte(parte2) : []),
       ];
       await Promise.all(chamadas);
       qc.invalidateQueries({ queryKey: ["lancamentos-semana"] });
@@ -560,18 +564,25 @@ function AlunoLinha({
       ) : (
         <>
           <BlocoLancamento
-            rotulo={ehOnline ? "1ª lição" : null}
+            rotulo={mostraParte2 ? "1ª lição" : null}
             salvando={salvando}
             mostraNotasELicao={mostraNotasELicao}
             mostraLicao={mostraNotasELicao && temLicao}
+            mostraPresenca
             estado={parte1}
+            onAdicionarExtra={
+              !ehOnline && !licaoExtraAtiva && mostraNotasELicao && temLicao
+                ? () => setLicaoExtraAtiva(true)
+                : undefined
+            }
           />
-          {ehOnline && (
+          {mostraParte2 && (
             <BlocoLancamento
-              rotulo="2ª lição"
+              rotulo={ehOnline ? "2ª lição" : "2ª lição (mesma hora)"}
               salvando={salvando}
               mostraNotasELicao={mostraNotasELicao}
               mostraLicao={mostraNotasELicao && temLicao}
+              mostraPresenca={ehOnline}
               estado={parte2}
             />
           )}
@@ -600,13 +611,17 @@ function BlocoLancamento({
   salvando,
   mostraNotasELicao,
   mostraLicao,
+  mostraPresenca,
   estado,
+  onAdicionarExtra,
 }: {
   rotulo: string | null;
   salvando: boolean;
   mostraNotasELicao: boolean;
   mostraLicao: boolean;
+  mostraPresenca: boolean;
   estado: EstadoParte;
+  onAdicionarExtra?: () => void;
 }) {
   return (
     <div className="mt-1 flex items-center gap-3 flex-wrap">
@@ -615,34 +630,38 @@ function BlocoLancamento({
           {rotulo}
         </span>
       )}
-      <div className="flex gap-1">
-        <button
-          title="Presente (clique de novo pra desmarcar)"
-          disabled={salvando}
-          onClick={() =>
-            estado.setPresencaLocal(estado.presencaLocal === "presente" ? null : "presente")
-          }
-          className={`w-7 h-7 rounded text-sm font-bold border-2 ${
-            estado.presencaLocal === "presente"
-              ? "bg-emerald-500 border-emerald-600 text-white"
-              : "border-border bg-card hover:bg-accent"
-          }`}
-        >
-          ✓
-        </button>
-        <button
-          title="Falta (clique de novo pra desmarcar)"
-          disabled={salvando}
-          onClick={() => estado.setPresencaLocal(estado.presencaLocal === "falta" ? null : "falta")}
-          className={`w-7 h-7 rounded text-sm font-bold border-2 ${
-            estado.presencaLocal === "falta"
-              ? "bg-rose-500 border-rose-600 text-white"
-              : "border-border bg-card hover:bg-accent"
-          }`}
-        >
-          ✗
-        </button>
-      </div>
+      {mostraPresenca && (
+        <div className="flex gap-1">
+          <button
+            title="Presente (clique de novo pra desmarcar)"
+            disabled={salvando}
+            onClick={() =>
+              estado.setPresencaLocal(estado.presencaLocal === "presente" ? null : "presente")
+            }
+            className={`w-7 h-7 rounded text-sm font-bold border-2 ${
+              estado.presencaLocal === "presente"
+                ? "bg-emerald-500 border-emerald-600 text-white"
+                : "border-border bg-card hover:bg-accent"
+            }`}
+          >
+            ✓
+          </button>
+          <button
+            title="Falta (clique de novo pra desmarcar)"
+            disabled={salvando}
+            onClick={() =>
+              estado.setPresencaLocal(estado.presencaLocal === "falta" ? null : "falta")
+            }
+            className={`w-7 h-7 rounded text-sm font-bold border-2 ${
+              estado.presencaLocal === "falta"
+                ? "bg-rose-500 border-rose-600 text-white"
+                : "border-border bg-card hover:bg-accent"
+            }`}
+          >
+            ✗
+          </button>
+        </div>
+      )}
 
       {mostraLicao && (
         <input
@@ -684,6 +703,17 @@ function BlocoLancamento({
             </div>
           );
         })}
+
+      {onAdicionarExtra && (
+        <button
+          type="button"
+          onClick={onAdicionarExtra}
+          title="Pra quando o aluno adianta e faz 2 lições na mesma hora (raro)"
+          className="text-xs text-muted-foreground underline shrink-0"
+        >
+          + lição extra
+        </button>
+      )}
     </div>
   );
 }

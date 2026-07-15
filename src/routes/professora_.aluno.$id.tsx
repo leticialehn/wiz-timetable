@@ -79,7 +79,12 @@ function HistoricoAlunoProfessoraPage() {
                 </thead>
                 <tbody>
                   {data.timeline.map((item) => {
-                    const periodoExibido = item.parte === 2 ? item.periodo + 1 : item.periodo;
+                    // Parte 2 de aula online é um horário seguinte de verdade (mostra a
+                    // hora cheia seguinte). Parte 2 sem presença é uma 2ª lição feita na
+                    // mesma hora (aluno adiantado) — mesma hora, só uma marcação ao lado.
+                    const segundaLicaoMesmaHora = item.parte === 2 && item.presenca === null;
+                    const periodoExibido =
+                      item.parte === 2 && !segundaLicaoMesmaHora ? item.periodo + 1 : item.periodo;
                     return (
                       <tr key={item.chave} className="border-t border-border">
                         <td className="px-2 py-1.5 whitespace-nowrap">
@@ -87,6 +92,9 @@ function HistoricoAlunoProfessoraPage() {
                         </td>
                         <td className="px-2 py-1.5 whitespace-nowrap">
                           {HORARIO_INICIO_PERIODO[periodoExibido] ?? periodoExibido}
+                          {segundaLicaoMesmaHora && (
+                            <span className="text-muted-foreground"> (2ª lição)</span>
+                          )}
                         </td>
                         <td className="px-2 py-1.5 whitespace-nowrap">
                           {item.presenca === "falta" ? (
