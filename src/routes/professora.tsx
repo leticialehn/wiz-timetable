@@ -10,7 +10,12 @@ import {
   setNota,
   setLicao,
 } from "@/lib/presenca.functions";
-import { getAlertasLicaoPendente, type AlunoLicaoPendente } from "@/lib/alertas.functions";
+import {
+  getAlertasLicaoPendente,
+  getAlertasFaltas,
+  type AlunoLicaoPendente,
+  type AlunoEmAlerta,
+} from "@/lib/alertas.functions";
 import { temTrackingDeLicao, licaoSugerida, normalizarLicao } from "@/lib/licoes";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
 import {
@@ -144,6 +149,17 @@ function ProfessoraPage() {
     [licoesPendentes],
   );
 
+  // Alerta de faltas consecutivas: só a coordenação vê (hoje, só a Letícia).
+  const getAlertasFaltasFn = useServerFn(getAlertasFaltas);
+  const { data: alertasFaltas } = useQuery({
+    queryKey: ["alertas-faltas"],
+    queryFn: () => getAlertasFaltasFn(),
+  });
+  const faltasPorAluno = useMemo(
+    () => new Map((alertasFaltas ?? []).map((a) => [a.aluno_id, a])),
+    [alertasFaltas],
+  );
+
   if (!mounted) return null;
 
   if (!professoraId || !grade?.professoras.find((p) => p.id === professoraId)) {
@@ -271,6 +287,7 @@ function ProfessoraPage() {
                     licoes={licoesDoDia}
                     historicoLicoes={historicoLicoes ?? {}}
                     pendenciasPorAluno={pendenciasPorAluno}
+                    faltasPorAluno={professora.coordenadora ? faltasPorAluno : undefined}
                     dataDoDia={dataDoDia}
                     diaSemana={diaAtivo}
                     professoraId={professoraId}
@@ -308,6 +325,7 @@ function AulaCard({
   licoes,
   historicoLicoes,
   pendenciasPorAluno,
+  faltasPorAluno,
   dataDoDia,
   diaSemana,
   professoraId,
@@ -326,6 +344,7 @@ function AulaCard({
     { licao: string; nivel_no_momento: string; praticado: boolean }[]
   >;
   pendenciasPorAluno: Map<string, AlunoLicaoPendente>;
+  faltasPorAluno: Map<string, AlunoEmAlerta> | undefined;
   dataDoDia: string;
   diaSemana: number;
   professoraId: string;
@@ -384,6 +403,7 @@ function AulaCard({
                 }
                 historicoLicao={c.aluno_id ? (historicoLicoes[c.aluno_id] ?? []) : []}
                 pendencia={c.aluno_id ? pendenciasPorAluno.get(c.aluno_id) : undefined}
+                alertaFaltas={c.aluno_id ? faltasPorAluno?.get(c.aluno_id) : undefined}
                 dataDoDia={dataDoDia}
                 diaSemana={diaSemana}
                 professoraId={professoraId}
@@ -472,6 +492,7 @@ function AlunoLinha({
   licoes,
   historicoLicao,
   pendencia,
+  alertaFaltas,
   dataDoDia,
   diaSemana,
   professoraId,
@@ -485,6 +506,7 @@ function AlunoLinha({
   licoes: LicaoRow[];
   historicoLicao: { licao: string; nivel_no_momento: string; praticado: boolean }[];
   pendencia: AlunoLicaoPendente | undefined;
+  alertaFaltas: AlunoEmAlerta | undefined;
   dataDoDia: string;
   diaSemana: number;
   professoraId: string;
@@ -667,6 +689,18 @@ function AlunoLinha({
             title={`Estudou mas ainda não praticou com a professora — ${pendencia.licao}, lançado por ${pendencia.professora_nome} em ${formatarDataBR(pendencia.data)}`}
           >
             ⏳ {pendencia.licao} pendente
+          </span>
+        )}
+        {alertaFaltas && (
+          <span
+            className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-700 dark:text-rose-400 shrink-0"
+            title={`${alertaFaltas.faltas_seguidas} faltas seguidas${
+              alertaFaltas.ultima_presenca
+                ? ` — última presença em ${formatarDataBR(alertaFaltas.ultima_presenca)}`
+                : ""
+            }`}
+          >
+            ⚠ {alertaFaltas.faltas_seguidas} faltas seguidas
           </span>
         )}
         {c.aluno_avulso && (

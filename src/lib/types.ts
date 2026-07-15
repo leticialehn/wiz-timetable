@@ -4,6 +4,9 @@ export type Professora = {
   cor: string;
   ativa: boolean;
   ordem: number;
+  // Coordenação vê funções extras (hoje: alerta de faltas consecutivas)
+  // que as demais professoras não veem.
+  coordenadora: boolean;
 };
 
 export type Aluno = {

@@ -441,6 +441,7 @@ export type Database = {
       professoras: {
         Row: {
           ativa: boolean;
+          coordenadora: boolean;
           cor: string;
           created_at: string;
           id: string;
@@ -449,6 +450,7 @@ export type Database = {
         };
         Insert: {
           ativa?: boolean;
+          coordenadora?: boolean;
           cor?: string;
           created_at?: string;
           id?: string;
@@ -457,6 +459,7 @@ export type Database = {
         };
         Update: {
           ativa?: boolean;
+          coordenadora?: boolean;
           cor?: string;
           created_at?: string;
           id?: string;

@@ -26,12 +26,20 @@ export const criarProfessora = createServerFn({ method: "POST" })
   });
 
 export const atualizarProfessora = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string; nome: string; cor: string; ativa: boolean }) => data)
+  .inputValidator(
+    (data: { id: string; nome: string; cor: string; ativa: boolean; coordenadora: boolean }) =>
+      data,
+  )
   .handler(async ({ data }) => {
     const sb = await admin();
     const { error } = await sb
       .from("professoras")
-      .update({ nome: data.nome, cor: data.cor, ativa: data.ativa })
+      .update({
+        nome: data.nome,
+        cor: data.cor,
+        ativa: data.ativa,
+        coordenadora: data.coordenadora,
+      })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
