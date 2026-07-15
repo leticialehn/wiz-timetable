@@ -40,6 +40,14 @@ export function temTrackingDeLicao(nivel: string): boolean {
   return BLOCO_INICIO[nivel as Nivel] !== undefined;
 }
 
+// Aceita variações de digitação (l23, R 4, l 5) e converte pro formato
+// padrão (L23, R4). O que não parece lição/revisão (HW, Extra…) passa direto.
+export function normalizarLicao(valor: string): string {
+  const m = /^\s*([lr])\s*(\d+)\s*$/i.exec(valor);
+  if (!m) return valor;
+  return `${m[1].toUpperCase()}${m[2]}`;
+}
+
 // posNoBloco: posição de 1 a 70 dentro do bloco de 60 lições do nível.
 function labelDaPosicao(posNoBloco: number, blockStart: number): string {
   const cicloIndex = Math.floor((posNoBloco - 1) / (LICOES_POR_CICLO + 1));
@@ -51,7 +59,8 @@ function labelDaPosicao(posNoBloco: number, blockStart: number): string {
   return `R${cicloIndex + 1}`;
 }
 
-function posicaoDoLabel(label: string, blockStart: number): number | null {
+function posicaoDoLabel(labelBruto: string, blockStart: number): number | null {
+  const label = normalizarLicao(labelBruto);
   const mL = /^L(\d+)$/.exec(label);
   if (mL) {
     const licaoGlobal = parseInt(mL[1], 10);

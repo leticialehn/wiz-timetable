@@ -10,7 +10,7 @@ import {
   setNota,
   setLicao,
 } from "@/lib/presenca.functions";
-import { temTrackingDeLicao, licaoSugerida } from "@/lib/licoes";
+import { temTrackingDeLicao, licaoSugerida, normalizarLicao } from "@/lib/licoes";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
 import {
   DIAS_SEMANA,
@@ -145,32 +145,34 @@ function ProfessoraPage() {
       </header>
 
       <div className="max-w-2xl mx-auto px-4 py-4">
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <button
-            onClick={() => setDataSegunda(somarSemanas(dataSegunda, -1))}
-            className="text-xs px-3 py-1.5 rounded border border-border hover:bg-accent"
-          >
-            ← Semana anterior
-          </button>
+        <div className="mb-3">
           <button
             onClick={() => setDataSegunda(semanaAtualIso)}
-            className="text-xs px-3 py-1.5 rounded border border-border hover:bg-accent"
+            className="text-xs px-3 py-1.5 rounded border border-border hover:bg-accent mb-2"
           >
             Semana atual
           </button>
-          <button
-            onClick={() => setDataSegunda(somarSemanas(dataSegunda, 1))}
-            className="text-xs px-3 py-1.5 rounded border border-border hover:bg-accent"
-          >
-            Próxima semana →
-          </button>
-          <div className="text-xs text-muted-foreground">
-            {formatarDataBR(datas[0])} a {formatarDataBR(datas[5])}
-            {eSemanaPassada && (
-              <span className="ml-2 px-1.5 py-0.5 rounded bg-muted uppercase text-[10px] font-bold">
-                histórico
-              </span>
-            )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setDataSegunda(somarSemanas(dataSegunda, -1))}
+              className="text-xs px-3 py-1.5 rounded border border-border hover:bg-accent"
+            >
+              ← Semana anterior
+            </button>
+            <button
+              onClick={() => setDataSegunda(somarSemanas(dataSegunda, 1))}
+              className="text-xs px-3 py-1.5 rounded border border-border hover:bg-accent"
+            >
+              Próxima semana →
+            </button>
+            <div className="text-xs text-muted-foreground">
+              {formatarDataBR(datas[0])} a {formatarDataBR(datas[5])}
+              {eSemanaPassada && (
+                <span className="ml-2 px-1.5 py-0.5 rounded bg-muted uppercase text-[10px] font-bold">
+                  histórico
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -635,7 +637,7 @@ function BlocoLancamento({
         <input
           value={estado.licaoLocal}
           disabled={salvando}
-          onChange={(e) => estado.setLicaoLocal(e.target.value)}
+          onChange={(e) => estado.setLicaoLocal(normalizarLicao(e.target.value))}
           placeholder={estado.licaoSugestao || "Lição"}
           title="Lição dada/avaliada hoje"
           className="w-16 rounded border border-input bg-card px-1 py-0.5 text-xs font-bold text-center"
