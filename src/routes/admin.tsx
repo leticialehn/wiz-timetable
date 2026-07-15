@@ -8,7 +8,7 @@ import { formatarDataBR } from "@/lib/date-utils";
 export const Route = createFileRoute("/admin")({
   component: AdminShell,
   head: () => ({
-    meta: [{ title: "Secretaria — Grade de Aulas" }, { name: "robots", content: "noindex" }],
+    meta: [{ title: "Wizard — Grade de Aulas" }, { name: "robots", content: "noindex" }],
   }),
 });
 
@@ -22,7 +22,7 @@ function AdminShell() {
       <header className="border-b border-border bg-card sticky top-0 z-20">
         <div className="max-w-[1400px] mx-auto px-4 py-3 flex items-center gap-4 flex-wrap">
           <Link to="/admin" className="font-bold text-lg">
-            Secretaria
+            Wizard
           </Link>
           <nav className="flex gap-1 text-sm">
             <Link

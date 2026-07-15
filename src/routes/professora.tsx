@@ -710,7 +710,7 @@ function SelecaoProfessora({
               className="block w-full rounded-xl px-5 py-4 text-left text-lg font-semibold border-2 hover:opacity-90 transition-opacity"
               style={{ backgroundColor: "#0F1B6C", color: "#fff", borderColor: "#E4002B" }}
             >
-              Secretaria
+              Wizard
             </Link>
           </li>
           {professoras.length === 0 && (
