@@ -604,9 +604,11 @@ function BlocoLancamento({
       )}
       <div className="flex gap-1">
         <button
-          title="Presente"
+          title="Presente (clique de novo pra desmarcar)"
           disabled={salvando}
-          onClick={() => estado.setPresencaLocal("presente")}
+          onClick={() =>
+            estado.setPresencaLocal(estado.presencaLocal === "presente" ? null : "presente")
+          }
           className={`w-7 h-7 rounded text-sm font-bold border-2 ${
             estado.presencaLocal === "presente"
               ? "bg-emerald-500 border-emerald-600 text-white"
@@ -616,9 +618,9 @@ function BlocoLancamento({
           ✓
         </button>
         <button
-          title="Falta"
+          title="Falta (clique de novo pra desmarcar)"
           disabled={salvando}
-          onClick={() => estado.setPresencaLocal("falta")}
+          onClick={() => estado.setPresencaLocal(estado.presencaLocal === "falta" ? null : "falta")}
           className={`w-7 h-7 rounded text-sm font-bold border-2 ${
             estado.presencaLocal === "falta"
               ? "bg-rose-500 border-rose-600 text-white"
@@ -705,7 +707,8 @@ function SelecaoProfessora({
           <li>
             <Link
               to="/admin"
-              className="block w-full rounded-xl px-5 py-4 text-left text-lg font-semibold border-2 border-border bg-foreground text-background hover:opacity-90 transition-opacity"
+              className="block w-full rounded-xl px-5 py-4 text-left text-lg font-semibold border-2 hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: "#0F1B6C", color: "#fff", borderColor: "#E4002B" }}
             >
               Secretaria
             </Link>
