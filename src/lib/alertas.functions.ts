@@ -1,22 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { Aluno, StatusPresenca } from "./types";
+import type { Aluno, ConceitoNota, StatusPresenca } from "./types";
 
 async function publicClient() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
 }
 
-export type AlunoEmAlerta = {
-  aluno_id: string;
-  nome: string;
-  nivel: string;
-  faltas_seguidas: number;
-  ultima_presenca: string | null;
-};
-
 type RegistroPresenca = { aluno_id: string; data: string; periodo: number; status: StatusPresenca };
 
-// Conta faltas seguidas a partir do registro mais recente (lista já ordenada, mais recente primeiro).
+// Conta faltas seguidas a partir do registro mais recente (lista já ordenada, mais recente
+// primeiro). Só "falta" conta e continua a sequência — "presente" e "falta_avisada" (aluno
+// avisou que não vinha) encerram a contagem, já que não são motivo de alerta.
 function calcularSequenciaFaltas(registros: RegistroPresenca[]): number {
   let streak = 0;
   for (const r of registros) {
@@ -25,51 +19,6 @@ function calcularSequenciaFaltas(registros: RegistroPresenca[]): number {
   }
   return streak;
 }
-
-export const getAlertasFaltas = createServerFn({ method: "GET" }).handler(
-  async (): Promise<AlunoEmAlerta[]> => {
-    const sb = await publicClient();
-    const [alunosRes, presRes] = await Promise.all([
-      sb.from("alunos").select("*").eq("ativo", true),
-      sb
-        .from("aulas_presenca")
-        // Alunos online lançam 2 partes por horário — usamos só a parte 1 aqui pra
-        // cada dia contar como 1 falta (e não 2) na sequência de faltas seguidas.
-        .select("aluno_id,data,periodo,status")
-        .eq("parte", 1)
-        .order("data", { ascending: false })
-        .order("periodo", { ascending: false }),
-    ]);
-
-    const alunos = (alunosRes.data ?? []) as Aluno[];
-    const registros = (presRes.data ?? []) as RegistroPresenca[];
-
-    const porAluno = new Map<string, RegistroPresenca[]>();
-    for (const r of registros) {
-      if (!porAluno.has(r.aluno_id)) porAluno.set(r.aluno_id, []);
-      porAluno.get(r.aluno_id)!.push(r);
-    }
-
-    const alertas: AlunoEmAlerta[] = [];
-    for (const aluno of alunos) {
-      const regs = porAluno.get(aluno.id);
-      if (!regs || regs.length === 0) continue;
-      const faltas_seguidas = calcularSequenciaFaltas(regs);
-      if (faltas_seguidas < 2) continue;
-      const ultima_presenca = regs.find((r) => r.status === "presente")?.data ?? null;
-      alertas.push({
-        aluno_id: aluno.id,
-        nome: aluno.nome,
-        nivel: aluno.nivel,
-        faltas_seguidas,
-        ultima_presenca,
-      });
-    }
-
-    alertas.sort((a, b) => b.faltas_seguidas - a.faltas_seguidas || a.nome.localeCompare(b.nome));
-    return alertas;
-  },
-);
 
 export type AlunoLicaoPendente = {
   aluno_id: string;
@@ -139,3 +88,215 @@ export const getAlertasLicaoPendente = createServerFn({ method: "GET" }).handler
     return pendentes;
   },
 );
+
+// ============ Alertas com fluxo de ação (faltas seguidas / nota baixa em Fala) ============
+// Diferente do alerta de lição pendente acima (que qualquer professora vê), estes só
+// aparecem numa aba própria pra Wizard e coordenação — as demais professoras não veem.
+
+export type TipoAlerta = "faltas" | "nota_fala";
+
+export type AlertaAtivo = {
+  id: string;
+  aluno_id: string;
+  nome: string;
+  nivel: string;
+  tipo: TipoAlerta;
+  contagem: number;
+  status: "pendente" | "resolvido";
+  resolvido_por: string | null;
+  resolvido_em: string | null;
+  created_at: string;
+};
+
+type AlertaStatusRow = {
+  id: string;
+  aluno_id: string;
+  tipo: string;
+  status: string;
+  contagem: number;
+  resolvido_por: string | null;
+  resolvido_em: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type RegistroNota = {
+  aluno_id: string;
+  data: string;
+  periodo: number;
+  parte: number;
+  fala: ConceitoNota | null;
+};
+
+// Conta quantas das últimas vezes que Fala foi avaliada deram B ou pior (R), andando do
+// mais recente pro mais antigo. Pula lançamentos sem Fala avaliada (não quebra a sequência).
+function calcularSequenciaNotaFalaRuim(registros: RegistroNota[]): number {
+  let streak = 0;
+  for (const r of registros) {
+    if (r.fala === null) continue;
+    if (r.fala === "B" || r.fala === "R") streak++;
+    else break;
+  }
+  return streak;
+}
+
+const LIMIAR_ALERTA: Record<TipoAlerta, number> = { faltas: 2, nota_fala: 4 };
+
+function paraAlertaAtivo(row: AlertaStatusRow, aluno: Aluno): AlertaAtivo {
+  return {
+    id: row.id,
+    aluno_id: aluno.id,
+    nome: aluno.nome,
+    nivel: aluno.nivel,
+    tipo: row.tipo as TipoAlerta,
+    contagem: row.contagem,
+    status: row.status as "pendente" | "resolvido",
+    resolvido_por: row.resolvido_por,
+    resolvido_em: row.resolvido_em,
+    created_at: row.created_at,
+  };
+}
+
+export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
+  async (): Promise<AlertaAtivo[]> => {
+    const sb = await publicClient();
+    const [alunosRes, presRes, notasRes, statusRes] = await Promise.all([
+      sb.from("alunos").select("*").eq("ativo", true),
+      sb
+        .from("aulas_presenca")
+        .select("aluno_id,data,periodo,status")
+        .eq("parte", 1)
+        .order("data", { ascending: false })
+        .order("periodo", { ascending: false }),
+      sb
+        .from("aulas_notas")
+        .select("aluno_id,data,periodo,parte,fala")
+        .order("data", { ascending: false })
+        .order("periodo", { ascending: false })
+        .order("parte", { ascending: false }),
+      sb.from("alertas_status").select("*"),
+    ]);
+
+    const alunos = (alunosRes.data ?? []) as Aluno[];
+    const presencas = (presRes.data ?? []) as RegistroPresenca[];
+    const notas = (notasRes.data ?? []) as RegistroNota[];
+    const statusExistente = (statusRes.data ?? []) as AlertaStatusRow[];
+
+    const presPorAluno = new Map<string, RegistroPresenca[]>();
+    for (const r of presencas) {
+      if (!presPorAluno.has(r.aluno_id)) presPorAluno.set(r.aluno_id, []);
+      presPorAluno.get(r.aluno_id)!.push(r);
+    }
+    const notasPorAluno = new Map<string, RegistroNota[]>();
+    for (const n of notas) {
+      if (!notasPorAluno.has(n.aluno_id)) notasPorAluno.set(n.aluno_id, []);
+      notasPorAluno.get(n.aluno_id)!.push(n);
+    }
+
+    // Última linha de status por (aluno, tipo) — pode ter mais de um episódio no histórico.
+    const statusPorChave = new Map<string, AlertaStatusRow>();
+    for (const s of statusExistente) {
+      const chave = `${s.aluno_id}-${s.tipo}`;
+      const atual = statusPorChave.get(chave);
+      if (!atual || s.created_at > atual.created_at) statusPorChave.set(chave, s);
+    }
+
+    const atualizacoes: PromiseLike<unknown>[] = [];
+    const resultado: AlertaAtivo[] = [];
+
+    function sincronizar(aluno: Aluno, tipo: TipoAlerta, contagemAtual: number) {
+      const chave = `${aluno.id}-${tipo}`;
+      const existente = statusPorChave.get(chave);
+
+      if (contagemAtual < LIMIAR_ALERTA[tipo]) {
+        // Não está mais em alerta agora. Se já tinha um episódio (pendente ou
+        // resolvido), mantém no histórico como está — não mexe.
+        if (existente) resultado.push(paraAlertaAtivo(existente, aluno));
+        return;
+      }
+
+      if (!existente) {
+        atualizacoes.push(
+          sb
+            .from("alertas_status")
+            .insert({ aluno_id: aluno.id, tipo, status: "pendente", contagem: contagemAtual })
+            .select()
+            .single()
+            .then(({ data }) => {
+              if (data) resultado.push(paraAlertaAtivo(data as AlertaStatusRow, aluno));
+            }),
+        );
+        return;
+      }
+
+      if (existente.status === "pendente") {
+        if (contagemAtual !== existente.contagem) {
+          atualizacoes.push(
+            sb.from("alertas_status").update({ contagem: contagemAtual }).eq("id", existente.id),
+          );
+        }
+        resultado.push(paraAlertaAtivo({ ...existente, contagem: contagemAtual }, aluno));
+        return;
+      }
+
+      // Já resolvido: só reabre se a situação piorou desde a resolução.
+      if (contagemAtual > existente.contagem) {
+        const reaberto = {
+          ...existente,
+          status: "pendente",
+          contagem: contagemAtual,
+          resolvido_por: null,
+          resolvido_em: null,
+        };
+        atualizacoes.push(
+          sb
+            .from("alertas_status")
+            .update({
+              status: "pendente",
+              contagem: contagemAtual,
+              resolvido_por: null,
+              resolvido_em: null,
+            })
+            .eq("id", existente.id),
+        );
+        resultado.push(paraAlertaAtivo(reaberto, aluno));
+      } else {
+        resultado.push(paraAlertaAtivo(existente, aluno));
+      }
+    }
+
+    for (const aluno of alunos) {
+      sincronizar(aluno, "faltas", calcularSequenciaFaltas(presPorAluno.get(aluno.id) ?? []));
+      sincronizar(
+        aluno,
+        "nota_fala",
+        calcularSequenciaNotaFalaRuim(notasPorAluno.get(aluno.id) ?? []),
+      );
+    }
+
+    await Promise.all(atualizacoes);
+
+    resultado.sort((a, b) => {
+      if (a.status !== b.status) return a.status === "pendente" ? -1 : 1;
+      if (a.status === "pendente") return b.contagem - a.contagem;
+      return (b.resolvido_em ?? "").localeCompare(a.resolvido_em ?? "");
+    });
+    return resultado;
+  },
+);
+
+export const resolverAlerta = createServerFn({ method: "POST" })
+  .inputValidator((data: { id: string; resolvido_por: string }) => data)
+  .handler(async ({ data }) => {
+    const sb = await publicClient();
+    const { error } = await sb
+      .from("alertas_status")
+      .update({
+        status: "resolvido",
+        resolvido_por: data.resolvido_por,
+        resolvido_em: new Date().toISOString(),
+      })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });

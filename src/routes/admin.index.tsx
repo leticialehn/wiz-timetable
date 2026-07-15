@@ -12,7 +12,6 @@ import {
   alternarAusenciaAvisada,
 } from "@/lib/grade.functions";
 import { criarAluno, atualizarAluno } from "@/lib/cadastros.functions";
-import { getAlertasFaltas } from "@/lib/alertas.functions";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
 import {
   datasDaSemana,
@@ -69,10 +68,6 @@ function GradePage() {
     queryKey: ["grade-semana", dataSegunda],
     queryFn: () => getFn({ data: { dataSegunda } }),
   });
-
-  const alertasFn = useServerFn(getAlertasFaltas);
-  const { data: alertas } = useQuery({ queryKey: ["alertas-faltas"], queryFn: () => alertasFn() });
-  const alertaIds = useMemo(() => new Set((alertas ?? []).map((a) => a.aluno_id)), [alertas]);
 
   const datas = useMemo(() => datasDaSemana(parseISODate(dataSegunda)), [dataSegunda]);
   const dataDoDia = datas[diaAtivo - 1];
@@ -204,7 +199,6 @@ function GradePage() {
           celulas={data.celulasPorData[dataDoDia] ?? []}
           horariosConfig={data.horariosConfig}
           diaSemana={diaAtivo}
-          alertaIds={alertaIds}
           alunos={data.alunos.filter((a) => a.ativo)}
           onAdicionar={handleAdicionar}
           onCriarEAdicionar={handleCriarEAdicionar}
@@ -240,7 +234,6 @@ function GradeTabela(props: {
   celulas: CelulaAula[];
   horariosConfig: HorarioConfig[];
   diaSemana: number;
-  alertaIds: Set<string>;
   alunos: Aluno[];
   onAdicionar: (
     professoraId: string,
@@ -324,7 +317,6 @@ function GradeTabela(props: {
                         periodo={per}
                         cfg={cfg}
                         cels={cels}
-                        alertaIds={props.alertaIds}
                         alunos={props.alunos}
                         onAdicionar={(alunoId, avulso, horarioEspecifico) =>
                           props.onAdicionar(p.id, per, alunoId, avulso, horarioEspecifico)
@@ -355,7 +347,6 @@ function CelulaConteudo({
   periodo,
   cfg,
   cels,
-  alertaIds,
   alunos,
   onAdicionar,
   onCriarEAdicionar,
@@ -369,7 +360,6 @@ function CelulaConteudo({
   periodo: number;
   cfg: HorarioConfig | null;
   cels: CelulaAula[];
-  alertaIds: Set<string>;
   alunos: Aluno[];
   onAdicionar: (
     alunoId: string,
@@ -409,7 +399,6 @@ function CelulaConteudo({
       key={c.id}
       c={c}
       mostraLivro={mostraLivro}
-      emAlerta={!!c.aluno_id && alertaIds.has(c.aluno_id)}
       onEditar={c.aluno_id ? (nome, nivel) => onEditarAluno(c.aluno_id!, nome, nivel) : null}
       onRemover={() => onRemover(c)}
       onAlternarAusencia={c.origem === "base" ? () => onAlternarAusencia(c) : null}
@@ -546,14 +535,12 @@ function LinhaVagaTrancada({ onDestrancar }: { onDestrancar: () => Promise<void>
 function LinhaPreenchida({
   c,
   mostraLivro,
-  emAlerta,
   onEditar,
   onRemover,
   onAlternarAusencia,
 }: {
   c: CelulaAula;
   mostraLivro: boolean;
-  emAlerta: boolean;
   onEditar: ((nome: string, nivel: string) => Promise<void>) | null;
   onRemover: () => void;
   onAlternarAusencia: (() => Promise<void>) | null;
@@ -660,12 +647,6 @@ function LinhaPreenchida({
             : "Horário fixo"
       }
     >
-      {emAlerta && (
-        <span
-          className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0"
-          title="Alerta de faltas consecutivas"
-        />
-      )}
       {c.horario_especifico && (
         <span className="font-semibold shrink-0">{c.horario_especifico}</span>
       )}

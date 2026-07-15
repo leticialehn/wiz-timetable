@@ -1,9 +1,7 @@
 import { createFileRoute, Outlet, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { getAlertasFaltas } from "@/lib/alertas.functions";
-import { formatarDataBR } from "@/lib/date-utils";
+import { getAlertasAtivos } from "@/lib/alertas.functions";
 
 export const Route = createFileRoute("/admin")({
   component: AdminShell,
@@ -13,9 +11,9 @@ export const Route = createFileRoute("/admin")({
 });
 
 function AdminShell() {
-  const alertasFn = useServerFn(getAlertasFaltas);
-  const { data: alertas } = useQuery({ queryKey: ["alertas-faltas"], queryFn: () => alertasFn() });
-  const [showAlertas, setShowAlertas] = useState(false);
+  const alertasFn = useServerFn(getAlertasAtivos);
+  const { data: alertas } = useQuery({ queryKey: ["alertas-ativos"], queryFn: () => alertasFn() });
+  const pendentes = (alertas ?? []).filter((a) => a.status === "pendente").length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -61,45 +59,20 @@ function AdminShell() {
             >
               Usuários
             </Link>
+            <Link
+              to="/admin/alertas"
+              activeProps={{ className: "bg-accent" }}
+              className="px-3 py-1.5 rounded-md hover:bg-accent flex items-center gap-1"
+            >
+              Alertas
+              {pendentes > 0 && (
+                <span className="text-xs px-1.5 py-0.5 rounded-full bg-orange-500 text-white font-medium">
+                  {pendentes}
+                </span>
+              )}
+            </Link>
           </nav>
           <div className="ml-auto flex items-center gap-2">
-            {alertas && alertas.length > 0 && (
-              <div className="relative" onMouseLeave={() => setShowAlertas(false)}>
-                <button
-                  onClick={() => setShowAlertas((v) => !v)}
-                  className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md bg-orange-500 text-white font-medium hover:bg-orange-600"
-                >
-                  <span aria-hidden>⚠</span>
-                  {alertas.length} em alerta
-                </button>
-                {showAlertas && (
-                  <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto rounded-lg border border-border bg-card shadow-xl z-30">
-                    <div className="p-3 border-b border-border font-medium text-sm">
-                      Alunos em alerta de faltas consecutivas
-                    </div>
-                    <ul className="divide-y divide-border">
-                      {alertas.map((a) => (
-                        <li key={a.aluno_id} className="p-3">
-                          <Link
-                            to="/admin/alunos/$id"
-                            params={{ id: a.aluno_id }}
-                            onClick={() => setShowAlertas(false)}
-                            className="block hover:underline"
-                          >
-                            <span className="font-medium">{a.nome}</span>
-                            <span className="text-muted-foreground"> — {a.nivel}</span>
-                          </Link>
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {a.faltas_seguidas} faltas seguidas · última presença:{" "}
-                            {a.ultima_presenca ? formatarDataBR(a.ultima_presenca) : "nunca"}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
             <Link
               to="/professora"
               className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-accent"

@@ -13,10 +13,12 @@ import { Route as ProfessoraRouteImport } from './routes/professora'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as ProfessoraAlertasRouteImport } from './routes/professora_.alertas'
 import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as AdminRelatoriosRouteImport } from './routes/admin.relatorios'
 import { Route as AdminProfessorasRouteImport } from './routes/admin.professoras'
 import { Route as AdminAlunosRouteImport } from './routes/admin.alunos'
+import { Route as AdminAlertasRouteImport } from './routes/admin.alertas'
 import { Route as ProfessoraAlunoIdRouteImport } from './routes/professora_.aluno.$id'
 import { Route as AdminAlunosIdRouteImport } from './routes/admin.alunos_.$id'
 
@@ -40,6 +42,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const ProfessoraAlertasRoute = ProfessoraAlertasRouteImport.update({
+  id: '/professora_/alertas',
+  path: '/professora/alertas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsuariosRoute = AdminUsuariosRouteImport.update({
   id: '/usuarios',
   path: '/usuarios',
@@ -60,6 +67,11 @@ const AdminAlunosRoute = AdminAlunosRouteImport.update({
   path: '/alunos',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAlertasRoute = AdminAlertasRouteImport.update({
+  id: '/alertas',
+  path: '/alertas',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ProfessoraAlunoIdRoute = ProfessoraAlunoIdRouteImport.update({
   id: '/professora_/aluno/$id',
   path: '/professora/aluno/$id',
@@ -75,10 +87,12 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/professora': typeof ProfessoraRoute
+  '/admin/alertas': typeof AdminAlertasRoute
   '/admin/alunos': typeof AdminAlunosRoute
   '/admin/professoras': typeof AdminProfessorasRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
+  '/professora/alertas': typeof ProfessoraAlertasRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/alunos/$id': typeof AdminAlunosIdRoute
   '/professora/aluno/$id': typeof ProfessoraAlunoIdRoute
@@ -86,10 +100,12 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/professora': typeof ProfessoraRoute
+  '/admin/alertas': typeof AdminAlertasRoute
   '/admin/alunos': typeof AdminAlunosRoute
   '/admin/professoras': typeof AdminProfessorasRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
+  '/professora/alertas': typeof ProfessoraAlertasRoute
   '/admin': typeof AdminIndexRoute
   '/admin/alunos/$id': typeof AdminAlunosIdRoute
   '/professora/aluno/$id': typeof ProfessoraAlunoIdRoute
@@ -99,10 +115,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/professora': typeof ProfessoraRoute
+  '/admin/alertas': typeof AdminAlertasRoute
   '/admin/alunos': typeof AdminAlunosRoute
   '/admin/professoras': typeof AdminProfessorasRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
+  '/professora_/alertas': typeof ProfessoraAlertasRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/alunos_/$id': typeof AdminAlunosIdRoute
   '/professora_/aluno/$id': typeof ProfessoraAlunoIdRoute
@@ -113,10 +131,12 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/professora'
+    | '/admin/alertas'
     | '/admin/alunos'
     | '/admin/professoras'
     | '/admin/relatorios'
     | '/admin/usuarios'
+    | '/professora/alertas'
     | '/admin/'
     | '/admin/alunos/$id'
     | '/professora/aluno/$id'
@@ -124,10 +144,12 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/professora'
+    | '/admin/alertas'
     | '/admin/alunos'
     | '/admin/professoras'
     | '/admin/relatorios'
     | '/admin/usuarios'
+    | '/professora/alertas'
     | '/admin'
     | '/admin/alunos/$id'
     | '/professora/aluno/$id'
@@ -136,10 +158,12 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/professora'
+    | '/admin/alertas'
     | '/admin/alunos'
     | '/admin/professoras'
     | '/admin/relatorios'
     | '/admin/usuarios'
+    | '/professora_/alertas'
     | '/admin/'
     | '/admin/alunos_/$id'
     | '/professora_/aluno/$id'
@@ -149,6 +173,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   ProfessoraRoute: typeof ProfessoraRoute
+  ProfessoraAlertasRoute: typeof ProfessoraAlertasRoute
   ProfessoraAlunoIdRoute: typeof ProfessoraAlunoIdRoute
 }
 
@@ -182,6 +207,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/professora_/alertas': {
+      id: '/professora_/alertas'
+      path: '/professora/alertas'
+      fullPath: '/professora/alertas'
+      preLoaderRoute: typeof ProfessoraAlertasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/usuarios': {
       id: '/admin/usuarios'
       path: '/usuarios'
@@ -210,6 +242,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAlunosRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/alertas': {
+      id: '/admin/alertas'
+      path: '/alertas'
+      fullPath: '/admin/alertas'
+      preLoaderRoute: typeof AdminAlertasRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/professora_/aluno/$id': {
       id: '/professora_/aluno/$id'
       path: '/professora/aluno/$id'
@@ -228,6 +267,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminAlertasRoute: typeof AdminAlertasRoute
   AdminAlunosRoute: typeof AdminAlunosRoute
   AdminProfessorasRoute: typeof AdminProfessorasRoute
   AdminRelatoriosRoute: typeof AdminRelatoriosRoute
@@ -237,6 +277,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAlertasRoute: AdminAlertasRoute,
   AdminAlunosRoute: AdminAlunosRoute,
   AdminProfessorasRoute: AdminProfessorasRoute,
   AdminRelatoriosRoute: AdminRelatoriosRoute,
@@ -251,6 +292,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   ProfessoraRoute: ProfessoraRoute,
+  ProfessoraAlertasRoute: ProfessoraAlertasRoute,
   ProfessoraAlunoIdRoute: ProfessoraAlunoIdRoute,
 }
 export const routeTree = rootRouteImport

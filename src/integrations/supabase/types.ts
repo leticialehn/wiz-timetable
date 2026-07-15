@@ -8,6 +8,50 @@ export type Database = {
   };
   public: {
     Tables: {
+      alertas_status: {
+        Row: {
+          aluno_id: string;
+          contagem: number;
+          created_at: string;
+          id: string;
+          resolvido_em: string | null;
+          resolvido_por: string | null;
+          status: string;
+          tipo: string;
+          updated_at: string;
+        };
+        Insert: {
+          aluno_id: string;
+          contagem: number;
+          created_at?: string;
+          id?: string;
+          resolvido_em?: string | null;
+          resolvido_por?: string | null;
+          status?: string;
+          tipo: string;
+          updated_at?: string;
+        };
+        Update: {
+          aluno_id?: string;
+          contagem?: number;
+          created_at?: string;
+          id?: string;
+          resolvido_em?: string | null;
+          resolvido_por?: string | null;
+          status?: string;
+          tipo?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "alertas_status_aluno_id_fkey";
+            columns: ["aluno_id"];
+            isOneToOne: false;
+            referencedRelation: "alunos";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       alunos: {
         Row: {
           ativo: boolean;
