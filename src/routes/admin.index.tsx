@@ -1134,7 +1134,10 @@ function CelulaEditor(props: {
                   </button>
                 ))}
               </div>
-              {(tipo === "reforco" || tipo === "conversacao" || fechado) && (
+              {(tipo === "reforco" ||
+                tipo === "conversacao" ||
+                fechado ||
+                props.professora.sem_lancamento) && (
                 <input
                   value={tema}
                   onChange={(e) => setTema(e.target.value)}
@@ -1143,7 +1146,9 @@ function CelulaEditor(props: {
                       ? "Tema da conversação"
                       : tipo === "reforco"
                         ? "Conteúdo a ser estudado"
-                        : "Observação (opcional)"
+                        : props.professora.sem_lancamento
+                          ? "Ex.: Marcos - Italiano"
+                          : "Observação (opcional)"
                   }
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm mb-2"
                 />
