@@ -7,6 +7,7 @@ import { criarAluno, atualizarAluno, removerAluno } from "@/lib/cadastros.functi
 import { segundaDaSemana, toISODate } from "@/lib/date-utils";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
 import { NIVEIS, type Aluno } from "@/lib/types";
+import { temTrackingDeLicao } from "@/lib/licoes";
 
 export const Route = createFileRoute("/admin/alunos")({ component: AlunosPage });
 
@@ -128,9 +129,7 @@ function AlunosPage() {
           <LinhaAluno
             key={a.id}
             aluno={a}
-            onAtualizar={(nome, nivel, ativo) =>
-              atualizar.mutate({ data: { id: a.id, nome, nivel, ativo } })
-            }
+            onAtualizar={(campos) => atualizar.mutate({ data: { id: a.id, ...campos } })}
             onRemover={() => remover.mutate({ data: { id: a.id } })}
             onAbrirHistorico={() => navigate({ to: "/admin/alunos/$id", params: { id: a.id } })}
           />
@@ -140,6 +139,13 @@ function AlunosPage() {
   );
 }
 
+type CamposAluno = {
+  nome: string;
+  nivel: string;
+  ativo: boolean;
+  dataInicioNivel: string | null;
+};
+
 function LinhaAluno({
   aluno,
   onAtualizar,
@@ -147,29 +153,37 @@ function LinhaAluno({
   onAbrirHistorico,
 }: {
   aluno: Aluno;
-  onAtualizar: (nome: string, nivel: string, ativo: boolean) => void;
+  onAtualizar: (campos: CamposAluno) => void;
   onRemover: () => void;
   onAbrirHistorico: () => void;
 }) {
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState(aluno.nome);
   const [nivel, setNivel] = useState(aluno.nivel);
+  const [dataInicioNivel, setDataInicioNivel] = useState(aluno.data_inicio_nivel ?? "");
 
   function abrirEdicao() {
     setNome(aluno.nome);
     setNivel(aluno.nivel);
+    setDataInicioNivel(aluno.data_inicio_nivel ?? "");
     setEditando(true);
   }
 
   function salvar() {
     if (!nome.trim()) return;
-    onAtualizar(nome.trim(), nivel.trim(), aluno.ativo);
+    onAtualizar({
+      nome: nome.trim(),
+      nivel: nivel.trim(),
+      ativo: aluno.ativo,
+      dataInicioNivel: dataInicioNivel || null,
+    });
     setEditando(false);
   }
 
   function cancelar() {
     setNome(aluno.nome);
     setNivel(aluno.nivel);
+    setDataInicioNivel(aluno.data_inicio_nivel ?? "");
     setEditando(false);
   }
 
@@ -177,55 +191,73 @@ function LinhaAluno({
     <li
       onClick={editando ? undefined : onAbrirHistorico}
       title={editando ? undefined : "Clique para ver o histórico do aluno"}
-      className={`rounded-lg border border-border p-3 flex items-center gap-3 ${
-        editando ? "" : "cursor-pointer hover:bg-accent/50"
+      className={`rounded-lg border border-border p-3 ${
+        editando ? "space-y-2" : "flex items-center gap-3 cursor-pointer hover:bg-accent/50"
       }`}
     >
       {editando ? (
         <>
-          <input
-            autoFocus
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") salvar();
-              if (e.key === "Escape") cancelar();
-            }}
-            className="rounded-md border border-input bg-background px-3 py-1.5 text-sm flex-1"
-          />
-          <select
-            value={nivel}
-            onChange={(e) => setNivel(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") salvar();
-              if (e.key === "Escape") cancelar();
-            }}
-            className="w-24 rounded-md border border-input bg-background px-3 py-1.5 text-sm"
-          >
-            {NIVEIS.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              salvar();
-            }}
-            className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground"
-          >
-            Salvar
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              cancelar();
-            }}
-            className="text-xs px-2 py-1 rounded border border-border hover:bg-accent"
-          >
-            Cancelar
-          </button>
+          <div className="flex items-center gap-3">
+            <input
+              autoFocus
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") salvar();
+                if (e.key === "Escape") cancelar();
+              }}
+              className="rounded-md border border-input bg-background px-3 py-1.5 text-sm flex-1"
+            />
+            <select
+              value={nivel}
+              onChange={(e) => {
+                setNivel(e.target.value);
+                // Trocou de nível: a data de início manual era do livro anterior.
+                setDataInicioNivel("");
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") salvar();
+                if (e.key === "Escape") cancelar();
+              }}
+              className="w-24 rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+            >
+              {NIVEIS.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                salvar();
+              }}
+              className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground"
+            >
+              Salvar
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                cancelar();
+              }}
+              className="text-xs px-2 py-1 rounded border border-border hover:bg-accent"
+            >
+              Cancelar
+            </button>
+          </div>
+          {temTrackingDeLicao(nivel) && (
+            <label className="text-xs text-muted-foreground flex items-center gap-2">
+              Início deste nível (só preencher se ele já estava no meio do livro antes do site)
+              <input
+                type="date"
+                value={dataInicioNivel}
+                onChange={(e) => setDataInicioNivel(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                className="rounded-md border border-input bg-background px-2 py-1 text-xs"
+              />
+            </label>
+          )}
         </>
       ) : (
         <>
@@ -237,7 +269,14 @@ function LinhaAluno({
             <input
               type="checkbox"
               checked={aluno.ativo}
-              onChange={(e) => onAtualizar(aluno.nome, aluno.nivel, e.target.checked)}
+              onChange={(e) =>
+                onAtualizar({
+                  nome: aluno.nome,
+                  nivel: aluno.nivel,
+                  ativo: e.target.checked,
+                  dataInicioNivel: aluno.data_inicio_nivel,
+                })
+              }
             />
             Ativo
           </label>

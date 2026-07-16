@@ -14,6 +14,11 @@ export type Aluno = {
   nome: string;
   nivel: string;
   ativo: boolean;
+  // Data em que o aluno começou o nível atual — só precisa ser preenchida à mão
+  // quando ele já estava no meio desse livro antes de começarmos a lançar
+  // lição no site (senão o sistema infere sozinho pela 1ª lição registrada).
+  // Usada pelo alerta de "atrasado no calendário pedagógico".
+  data_inicio_nivel: string | null;
 };
 
 // Níveis de aluno pré-cadastrados — não é permitido usar outro valor além destes.

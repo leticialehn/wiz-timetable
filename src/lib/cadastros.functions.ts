@@ -70,15 +70,29 @@ export const criarAluno = createServerFn({ method: "POST" })
   });
 
 export const atualizarAluno = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string; nome: string; nivel: string; ativo: boolean }) => data)
+  .inputValidator(
+    (data: {
+      id: string;
+      nome: string;
+      nivel: string;
+      ativo: boolean;
+      dataInicioNivel: string | null;
+    }) => data,
+  )
   .handler(async ({ data }) => {
     const sb = await admin();
+    const { data: atual } = await sb.from("alunos").select("nivel").eq("id", data.id).single();
+    // Trocou de nível: a data de início manual era do livro anterior, não vale
+    // mais — some sozinha (o próximo lançamento de lição já marca o início do
+    // novo nível automaticamente).
+    const mudouNivel = atual !== null && atual.nivel !== data.nivel;
     const { error } = await sb
       .from("alunos")
       .update({
         nome: capitalizarNome(data.nome),
         nivel: validarNivel(data.nivel),
         ativo: data.ativo,
+        data_inicio_nivel: mudouNivel ? null : data.dataInicioNivel,
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);

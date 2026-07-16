@@ -34,7 +34,10 @@ export const BLOCO_INICIO: Partial<Record<Nivel, number>> = {
 // numeradas R1..R10 dentro do próprio bloco (não continuam entre níveis).
 const LICOES_POR_CICLO = 6;
 const CICLOS_POR_BLOCO = 10;
-const POSICOES_POR_BLOCO = CICLOS_POR_BLOCO * (LICOES_POR_CICLO + 1); // 70
+export const POSICOES_POR_BLOCO = CICLOS_POR_BLOCO * (LICOES_POR_CICLO + 1); // 70
+const POSICAO_R8 = 8 * (LICOES_POR_CICLO + 1); // 56
+// Ritmo esperado: completar o nível (70 posições) em 12 meses.
+export const MESES_ESPERADOS_POR_NIVEL = 12;
 
 export function temTrackingDeLicao(nivel: string): boolean {
   return BLOCO_INICIO[nivel as Nivel] !== undefined;
@@ -79,6 +82,28 @@ function posicaoDoLabel(labelBruto: string, blockStart: number): number | null {
   return null;
 }
 
+// Maior posição (1..70) já PRATICADA no nível atual, andando do lançamento mais
+// recente pro mais antigo até achar uma entrada de um nível diferente (troca).
+// null se o aluno mudou de nível desde então, ou não tem nenhum lançamento
+// reconhecido e praticado (HW, Extra, pendente…) neste nível.
+function maiorPosicaoAtingida(
+  nivelAtual: string,
+  historico: { licao: string; nivel_no_momento: string; praticado: boolean }[],
+): number | null {
+  const blockStart = BLOCO_INICIO[nivelAtual as Nivel];
+  if (blockStart === undefined || historico.length === 0) return null;
+  if (historico[0].nivel_no_momento !== nivelAtual) return null;
+
+  let maiorPos: number | null = null;
+  for (const h of historico) {
+    if (h.nivel_no_momento !== nivelAtual) break;
+    if (!h.praticado) continue;
+    const pos = posicaoDoLabel(h.licao, blockStart);
+    if (pos !== null && (maiorPos === null || pos > maiorPos)) maiorPos = pos;
+  }
+  return maiorPos;
+}
+
 // Calcula a lição sugerida para hoje, a partir do nível atual do aluno e do
 // histórico de lições dele, do mais recente pro mais antigo (de qualquer data
 // anterior). A sugestão sempre continua a partir da MAIOR lição já atingida
@@ -100,21 +125,50 @@ export function licaoSugerida(
     return labelDaPosicao(1, blockStart);
   }
 
-  // Maior posição já PRATICADA entre os lançamentos deste nível, andando do mais
-  // recente pro mais antigo até achar uma entrada de um nível diferente (troca).
-  let maiorPos: number | null = null;
-  for (const h of historico) {
-    if (h.nivel_no_momento !== nivelAtual) break;
-    if (!h.praticado) continue;
-    const pos = posicaoDoLabel(h.licao, blockStart);
-    if (pos !== null && (maiorPos === null || pos > maiorPos)) maiorPos = pos;
-  }
-
-  if (maiorPos === null) {
-    // Nenhum lançamento reconhecido e praticado (HW, Extra, pendente…) neste
-    // nível — repete o mais recente.
-    return maisRecente.licao;
-  }
+  const maiorPos = maiorPosicaoAtingida(nivelAtual, historico);
+  if (maiorPos === null) return maisRecente.licao;
   if (maiorPos >= POSICOES_POR_BLOCO) return maisRecente.licao;
   return labelDaPosicao(maiorPos + 1, blockStart);
+}
+
+// Quantas posições o aluno já passou da R8 no nível atual (0 = está exatamente
+// na R8), ou null se ainda não chegou lá — usado pro alerta de rematrícula.
+export function posicoesAlemDaR8(
+  nivelAtual: string,
+  historico: { licao: string; nivel_no_momento: string; praticado: boolean }[],
+): number | null {
+  const maiorPos = maiorPosicaoAtingida(nivelAtual, historico);
+  if (maiorPos === null || maiorPos < POSICAO_R8) return null;
+  return maiorPos - POSICAO_R8;
+}
+
+// Data (ISO) da 1ª lição registrada no nível atual — usada como estimativa de
+// quando o aluno começou este nível, quando não há uma data manual informada.
+export function dataInicioInferida(
+  nivelAtual: string,
+  historicoAscendente: { data: string; licao: string; nivel_no_momento: string }[],
+): string | null {
+  const doNivel = historicoAscendente.filter((h) => h.nivel_no_momento === nivelAtual);
+  return doNivel.length > 0 ? doNivel[0].data : null;
+}
+
+// Quantos meses o aluno está atrasado em relação ao ritmo esperado de
+// completar o nível (70 posições) em MESES_ESPERADOS_POR_NIVEL — positivo
+// significa atrasado; null se não há data de início conhecida, ou se ele está
+// no ritmo ou adiantado.
+export function mesesDeAtraso(
+  nivelAtual: string,
+  dataInicioNivel: string | null,
+  hojeIso: string,
+  historico: { licao: string; nivel_no_momento: string; praticado: boolean }[],
+): number | null {
+  if (!dataInicioNivel) return null;
+  const maiorPos = maiorPosicaoAtingida(nivelAtual, historico) ?? 0;
+  const diasDecorridos =
+    (new Date(hojeIso).getTime() - new Date(dataInicioNivel).getTime()) / 86400000;
+  const mesesDecorridos = diasDecorridos / 30;
+  const posEsperada = (mesesDecorridos / MESES_ESPERADOS_POR_NIVEL) * POSICOES_POR_BLOCO;
+  const deficitPos = posEsperada - maiorPos;
+  if (deficitPos <= 0) return null;
+  return deficitPos * (MESES_ESPERADOS_POR_NIVEL / POSICOES_POR_BLOCO);
 }

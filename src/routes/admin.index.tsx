@@ -117,7 +117,16 @@ function GradePage() {
   }
 
   async function handleEditarAluno(alunoId: string, nome: string, nivel: string) {
-    await atualizarAlunoFn({ data: { id: alunoId, nome, nivel, ativo: true } });
+    const atual = data?.alunos.find((a) => a.id === alunoId);
+    await atualizarAlunoFn({
+      data: {
+        id: alunoId,
+        nome,
+        nivel,
+        ativo: true,
+        dataInicioNivel: atual?.data_inicio_nivel ?? null,
+      },
+    });
     qc.invalidateQueries();
   }
 

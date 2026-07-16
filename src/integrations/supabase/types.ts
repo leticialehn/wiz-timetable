@@ -11,9 +11,12 @@ export type Database = {
       alertas_status: {
         Row: {
           aluno_id: string;
+          contactado_em: string | null;
+          contactado_por: string | null;
           contagem: number;
           created_at: string;
           id: string;
+          nivel: string | null;
           resolvido_em: string | null;
           resolvido_por: string | null;
           status: string;
@@ -22,9 +25,12 @@ export type Database = {
         };
         Insert: {
           aluno_id: string;
+          contactado_em?: string | null;
+          contactado_por?: string | null;
           contagem: number;
           created_at?: string;
           id?: string;
+          nivel?: string | null;
           resolvido_em?: string | null;
           resolvido_por?: string | null;
           status?: string;
@@ -33,9 +39,12 @@ export type Database = {
         };
         Update: {
           aluno_id?: string;
+          contactado_em?: string | null;
+          contactado_por?: string | null;
           contagem?: number;
           created_at?: string;
           id?: string;
+          nivel?: string | null;
           resolvido_em?: string | null;
           resolvido_por?: string | null;
           status?: string;
@@ -56,6 +65,7 @@ export type Database = {
         Row: {
           ativo: boolean;
           created_at: string;
+          data_inicio_nivel: string | null;
           id: string;
           nivel: string;
           nome: string;
@@ -63,6 +73,7 @@ export type Database = {
         Insert: {
           ativo?: boolean;
           created_at?: string;
+          data_inicio_nivel?: string | null;
           id?: string;
           nivel?: string;
           nome: string;
@@ -70,6 +81,7 @@ export type Database = {
         Update: {
           ativo?: boolean;
           created_at?: string;
+          data_inicio_nivel?: string | null;
           id?: string;
           nivel?: string;
           nome?: string;

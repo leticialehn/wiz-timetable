@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { Aluno, ConceitoNota, StatusPresenca } from "./types";
 import { parseISODate, toISODate } from "./date-utils";
+import { dataInicioInferida, mesesDeAtraso, posicoesAlemDaR8 } from "./licoes";
+import { buscarTodasAsLinhas } from "./supabase-paginacao.server";
 
 async function publicClient() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -48,19 +50,22 @@ type RegistroLicao = {
 export const getAlertasLicaoPendente = createServerFn({ method: "GET" }).handler(
   async (): Promise<AlunoLicaoPendente[]> => {
     const sb = await publicClient();
-    const [alunosRes, licoesRes, profRes] = await Promise.all([
+    const [alunosRes, licoes, profRes] = await Promise.all([
       sb.from("alunos").select("*").eq("ativo", true),
-      sb
-        .from("aulas_licoes")
-        .select("aluno_id,data,periodo,parte,licao,nivel_no_momento,praticado,professora_id")
-        .order("data", { ascending: false })
-        .order("periodo", { ascending: false })
-        .order("parte", { ascending: false }),
+      buscarTodasAsLinhas<RegistroLicao>(async (inicio, fim) => {
+        const { data, error } = await sb
+          .from("aulas_licoes")
+          .select("aluno_id,data,periodo,parte,licao,nivel_no_momento,praticado,professora_id")
+          .order("data", { ascending: false })
+          .order("periodo", { ascending: false })
+          .order("parte", { ascending: false })
+          .range(inicio, fim);
+        return { data: data as RegistroLicao[] | null, error };
+      }),
       sb.from("professoras").select("id,nome"),
     ]);
 
     const alunos = (alunosRes.data ?? []) as Aluno[];
-    const licoes = (licoesRes.data ?? []) as RegistroLicao[];
     const professoras = (profRes.data ?? []) as { id: string; nome: string }[];
     const nomeProf = new Map(professoras.map((p) => [p.id, p.nome]));
 
@@ -94,7 +99,7 @@ export const getAlertasLicaoPendente = createServerFn({ method: "GET" }).handler
 // Diferente do alerta de lição pendente acima (que qualquer professora vê), estes só
 // aparecem numa aba própria pra Wizard e coordenação — as demais professoras não veem.
 
-export type TipoAlerta = "faltas" | "nota_fala" | "sem_aula";
+export type TipoAlerta = "faltas" | "nota_fala" | "sem_aula" | "rematricula" | "atrasado";
 
 export type AlertaAtivo = {
   id: string;
@@ -106,6 +111,8 @@ export type AlertaAtivo = {
   status: "pendente" | "resolvido";
   resolvido_por: string | null;
   resolvido_em: string | null;
+  contactado_por: string | null;
+  contactado_em: string | null;
   created_at: string;
 };
 
@@ -115,8 +122,11 @@ type AlertaStatusRow = {
   tipo: string;
   status: string;
   contagem: number;
+  nivel: string | null;
   resolvido_por: string | null;
   resolvido_em: string | null;
+  contactado_por: string | null;
+  contactado_em: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -141,7 +151,13 @@ function calcularSequenciaNotaFalaRuim(registros: RegistroNota[]): number {
   return streak;
 }
 
-const LIMIAR_ALERTA: Record<TipoAlerta, number> = { faltas: 2, nota_fala: 4, sem_aula: 14 };
+const LIMIAR_ALERTA: Record<TipoAlerta, number> = {
+  faltas: 2,
+  nota_fala: 4,
+  sem_aula: 14,
+  rematricula: 0,
+  atrasado: 1,
+};
 
 function paraAlertaAtivo(row: AlertaStatusRow, aluno: Aluno): AlertaAtivo {
   return {
@@ -154,40 +170,67 @@ function paraAlertaAtivo(row: AlertaStatusRow, aluno: Aluno): AlertaAtivo {
     status: row.status as "pendente" | "resolvido",
     resolvido_por: row.resolvido_por,
     resolvido_em: row.resolvido_em,
+    contactado_por: row.contactado_por,
+    contactado_em: row.contactado_em,
     created_at: row.created_at,
   };
 }
+
+type RegistroLicaoAlerta = {
+  aluno_id: string;
+  data: string;
+  licao: string;
+  nivel_no_momento: string;
+  praticado: boolean;
+};
 
 export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
   async (): Promise<AlertaAtivo[]> => {
     const sb = await publicClient();
     const hojeIso = toISODate(new Date());
-    const [alunosRes, presRes, notasRes, statusRes, baseRes, excFuturasRes] = await Promise.all([
-      sb.from("alunos").select("*").eq("ativo", true),
-      sb
-        .from("aulas_presenca")
-        .select("aluno_id,data,periodo,status")
-        .eq("parte", 1)
-        .order("data", { ascending: false })
-        .order("periodo", { ascending: false }),
-      sb
-        .from("aulas_notas")
-        .select("aluno_id,data,periodo,parte,fala")
-        .order("data", { ascending: false })
-        .order("periodo", { ascending: false })
-        .order("parte", { ascending: false }),
-      sb.from("alertas_status").select("*"),
-      sb.from("grade_base").select("id,aluno_id"),
-      sb
-        .from("excecoes_semana")
-        .select("id,data,tipo_excecao,aluno_id,grade_base_id")
-        .gte("data", hojeIso)
-        .in("tipo_excecao", ["adicionar", "mover"]),
-    ]);
+    const [alunosRes, presencas, notas, statusRes, baseRes, excFuturasRes, licoesTodas] =
+      await Promise.all([
+        sb.from("alunos").select("*").eq("ativo", true),
+        buscarTodasAsLinhas<RegistroPresenca>(async (inicio, fim) => {
+          const { data, error } = await sb
+            .from("aulas_presenca")
+            .select("aluno_id,data,periodo,status")
+            .eq("parte", 1)
+            .order("data", { ascending: false })
+            .order("periodo", { ascending: false })
+            .range(inicio, fim);
+          return { data: data as RegistroPresenca[] | null, error };
+        }),
+        buscarTodasAsLinhas<RegistroNota>(async (inicio, fim) => {
+          const { data, error } = await sb
+            .from("aulas_notas")
+            .select("aluno_id,data,periodo,parte,fala")
+            .order("data", { ascending: false })
+            .order("periodo", { ascending: false })
+            .order("parte", { ascending: false })
+            .range(inicio, fim);
+          return { data: data as RegistroNota[] | null, error };
+        }),
+        sb.from("alertas_status").select("*"),
+        sb.from("grade_base").select("id,aluno_id"),
+        sb
+          .from("excecoes_semana")
+          .select("id,data,tipo_excecao,aluno_id,grade_base_id")
+          .gte("data", hojeIso)
+          .in("tipo_excecao", ["adicionar", "mover"]),
+        buscarTodasAsLinhas<RegistroLicaoAlerta>(async (inicio, fim) => {
+          const { data, error } = await sb
+            .from("aulas_licoes")
+            .select("aluno_id,data,periodo,parte,licao,nivel_no_momento,praticado")
+            .order("data", { ascending: false })
+            .order("periodo", { ascending: false })
+            .order("parte", { ascending: false })
+            .range(inicio, fim);
+          return { data: data as RegistroLicaoAlerta[] | null, error };
+        }),
+      ]);
 
     const alunos = (alunosRes.data ?? []) as (Aluno & { created_at: string })[];
-    const presencas = (presRes.data ?? []) as RegistroPresenca[];
-    const notas = (notasRes.data ?? []) as RegistroNota[];
     const statusExistente = (statusRes.data ?? []) as AlertaStatusRow[];
     const baseRows = (baseRes.data ?? []) as { id: string; aluno_id: string | null }[];
     const excFuturas = (excFuturasRes.data ?? []) as {
@@ -196,6 +239,11 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
       aluno_id: string | null;
       grade_base_id: string | null;
     }[];
+    const licoesPorAluno = new Map<string, RegistroLicaoAlerta[]>();
+    for (const l of licoesTodas) {
+      if (!licoesPorAluno.has(l.aluno_id)) licoesPorAluno.set(l.aluno_id, []);
+      licoesPorAluno.get(l.aluno_id)!.push(l);
+    }
 
     const presPorAluno = new Map<string, RegistroPresenca[]>();
     for (const r of presencas) {
@@ -309,6 +357,63 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
       }
     }
 
+    // Rematrícula (R8) tem um episódio por NÍVEL, não só por aluno — trocar de
+    // nível é um livro novo, então uma pendência de rematrícula de um nível
+    // anterior nunca é mexida por engano (fica intacta até ser resolvida à
+    // parte). Diferente do sincronizar genérico acima, aqui uma pendência
+    // nunca some sozinha — só quando "Rematriculado" for clicado de fato,
+    // já que às vezes o aluno diz que "vai pensar" e não queremos esquecer.
+    const statusRematriculaPorAluno = new Map<string, AlertaStatusRow>();
+    for (const s of statusExistente) {
+      if (s.tipo !== "rematricula") continue;
+      const atual = statusRematriculaPorAluno.get(s.aluno_id);
+      if (!atual || s.created_at > atual.created_at) statusRematriculaPorAluno.set(s.aluno_id, s);
+    }
+
+    function sincronizarRematricula(aluno: Aluno, posicoesAlem: number | null) {
+      const existente = statusRematriculaPorAluno.get(aluno.id);
+
+      if (posicoesAlem === null) {
+        if (existente) resultado.push(paraAlertaAtivo(existente, aluno));
+        return;
+      }
+
+      if (existente && existente.nivel === aluno.nivel) {
+        if (existente.status === "pendente") {
+          if (posicoesAlem !== existente.contagem) {
+            atualizacoes.push(
+              sb.from("alertas_status").update({ contagem: posicoesAlem }).eq("id", existente.id),
+            );
+          }
+          resultado.push(paraAlertaAtivo({ ...existente, contagem: posicoesAlem }, aluno));
+        } else {
+          // Já rematriculado neste mesmo nível — não reabre mesmo que ele
+          // continue avançando (R9, R10…): a decisão já foi tomada.
+          resultado.push(paraAlertaAtivo(existente, aluno));
+        }
+        return;
+      }
+
+      // Primeira vez chegando na R8 neste nível (ou o episódio salvo é de um
+      // nível anterior já superado) — abre um novo episódio.
+      atualizacoes.push(
+        sb
+          .from("alertas_status")
+          .insert({
+            aluno_id: aluno.id,
+            tipo: "rematricula",
+            status: "pendente",
+            contagem: posicoesAlem,
+            nivel: aluno.nivel,
+          })
+          .select()
+          .single()
+          .then(({ data }) => {
+            if (data) resultado.push(paraAlertaAtivo(data as AlertaStatusRow, aluno));
+          }),
+      );
+    }
+
     for (const aluno of alunos) {
       sincronizar(aluno, "faltas", calcularSequenciaFaltas(presPorAluno.get(aluno.id) ?? []));
       sincronizar(
@@ -317,6 +422,14 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
         calcularSequenciaNotaFalaRuim(notasPorAluno.get(aluno.id) ?? []),
       );
       sincronizar(aluno, "sem_aula", diasSemAula(aluno));
+
+      const historicoLicao = licoesPorAluno.get(aluno.id) ?? [];
+      sincronizarRematricula(aluno, posicoesAlemDaR8(aluno.nivel, historicoLicao));
+
+      const dataInicio =
+        aluno.data_inicio_nivel ?? dataInicioInferida(aluno.nivel, [...historicoLicao].reverse());
+      const atraso = mesesDeAtraso(aluno.nivel, dataInicio, hojeIso, historicoLicao);
+      sincronizar(aluno, "atrasado", atraso !== null ? Math.round(atraso) : -1);
     }
 
     await Promise.all(atualizacoes);
@@ -340,6 +453,24 @@ export const resolverAlerta = createServerFn({ method: "POST" })
         status: "resolvido",
         resolvido_por: data.resolvido_por,
         resolvido_em: new Date().toISOString(),
+      })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// Etapa intermediária do fluxo de rematrícula: já conversamos com o aluno,
+// mas ele ainda não deu uma resposta — continua "pendente" até alguém marcar
+// "Rematriculado" de fato (resolverAlerta), pra não esquecer de cobrar.
+export const marcarContactado = createServerFn({ method: "POST" })
+  .inputValidator((data: { id: string; contactado_por: string }) => data)
+  .handler(async ({ data }) => {
+    const sb = await publicClient();
+    const { error } = await sb
+      .from("alertas_status")
+      .update({
+        contactado_por: data.contactado_por,
+        contactado_em: new Date().toISOString(),
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
