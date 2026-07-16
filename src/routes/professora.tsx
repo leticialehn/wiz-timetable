@@ -27,6 +27,7 @@ import {
   HORARIO_INICIO_PERIODO,
   configDe,
   idiomaDoNivel,
+  corTextoLegivel,
   type CampoNota,
   type CelulaAula,
   type ConceitoNota,
@@ -182,7 +183,10 @@ function ProfessoraPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-10 shadow-sm" style={{ backgroundColor: professora.cor }}>
+      <header
+        className="sticky top-0 z-10 shadow-sm"
+        style={{ backgroundColor: professora.cor, color: corTextoLegivel(professora.cor) }}
+      >
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
           <div>
             <div className="text-xs opacity-70">Professora</div>
@@ -978,7 +982,7 @@ function SelecaoProfessora({
                 <button
                   onClick={() => onEscolher(p.id)}
                   className="w-full rounded-xl px-5 py-4 text-left text-lg font-semibold border-2 border-border hover:border-primary transition-colors"
-                  style={{ backgroundColor: p.cor }}
+                  style={{ backgroundColor: p.cor, color: corTextoLegivel(p.cor) }}
                 >
                   {p.nome}
                 </button>

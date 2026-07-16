@@ -33,6 +33,7 @@ import {
   slotsOnlinePorPeriodo,
   configDe,
   idiomaDoNivel,
+  corTextoLegivel,
   type Aluno,
   type CelulaAula,
   type HorarioConfig,
@@ -161,44 +162,46 @@ function GradePage() {
 
   return (
     <main className="max-w-[1400px] mx-auto px-4 py-6">
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <button
-          onClick={() => setDataSegunda(somarSemanas(dataSegunda, -1))}
-          className="px-3 py-1.5 rounded-md border border-border hover:bg-accent"
-        >
-          ← Semana anterior
-        </button>
-        <button
-          onClick={() => setDataSegunda(toISODate(segundaDaSemana()))}
-          className="px-3 py-1.5 rounded-md border border-border hover:bg-accent"
-        >
-          Hoje
-        </button>
-        <button
-          onClick={() => setDataSegunda(somarSemanas(dataSegunda, 1))}
-          className="px-3 py-1.5 rounded-md border border-border hover:bg-accent"
-        >
-          Próxima semana →
-        </button>
-        <div className="ml-auto text-sm text-muted-foreground">
-          Semana de {formatarDataBR(datas[0])} a {formatarDataBR(datas[5])}
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-1 mb-4 border-b border-border">
-        {DIAS_SEMANA.map((d, i) => (
+      <div className="sticky top-[59px] z-10 bg-background pt-2 -mx-4 px-4">
+        <div className="flex flex-wrap items-center gap-3 mb-4">
           <button
-            key={d.n}
-            onClick={() => setDiaAtivo(d.n)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              diaAtivo === d.n
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
+            onClick={() => setDataSegunda(somarSemanas(dataSegunda, -1))}
+            className="px-3 py-1.5 rounded-md border border-border hover:bg-accent bg-card"
           >
-            {d.nome} <span className="opacity-60">{formatarDataBR(datas[i])}</span>
+            ← Semana anterior
           </button>
-        ))}
+          <button
+            onClick={() => setDataSegunda(toISODate(segundaDaSemana()))}
+            className="px-3 py-1.5 rounded-md border border-border hover:bg-accent bg-card"
+          >
+            Hoje
+          </button>
+          <button
+            onClick={() => setDataSegunda(somarSemanas(dataSegunda, 1))}
+            className="px-3 py-1.5 rounded-md border border-border hover:bg-accent bg-card"
+          >
+            Próxima semana →
+          </button>
+          <div className="ml-auto text-sm text-muted-foreground">
+            Semana de {formatarDataBR(datas[0])} a {formatarDataBR(datas[5])}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-1 mb-4 border-b border-border">
+          {DIAS_SEMANA.map((d, i) => (
+            <button
+              key={d.n}
+              onClick={() => setDiaAtivo(d.n)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                diaAtivo === d.n
+                  ? "border-primary text-primary bg-card"
+                  : "border-transparent text-muted-foreground hover:text-foreground bg-card"
+              }`}
+            >
+              {d.nome} <span className="opacity-60">{formatarDataBR(datas[i])}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {!data ? (
@@ -280,7 +283,7 @@ function GradeTabela(props: {
               <th
                 key={p.id}
                 className="border border-border p-3 font-semibold text-sm"
-                style={{ backgroundColor: p.cor }}
+                style={{ backgroundColor: p.cor, color: corTextoLegivel(p.cor) }}
               >
                 {p.nome}
               </th>

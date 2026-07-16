@@ -1,3 +1,13 @@
+// Preto ou branco, o que ficar mais legível sobre a cor de fundo dada (hex #rrggbb).
+export function corTextoLegivel(corFundo: string): string {
+  const hex = corFundo.replace("#", "");
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  const luminancia = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminancia > 0.6 ? "#000000" : "#ffffff";
+}
+
 export type Professora = {
   id: string;
   nome: string;
