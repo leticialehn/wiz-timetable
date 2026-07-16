@@ -87,6 +87,7 @@ function ProfessorasPage() {
                     cor: p.cor,
                     ativa: p.ativa,
                     coordenadora: p.coordenadora,
+                    semLancamento: p.sem_lancamento,
                   },
                 })
               }
@@ -104,6 +105,7 @@ function ProfessorasPage() {
                     cor: e.target.value,
                     ativa: p.ativa,
                     coordenadora: p.coordenadora,
+                    semLancamento: p.sem_lancamento,
                   },
                 })
               }
@@ -121,6 +123,7 @@ function ProfessorasPage() {
                       cor: p.cor,
                       ativa: e.target.checked,
                       coordenadora: p.coordenadora,
+                      semLancamento: p.sem_lancamento,
                     },
                   })
                 }
@@ -142,11 +145,34 @@ function ProfessorasPage() {
                       cor: p.cor,
                       ativa: p.ativa,
                       coordenadora: e.target.checked,
+                      semLancamento: p.sem_lancamento,
                     },
                   })
                 }
               />
               Coordenadora
+            </label>
+            <label
+              className="text-xs flex items-center gap-1"
+              title="Só mostra os alunos marcados no horário, sem pedir presença, nota ou lição"
+            >
+              <input
+                type="checkbox"
+                defaultChecked={p.sem_lancamento}
+                onChange={(e) =>
+                  atualizar.mutate({
+                    data: {
+                      id: p.id,
+                      nome: p.nome,
+                      cor: p.cor,
+                      ativa: p.ativa,
+                      coordenadora: p.coordenadora,
+                      semLancamento: e.target.checked,
+                    },
+                  })
+                }
+              />
+              Sem lançamento
             </label>
             <button
               onClick={() =>

@@ -503,6 +503,7 @@ export type Database = {
           id: string;
           nome: string;
           ordem: number;
+          sem_lancamento: boolean;
         };
         Insert: {
           ativa?: boolean;
@@ -512,6 +513,7 @@ export type Database = {
           id?: string;
           nome: string;
           ordem?: number;
+          sem_lancamento?: boolean;
         };
         Update: {
           ativa?: boolean;
@@ -521,6 +523,7 @@ export type Database = {
           id?: string;
           nome?: string;
           ordem?: number;
+          sem_lancamento?: boolean;
         };
         Relationships: [];
       };

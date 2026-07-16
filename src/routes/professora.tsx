@@ -395,6 +395,7 @@ function AulaCard({
                 c={c}
                 mostraLivro={mostraLivro}
                 mostraNotasELicao={mostraNotasELicao}
+                semLancamento={professora.sem_lancamento}
                 presencas={
                   c.aluno_id
                     ? presencas.filter((p) => p.aluno_id === c.aluno_id && p.periodo === periodo)
@@ -495,6 +496,7 @@ function AlunoLinha({
   c,
   mostraLivro,
   mostraNotasELicao,
+  semLancamento,
   presencas,
   notas,
   licoes,
@@ -507,6 +509,7 @@ function AlunoLinha({
 }: {
   c: CelulaAula;
   mostraLivro: boolean;
+  semLancamento: boolean;
   mostraNotasELicao: boolean;
   presencas: PresencaRow[];
   notas: NotaRow[];
@@ -711,7 +714,7 @@ function AlunoLinha({
             Histórico
           </Link>
         )}
-        {c.aluno_id && !c.aluno_avulso && (
+        {c.aluno_id && !c.aluno_avulso && !semLancamento && (
           <button
             type="button"
             onClick={() => setAvisado((v) => !v)}
@@ -741,6 +744,10 @@ function AlunoLinha({
       {c.aluno_avulso ? (
         <div className="text-xs text-muted-foreground mt-0.5 italic">
           Aluno avulso — sem lançamento de presença/notas.
+        </div>
+      ) : semLancamento ? (
+        <div className="text-xs text-muted-foreground mt-0.5 italic">
+          Só visualização — sem lançamento de presença, nota ou lição por enquanto.
         </div>
       ) : avisado ? (
         <div className="mt-1 flex items-center gap-2 flex-wrap">
