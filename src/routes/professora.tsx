@@ -702,6 +702,9 @@ function AlunoLinha({
         {mostraLivro && c.aluno_nivel && (
           <span className="text-xs opacity-70">— {c.aluno_nivel}</span>
         )}
+        {c.observacao && (
+          <span className="text-xs italic text-muted-foreground shrink-0">{c.observacao}</span>
+        )}
         {c.aluno_id && (
           <Link
             to="/professora/aluno/$id"

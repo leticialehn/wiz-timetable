@@ -669,6 +669,7 @@ function LinhaPreenchida({
         }`}
       >
         {c.aluno_nome}
+        {c.observacao && <span className="opacity-70 italic"> · {c.observacao}</span>}
       </button>
       {mostraLivro && c.aluno_nivel && <span className="shrink-0 opacity-70">{c.aluno_nivel}</span>}
       {c.aluno_avulso && <span className="shrink-0 text-[9px] uppercase opacity-70">avulso</span>}
@@ -989,6 +990,7 @@ function CelulaEditor(props: {
   const vagasFechadas = props.config?.vagas_fechadas ?? 0;
   const [busca, setBusca] = useState("");
   const [horario, setHorario] = useState("");
+  const [grupoIdioma, setGrupoIdioma] = useState("");
   const [pendingAlunoId, setPendingAlunoId] = useState<string | null>(null);
   const [avulsoNome, setAvulsoNome] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -1062,13 +1064,14 @@ function CelulaEditor(props: {
           aluno_id: pendingAlunoId ?? null,
           aluno_nome_avulso: pendingAlunoId ? null : avulsoNome.trim() || null,
           horario_especifico: tipo === "online" ? horario || null : null,
-          observacao: null,
+          observacao: props.professora.sem_lancamento ? grupoIdioma.trim() || null : null,
         },
       });
       setPendingAlunoId(null);
       setAvulsoNome("");
       setBusca("");
       setHorario("");
+      setGrupoIdioma("");
     } catch (e) {
       setErro((e as Error).message);
     }
@@ -1344,6 +1347,14 @@ function CelulaEditor(props: {
                             );
                           })}
                         </select>
+                      )}
+                      {props.professora.sem_lancamento && (
+                        <input
+                          value={grupoIdioma}
+                          onChange={(e) => setGrupoIdioma(e.target.value)}
+                          placeholder="Ex.: Marcos - Italiano"
+                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        />
                       )}
                       <div className="text-xs text-muted-foreground pt-1">Aplicar:</div>
                       <div className="flex gap-2">
