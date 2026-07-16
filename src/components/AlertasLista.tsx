@@ -6,6 +6,7 @@ import { formatarDataBR } from "@/lib/date-utils";
 
 function descricaoAlerta(a: AlertaAtivo): string {
   if (a.tipo === "faltas") return `${a.contagem} faltas seguidas`;
+  if (a.tipo === "sem_aula") return `Sem nenhuma aula agendada há ${a.contagem} dias`;
   return `B ou pior em Fala nas últimas ${a.contagem} lições`;
 }
 

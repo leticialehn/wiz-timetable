@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { Aluno, ConceitoNota, StatusPresenca } from "./types";
+import { parseISODate, toISODate } from "./date-utils";
 
 async function publicClient() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -93,7 +94,7 @@ export const getAlertasLicaoPendente = createServerFn({ method: "GET" }).handler
 // Diferente do alerta de lição pendente acima (que qualquer professora vê), estes só
 // aparecem numa aba própria pra Wizard e coordenação — as demais professoras não veem.
 
-export type TipoAlerta = "faltas" | "nota_fala";
+export type TipoAlerta = "faltas" | "nota_fala" | "sem_aula";
 
 export type AlertaAtivo = {
   id: string;
@@ -140,7 +141,7 @@ function calcularSequenciaNotaFalaRuim(registros: RegistroNota[]): number {
   return streak;
 }
 
-const LIMIAR_ALERTA: Record<TipoAlerta, number> = { faltas: 2, nota_fala: 4 };
+const LIMIAR_ALERTA: Record<TipoAlerta, number> = { faltas: 2, nota_fala: 4, sem_aula: 14 };
 
 function paraAlertaAtivo(row: AlertaStatusRow, aluno: Aluno): AlertaAtivo {
   return {
@@ -160,7 +161,8 @@ function paraAlertaAtivo(row: AlertaStatusRow, aluno: Aluno): AlertaAtivo {
 export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
   async (): Promise<AlertaAtivo[]> => {
     const sb = await publicClient();
-    const [alunosRes, presRes, notasRes, statusRes] = await Promise.all([
+    const hojeIso = toISODate(new Date());
+    const [alunosRes, presRes, notasRes, statusRes, baseRes, excFuturasRes] = await Promise.all([
       sb.from("alunos").select("*").eq("ativo", true),
       sb
         .from("aulas_presenca")
@@ -175,12 +177,25 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
         .order("periodo", { ascending: false })
         .order("parte", { ascending: false }),
       sb.from("alertas_status").select("*"),
+      sb.from("grade_base").select("id,aluno_id"),
+      sb
+        .from("excecoes_semana")
+        .select("id,data,tipo_excecao,aluno_id,grade_base_id")
+        .gte("data", hojeIso)
+        .in("tipo_excecao", ["adicionar", "mover"]),
     ]);
 
-    const alunos = (alunosRes.data ?? []) as Aluno[];
+    const alunos = (alunosRes.data ?? []) as (Aluno & { created_at: string })[];
     const presencas = (presRes.data ?? []) as RegistroPresenca[];
     const notas = (notasRes.data ?? []) as RegistroNota[];
     const statusExistente = (statusRes.data ?? []) as AlertaStatusRow[];
+    const baseRows = (baseRes.data ?? []) as { id: string; aluno_id: string | null }[];
+    const excFuturas = (excFuturasRes.data ?? []) as {
+      data: string;
+      tipo_excecao: string;
+      aluno_id: string | null;
+      grade_base_id: string | null;
+    }[];
 
     const presPorAluno = new Map<string, RegistroPresenca[]>();
     for (const r of presencas) {
@@ -191,6 +206,29 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
     for (const n of notas) {
       if (!notasPorAluno.has(n.aluno_id)) notasPorAluno.set(n.aluno_id, []);
       notasPorAluno.get(n.aluno_id)!.push(n);
+    }
+
+    // Aluno "tem aula agendada" se aparece hoje/no futuro num horário fixo (grade_base)
+    // ou numa exceção que o adiciona/move — daí não conta dias sem aula.
+    const alunoIdPorGradeBaseId = new Map(baseRows.map((r) => [r.id, r.aluno_id]));
+    const alunoIdsComAulaAgendada = new Set<string>();
+    for (const r of baseRows) {
+      if (r.aluno_id) alunoIdsComAulaAgendada.add(r.aluno_id);
+    }
+    for (const e of excFuturas) {
+      const alunoId =
+        e.aluno_id ?? (e.grade_base_id ? alunoIdPorGradeBaseId.get(e.grade_base_id) : null);
+      if (alunoId) alunoIdsComAulaAgendada.add(alunoId);
+    }
+
+    // Dias desde a última aula de fato (presença registrada) — ou, se nunca teve
+    // nenhuma, desde o cadastro. Zero se o aluno tem aula marcada hoje ou no futuro.
+    function diasSemAula(aluno: Aluno & { created_at: string }): number {
+      if (alunoIdsComAulaAgendada.has(aluno.id)) return 0;
+      const ultimaAula = presPorAluno.get(aluno.id)?.[0]?.data ?? aluno.created_at.slice(0, 10);
+      return Math.round(
+        (parseISODate(hojeIso).getTime() - parseISODate(ultimaAula).getTime()) / 86400000,
+      );
     }
 
     // Última linha de status por (aluno, tipo) — pode ter mais de um episódio no histórico.
@@ -278,6 +316,7 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
         "nota_fala",
         calcularSequenciaNotaFalaRuim(notasPorAluno.get(aluno.id) ?? []),
       );
+      sincronizar(aluno, "sem_aula", diasSemAula(aluno));
     }
 
     await Promise.all(atualizacoes);
