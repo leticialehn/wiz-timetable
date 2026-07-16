@@ -51,48 +51,55 @@ function AlunosPage() {
     <main className="max-w-3xl mx-auto px-4 py-6">
       <h1 className="text-2xl font-semibold mb-4">Alunos</h1>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!nome.trim()) return;
-          criar.mutate({ data: { nome, nivel } });
-          setNome("");
-        }}
-        className="rounded-lg border border-border p-4 mb-6 flex flex-wrap gap-2 items-end"
-      >
-        <div className="flex-1 min-w-[180px]">
-          <label className="text-sm block mb-1">Nome</label>
-          <input
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          />
-        </div>
-        <div>
-          <label className="text-sm block mb-1">Nível</label>
-          <select
-            value={nivel}
-            onChange={(e) => setNivel(e.target.value)}
-            className="w-24 rounded-md border border-input bg-background px-3 py-2 text-sm"
-          >
-            {NIVEIS.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button className="rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm">
-          Adicionar
-        </button>
-      </form>
+      <div className="rounded-lg border-2 border-dashed border-primary/40 bg-primary/5 p-4 mb-6">
+        <h2 className="text-sm font-semibold text-primary mb-3">+ Cadastrar aluno novo</h2>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!nome.trim()) return;
+            criar.mutate({ data: { nome, nivel } });
+            setNome("");
+          }}
+          className="flex flex-wrap gap-2 items-end"
+        >
+          <div className="flex-1 min-w-[180px]">
+            <label className="text-sm block mb-1">Nome do aluno novo</label>
+            <input
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              placeholder="Digite aqui só se for cadastrar alguém novo"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-sm block mb-1">Nível</label>
+            <select
+              value={nivel}
+              onChange={(e) => setNivel(e.target.value)}
+              className="w-24 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              {NIVEIS.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button className="rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm">
+            Adicionar
+          </button>
+        </form>
+      </div>
 
-      <input
-        value={busca}
-        onChange={(e) => setBusca(e.target.value)}
-        placeholder="Buscar por nome…"
-        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm mb-2"
-      />
+      <div className="relative mb-2">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">🔍</span>
+        <input
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Buscar aluno já cadastrado…"
+          className="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm"
+        />
+      </div>
 
       <div className="flex items-center gap-2 mb-3">
         <span className="text-xs text-muted-foreground">Ordenar por:</span>
