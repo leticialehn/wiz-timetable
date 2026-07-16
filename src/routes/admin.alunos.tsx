@@ -51,6 +51,16 @@ function AlunosPage() {
     <main className="max-w-3xl mx-auto px-4 py-6">
       <h1 className="text-2xl font-semibold mb-4">Alunos</h1>
 
+      <div className="relative mb-2">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">🔍</span>
+        <input
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Buscar aluno já cadastrado…"
+          className="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm"
+        />
+      </div>
+
       <div className="rounded-lg border-2 border-dashed border-primary/40 bg-primary/5 p-4 mb-6">
         <h2 className="text-sm font-semibold text-primary mb-3">+ Cadastrar aluno novo</h2>
         <form
@@ -89,16 +99,6 @@ function AlunosPage() {
             Adicionar
           </button>
         </form>
-      </div>
-
-      <div className="relative mb-2">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">🔍</span>
-        <input
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          placeholder="Buscar aluno já cadastrado…"
-          className="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm"
-        />
       </div>
 
       <div className="flex items-center gap-2 mb-3">
