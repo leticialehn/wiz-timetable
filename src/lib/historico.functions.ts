@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { Aluno, CampoNota, ConceitoNota, StatusPresenca } from "./types";
 import { toISODate } from "./date-utils";
+import { buscarTodasAsLinhas } from "./supabase-paginacao.server";
 
 async function publicClient() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -52,35 +53,15 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
   .inputValidator((data: { aluno_id: string }) => data)
   .handler(async ({ data }): Promise<HistoricoAluno | null> => {
     const sb = await publicClient();
-    const [alunoRes, presRes, notasRes, licoesRes, profRes] = await Promise.all([
-      sb.from("alunos").select("*").eq("id", data.aluno_id).maybeSingle(),
-      sb
-        .from("aulas_presenca")
-        .select("data,periodo,parte,professora_id,status,observacao")
-        .eq("aluno_id", data.aluno_id),
-      sb
-        .from("aulas_notas")
-        .select("data,periodo,parte,professora_id,fala,audicao,leitura,escrita")
-        .eq("aluno_id", data.aluno_id),
-      sb
-        .from("aulas_licoes")
-        .select("data,periodo,parte,professora_id,licao,praticado")
-        .eq("aluno_id", data.aluno_id),
-      sb.from("professoras").select("id,nome"),
-    ]);
-
-    const aluno = alunoRes.data as Aluno | null;
-    if (!aluno) return null;
-
-    const presencas = (presRes.data ?? []) as {
+    type RegistroPresencaHist = {
       data: string;
       periodo: number;
       parte: number;
       professora_id: string;
       status: StatusPresenca;
       observacao: string | null;
-    }[];
-    const notas = (notasRes.data ?? []) as {
+    };
+    type RegistroNotaHist = {
       data: string;
       periodo: number;
       parte: number;
@@ -89,15 +70,47 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
       audicao: ConceitoNota | null;
       leitura: ConceitoNota | null;
       escrita: ConceitoNota | null;
-    }[];
-    const licoes = (licoesRes.data ?? []) as {
+    };
+    type RegistroLicaoHist = {
       data: string;
       periodo: number;
       parte: number;
       professora_id: string;
       licao: string;
       praticado: boolean;
-    }[];
+    };
+    const [alunoRes, presencas, notas, licoes, profRes] = await Promise.all([
+      sb.from("alunos").select("*").eq("id", data.aluno_id).maybeSingle(),
+      buscarTodasAsLinhas<RegistroPresencaHist>(async (inicio, fim) => {
+        const { data: rows, error } = await sb
+          .from("aulas_presenca")
+          .select("data,periodo,parte,professora_id,status,observacao")
+          .eq("aluno_id", data.aluno_id)
+          .range(inicio, fim);
+        return { data: rows as RegistroPresencaHist[] | null, error };
+      }),
+      buscarTodasAsLinhas<RegistroNotaHist>(async (inicio, fim) => {
+        const { data: rows, error } = await sb
+          .from("aulas_notas")
+          .select("data,periodo,parte,professora_id,fala,audicao,leitura,escrita")
+          .eq("aluno_id", data.aluno_id)
+          .range(inicio, fim);
+        return { data: rows as RegistroNotaHist[] | null, error };
+      }),
+      buscarTodasAsLinhas<RegistroLicaoHist>(async (inicio, fim) => {
+        const { data: rows, error } = await sb
+          .from("aulas_licoes")
+          .select("data,periodo,parte,professora_id,licao,praticado")
+          .eq("aluno_id", data.aluno_id)
+          .range(inicio, fim);
+        return { data: rows as RegistroLicaoHist[] | null, error };
+      }),
+      sb.from("professoras").select("id,nome"),
+    ]);
+
+    const aluno = alunoRes.data as Aluno | null;
+    if (!aluno) return null;
+
     const professoras = (profRes.data ?? []) as { id: string; nome: string }[];
     const nomeProf = new Map(professoras.map((p) => [p.id, p.nome]));
 
