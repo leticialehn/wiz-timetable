@@ -117,6 +117,12 @@ function AlunosPage() {
         </button>
       </div>
 
+      <p className="text-sm text-muted-foreground mb-2">
+        {busca.trim()
+          ? `${filtrados.length} de ${data?.alunos.length ?? 0} alunos encontrados`
+          : `${data?.alunos.length ?? 0} alunos no total`}
+      </p>
+
       <ul className="space-y-2">
         {filtrados.map((a) => (
           <LinhaAluno
