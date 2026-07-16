@@ -32,6 +32,7 @@ import {
   NIVEIS,
   slotsOnlinePorPeriodo,
   configDe,
+  idiomaDoNivel,
   type Aluno,
   type CelulaAula,
   type HorarioConfig,
@@ -669,7 +670,12 @@ function LinhaPreenchida({
         }`}
       >
         {c.aluno_nome}
-        {c.observacao && <span className="opacity-70 italic"> · {c.observacao}</span>}
+        {(c.observacao || idiomaDoNivel(c.aluno_nivel)) && (
+          <span className="opacity-70 italic">
+            {" "}
+            · {c.observacao || idiomaDoNivel(c.aluno_nivel)}
+          </span>
+        )}
       </button>
       {mostraLivro && c.aluno_nivel && <span className="shrink-0 opacity-70">{c.aluno_nivel}</span>}
       {c.aluno_avulso && <span className="shrink-0 text-[9px] uppercase opacity-70">avulso</span>}
@@ -1238,8 +1244,10 @@ function CelulaEditor(props: {
                           </span>
                         )}
                       </div>
-                      {c.observacao && (
-                        <div className="text-xs text-muted-foreground italic">{c.observacao}</div>
+                      {(c.observacao || idiomaDoNivel(c.aluno_nivel)) && (
+                        <div className="text-xs text-muted-foreground italic">
+                          {c.observacao || idiomaDoNivel(c.aluno_nivel)}
+                        </div>
                       )}
                     </div>
                     <div className="flex gap-1">

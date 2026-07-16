@@ -49,9 +49,32 @@ export const NIVEIS = [
   "I2",
   "I4",
   "I6",
+  "F2",
+  "F4",
+  "F6",
+  "J2",
+  "J4",
+  "J6",
+  "C2",
+  "C4",
+  "C6",
   "CONV",
 ] as const;
 export type Nivel = (typeof NIVEIS)[number];
+
+// Primeira letra do nível indica o idioma (fora da trilha de inglês T/W/K/NG/PreT).
+const IDIOMA_POR_LETRA: Record<string, string> = {
+  E: "Espanhol",
+  A: "Alemão",
+  I: "Italiano",
+  F: "Francês",
+  J: "Japonês",
+  C: "Chinês",
+};
+
+export function idiomaDoNivel(nivel: string): string | null {
+  return IDIOMA_POR_LETRA[nivel.charAt(0)] ?? null;
+}
 
 // Tipos de horário (configuração da célula: dia × período × professora)
 export type TipoHorario =

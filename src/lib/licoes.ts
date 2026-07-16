@@ -27,6 +27,15 @@ export const BLOCO_INICIO: Partial<Record<Nivel, number>> = {
   I2: 1,
   I4: 61,
   I6: 121,
+  F2: 1,
+  F4: 61,
+  F6: 121,
+  J2: 1,
+  J4: 61,
+  J6: 121,
+  C2: 1,
+  C4: 61,
+  C6: 121,
   // CONV ausente: conversação não tem lição.
 };
 
