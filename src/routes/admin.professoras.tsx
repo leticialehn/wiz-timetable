@@ -85,7 +85,6 @@ function ProfessorasPage() {
                     id: p.id,
                     nome: e.target.value,
                     cor: p.cor,
-                    ativa: p.ativa,
                     coordenadora: p.coordenadora,
                     semLancamento: p.sem_lancamento,
                   },
@@ -103,7 +102,6 @@ function ProfessorasPage() {
                     id: p.id,
                     nome: p.nome,
                     cor: e.target.value,
-                    ativa: p.ativa,
                     coordenadora: p.coordenadora,
                     semLancamento: p.sem_lancamento,
                   },
@@ -111,25 +109,6 @@ function ProfessorasPage() {
               }
               className="h-9 w-12 rounded border border-input"
             />
-            <label className="text-xs flex items-center gap-1">
-              <input
-                type="checkbox"
-                defaultChecked={p.ativa}
-                onChange={(e) =>
-                  atualizar.mutate({
-                    data: {
-                      id: p.id,
-                      nome: p.nome,
-                      cor: p.cor,
-                      ativa: e.target.checked,
-                      coordenadora: p.coordenadora,
-                      semLancamento: p.sem_lancamento,
-                    },
-                  })
-                }
-              />
-              Ativa
-            </label>
             <label
               className="text-xs flex items-center gap-1"
               title="Vê funções extras, como o alerta de faltas consecutivas"
@@ -143,7 +122,6 @@ function ProfessorasPage() {
                       id: p.id,
                       nome: p.nome,
                       cor: p.cor,
-                      ativa: p.ativa,
                       coordenadora: e.target.checked,
                       semLancamento: p.sem_lancamento,
                     },
@@ -165,7 +143,6 @@ function ProfessorasPage() {
                       id: p.id,
                       nome: p.nome,
                       cor: p.cor,
-                      ativa: p.ativa,
                       coordenadora: p.coordenadora,
                       semLancamento: e.target.checked,
                     },

@@ -31,7 +31,6 @@ export const atualizarProfessora = createServerFn({ method: "POST" })
       id: string;
       nome: string;
       cor: string;
-      ativa: boolean;
       coordenadora: boolean;
       semLancamento: boolean;
     }) => data,
@@ -43,7 +42,6 @@ export const atualizarProfessora = createServerFn({ method: "POST" })
       .update({
         nome: data.nome,
         cor: data.cor,
-        ativa: data.ativa,
         coordenadora: data.coordenadora,
         sem_lancamento: data.semLancamento,
       })

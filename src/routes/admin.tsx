@@ -19,25 +19,10 @@ function AdminShell() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card sticky top-0 z-20">
         <div className="max-w-[1400px] mx-auto px-4 py-3 flex items-center gap-4 flex-wrap">
-          <Link to="/admin" className="font-bold text-lg">
-            Wizard
+          <Link to="/admin" activeOptions={{ exact: true }} className="font-bold text-lg">
+            Wizard Timetable
           </Link>
           <nav className="flex gap-1 text-sm">
-            <Link
-              to="/admin"
-              activeOptions={{ exact: true }}
-              activeProps={{ className: "bg-accent" }}
-              className="px-3 py-1.5 rounded-md hover:bg-accent"
-            >
-              Grade
-            </Link>
-            <Link
-              to="/admin/professoras"
-              activeProps={{ className: "bg-accent" }}
-              className="px-3 py-1.5 rounded-md hover:bg-accent"
-            >
-              Professoras
-            </Link>
             <Link
               to="/admin/alunos"
               activeProps={{ className: "bg-accent" }}
@@ -58,6 +43,13 @@ function AdminShell() {
               className="px-3 py-1.5 rounded-md hover:bg-accent"
             >
               Calendário
+            </Link>
+            <Link
+              to="/admin/professoras"
+              activeProps={{ className: "bg-accent" }}
+              className="px-3 py-1.5 rounded-md hover:bg-accent"
+            >
+              Professoras
             </Link>
             <Link
               to="/admin/alertas"
