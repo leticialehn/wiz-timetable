@@ -17,6 +17,7 @@ import { Route as ProfessoraAlertasRouteImport } from './routes/professora_.aler
 import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as AdminRelatoriosRouteImport } from './routes/admin.relatorios'
 import { Route as AdminProfessorasRouteImport } from './routes/admin.professoras'
+import { Route as AdminCalendarioRouteImport } from './routes/admin.calendario'
 import { Route as AdminAlunosRouteImport } from './routes/admin.alunos'
 import { Route as AdminAlertasRouteImport } from './routes/admin.alertas'
 import { Route as ProfessoraAlunoIdRouteImport } from './routes/professora_.aluno.$id'
@@ -63,6 +64,11 @@ const AdminProfessorasRoute = AdminProfessorasRouteImport.update({
   path: '/professoras',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCalendarioRoute = AdminCalendarioRouteImport.update({
+  id: '/calendario',
+  path: '/calendario',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAlunosRoute = AdminAlunosRouteImport.update({
   id: '/alunos',
   path: '/alunos',
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/professora': typeof ProfessoraRoute
   '/admin/alertas': typeof AdminAlertasRoute
   '/admin/alunos': typeof AdminAlunosRoute
+  '/admin/calendario': typeof AdminCalendarioRoute
   '/admin/professoras': typeof AdminProfessorasRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/professora': typeof ProfessoraRoute
   '/admin/alertas': typeof AdminAlertasRoute
   '/admin/alunos': typeof AdminAlunosRoute
+  '/admin/calendario': typeof AdminCalendarioRoute
   '/admin/professoras': typeof AdminProfessorasRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/professora': typeof ProfessoraRoute
   '/admin/alertas': typeof AdminAlertasRoute
   '/admin/alunos': typeof AdminAlunosRoute
+  '/admin/calendario': typeof AdminCalendarioRoute
   '/admin/professoras': typeof AdminProfessorasRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
@@ -142,6 +151,7 @@ export interface FileRouteTypes {
     | '/professora'
     | '/admin/alertas'
     | '/admin/alunos'
+    | '/admin/calendario'
     | '/admin/professoras'
     | '/admin/relatorios'
     | '/admin/usuarios'
@@ -156,6 +166,7 @@ export interface FileRouteTypes {
     | '/professora'
     | '/admin/alertas'
     | '/admin/alunos'
+    | '/admin/calendario'
     | '/admin/professoras'
     | '/admin/relatorios'
     | '/admin/usuarios'
@@ -171,6 +182,7 @@ export interface FileRouteTypes {
     | '/professora'
     | '/admin/alertas'
     | '/admin/alunos'
+    | '/admin/calendario'
     | '/admin/professoras'
     | '/admin/relatorios'
     | '/admin/usuarios'
@@ -247,6 +259,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminProfessorasRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/calendario': {
+      id: '/admin/calendario'
+      path: '/calendario'
+      fullPath: '/admin/calendario'
+      preLoaderRoute: typeof AdminCalendarioRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/alunos': {
       id: '/admin/alunos'
       path: '/alunos'
@@ -288,6 +307,7 @@ declare module '@tanstack/react-router' {
 interface AdminRouteChildren {
   AdminAlertasRoute: typeof AdminAlertasRoute
   AdminAlunosRoute: typeof AdminAlunosRoute
+  AdminCalendarioRoute: typeof AdminCalendarioRoute
   AdminProfessorasRoute: typeof AdminProfessorasRoute
   AdminRelatoriosRoute: typeof AdminRelatoriosRoute
   AdminUsuariosRoute: typeof AdminUsuariosRoute
@@ -299,6 +319,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAlertasRoute: AdminAlertasRoute,
   AdminAlunosRoute: AdminAlunosRoute,
+  AdminCalendarioRoute: AdminCalendarioRoute,
   AdminProfessorasRoute: AdminProfessorasRoute,
   AdminRelatoriosRoute: AdminRelatoriosRoute,
   AdminUsuariosRoute: AdminUsuariosRoute,

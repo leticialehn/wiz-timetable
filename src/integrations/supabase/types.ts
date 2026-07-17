@@ -61,6 +61,33 @@ export type Database = {
           },
         ];
       };
+      calendario_excecoes: {
+        Row: {
+          created_at: string;
+          data: string;
+          descricao: string;
+          grupo: string;
+          id: string;
+          tipo: string;
+        };
+        Insert: {
+          created_at?: string;
+          data: string;
+          descricao: string;
+          grupo: string;
+          id?: string;
+          tipo: string;
+        };
+        Update: {
+          created_at?: string;
+          data?: string;
+          descricao?: string;
+          grupo?: string;
+          id?: string;
+          tipo?: string;
+        };
+        Relationships: [];
+      };
       alunos: {
         Row: {
           ativo: boolean;

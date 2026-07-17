@@ -16,6 +16,7 @@ import {
   type AlunoLicaoPendente,
 } from "@/lib/alertas.functions";
 import { temTrackingDeLicao, licaoSugerida, normalizarLicao } from "@/lib/licoes";
+import { getCalendarioExcecoes } from "@/lib/calendario.functions";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
 import {
   DIAS_SEMANA,
@@ -28,7 +29,10 @@ import {
   configDe,
   idiomaDoNivel,
   corTextoLegivel,
+  excecaoQueAfeta,
+  ROTULO_TIPO_CALENDARIO,
   type CampoNota,
+  type CalendarioExcecao,
   type CelulaAula,
   type ConceitoNota,
   type HorarioConfig,
@@ -159,6 +163,12 @@ function ProfessoraPage() {
     queryFn: () => getAlertasAtivosFn(),
   });
   const alertasPendentes = (alertasAtivos ?? []).filter((a) => a.status === "pendente").length;
+
+  const getCalendarioFn = useServerFn(getCalendarioExcecoes);
+  const { data: calendarioExcecoes } = useQuery({
+    queryKey: ["calendario-excecoes"],
+    queryFn: () => getCalendarioFn(),
+  });
 
   if (!mounted) return null;
 
@@ -305,6 +315,7 @@ function ProfessoraPage() {
                     licoes={licoesDoDia}
                     historicoLicoes={historicoLicoes ?? {}}
                     pendenciasPorAluno={pendenciasPorAluno}
+                    calendarioExcecoes={calendarioExcecoes ?? []}
                     dataDoDia={dataDoDia}
                     diaSemana={diaAtivo}
                     professoraId={professoraId}
@@ -342,6 +353,7 @@ function AulaCard({
   licoes,
   historicoLicoes,
   pendenciasPorAluno,
+  calendarioExcecoes,
   dataDoDia,
   diaSemana,
   professoraId,
@@ -360,6 +372,7 @@ function AulaCard({
     { licao: string; nivel_no_momento: string; praticado: boolean }[]
   >;
   pendenciasPorAluno: Map<string, AlunoLicaoPendente>;
+  calendarioExcecoes: CalendarioExcecao[];
   dataDoDia: string;
   diaSemana: number;
   professoraId: string;
@@ -419,6 +432,7 @@ function AulaCard({
                 }
                 historicoLicao={c.aluno_id ? (historicoLicoes[c.aluno_id] ?? []) : []}
                 pendencia={c.aluno_id ? pendenciasPorAluno.get(c.aluno_id) : undefined}
+                calendarioExcecoes={calendarioExcecoes}
                 dataDoDia={dataDoDia}
                 diaSemana={diaSemana}
                 professoraId={professoraId}
@@ -508,6 +522,7 @@ function AlunoLinha({
   licoes,
   historicoLicao,
   pendencia,
+  calendarioExcecoes,
   dataDoDia,
   diaSemana,
   professoraId,
@@ -522,6 +537,7 @@ function AlunoLinha({
   licoes: LicaoRow[];
   historicoLicao: { licao: string; nivel_no_momento: string; praticado: boolean }[];
   pendencia: AlunoLicaoPendente | undefined;
+  calendarioExcecoes: CalendarioExcecao[];
   dataDoDia: string;
   diaSemana: number;
   professoraId: string;
@@ -685,6 +701,7 @@ function AlunoLinha({
 
   const aniversario = estaNaSemanaDoAniversario(c.aluno_nascimento, toISODate(new Date()));
   const diaAniversario = c.aluno_nascimento ? parseISODate(c.aluno_nascimento).getDate() : null;
+  const excecaoCalendario = excecaoQueAfeta(dataDoDia, c.aluno_nivel, calendarioExcecoes);
 
   return (
     <li
@@ -764,7 +781,11 @@ function AlunoLinha({
         )}
       </div>
 
-      {c.aluno_avulso ? (
+      {excecaoCalendario ? (
+        <div className="text-xs text-rose-700 dark:text-rose-400 mt-0.5 italic">
+          🎉 {ROTULO_TIPO_CALENDARIO[excecaoCalendario.tipo]} — {excecaoCalendario.descricao}
+        </div>
+      ) : c.aluno_avulso ? (
         <div className="text-xs text-muted-foreground mt-0.5 italic">
           Aluno avulso — sem lançamento de presença/notas.
         </div>

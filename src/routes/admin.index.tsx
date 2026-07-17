@@ -35,12 +35,16 @@ import {
   configDe,
   idiomaDoNivel,
   corTextoLegivel,
+  excecaoQueAfeta,
+  ROTULO_TIPO_CALENDARIO,
   type Aluno,
   type CelulaAula,
+  type CalendarioExcecao,
   type HorarioConfig,
   type Professora,
   type TipoHorario,
 } from "@/lib/types";
+import { getCalendarioExcecoes } from "@/lib/calendario.functions";
 
 export const Route = createFileRoute("/admin/")({
   component: GradePage,
@@ -70,6 +74,12 @@ function GradePage() {
   const { data } = useQuery({
     queryKey: ["grade-semana", dataSegunda],
     queryFn: () => getFn({ data: { dataSegunda } }),
+  });
+
+  const getCalendarioFn = useServerFn(getCalendarioExcecoes);
+  const { data: calendarioExcecoes } = useQuery({
+    queryKey: ["calendario-excecoes"],
+    queryFn: () => getCalendarioFn(),
   });
 
   const datas = useMemo(() => datasDaSemana(parseISODate(dataSegunda)), [dataSegunda]);
@@ -214,6 +224,8 @@ function GradePage() {
           celulas={data.celulasPorData[dataDoDia] ?? []}
           horariosConfig={data.horariosConfig}
           diaSemana={diaAtivo}
+          dataDoDia={dataDoDia}
+          calendarioExcecoes={calendarioExcecoes ?? []}
           alunos={data.alunos}
           onAdicionar={handleAdicionar}
           onCriarEAdicionar={handleCriarEAdicionar}
@@ -249,6 +261,8 @@ function GradeTabela(props: {
   celulas: CelulaAula[];
   horariosConfig: HorarioConfig[];
   diaSemana: number;
+  dataDoDia: string;
+  calendarioExcecoes: CalendarioExcecao[];
   alunos: Aluno[];
   onAdicionar: (
     professoraId: string,
@@ -271,7 +285,7 @@ function GradeTabela(props: {
   onAlternarAusencia: (c: CelulaAula) => Promise<void>;
   onEditarCelula: (p: Professora, periodo: number) => void;
 }) {
-  const { professoras, celulas, horariosConfig, diaSemana } = props;
+  const { professoras, celulas, horariosConfig, diaSemana, dataDoDia, calendarioExcecoes } = props;
   const periodos = periodosDoDia(diaSemana);
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
@@ -333,6 +347,8 @@ function GradeTabela(props: {
                         cfg={cfg}
                         cels={cels}
                         alunos={props.alunos}
+                        dataDoDia={dataDoDia}
+                        calendarioExcecoes={calendarioExcecoes}
                         onAdicionar={(alunoId, avulso, horarioEspecifico) =>
                           props.onAdicionar(p.id, per, alunoId, avulso, horarioEspecifico)
                         }
@@ -363,6 +379,8 @@ function CelulaConteudo({
   cfg,
   cels,
   alunos,
+  dataDoDia,
+  calendarioExcecoes,
   onAdicionar,
   onCriarEAdicionar,
   onEditarAluno,
@@ -376,6 +394,8 @@ function CelulaConteudo({
   cfg: HorarioConfig | null;
   cels: CelulaAula[];
   alunos: Aluno[];
+  dataDoDia: string;
+  calendarioExcecoes: CalendarioExcecao[];
   onAdicionar: (
     alunoId: string,
     avulso: boolean,
@@ -414,6 +434,7 @@ function CelulaConteudo({
       key={c.id}
       c={c}
       mostraLivro={mostraLivro}
+      excecao={excecaoQueAfeta(dataDoDia, c.aluno_nivel, calendarioExcecoes)}
       onEditar={c.aluno_id ? (nome, nivel) => onEditarAluno(c.aluno_id!, nome, nivel) : null}
       onRemover={() => onRemover(c)}
       onAlternarAusencia={c.origem === "base" ? () => onAlternarAusencia(c) : null}
@@ -550,12 +571,14 @@ function LinhaVagaTrancada({ onDestrancar }: { onDestrancar: () => Promise<void>
 function LinhaPreenchida({
   c,
   mostraLivro,
+  excecao,
   onEditar,
   onRemover,
   onAlternarAusencia,
 }: {
   c: CelulaAula;
   mostraLivro: boolean;
+  excecao: CalendarioExcecao | null;
   onEditar: ((nome: string, nivel: string) => Promise<void>) | null;
   onRemover: () => void;
   onAlternarAusencia: (() => Promise<void>) | null;
@@ -654,16 +677,22 @@ function LinhaPreenchida({
   return (
     <div
       className={`group/linha flex items-center gap-1 text-[12px] leading-tight rounded ${
-        aniversario ? "border border-rose-500 px-1" : ""
+        excecao
+          ? "border border-rose-500 bg-rose-500/10 px-1"
+          : aniversario
+            ? "border border-rose-500 px-1"
+            : ""
       } ${horarioAvulso ? "text-blue-600 dark:text-blue-400" : ""} ${c.avisou_falta ? "opacity-50" : ""}`}
       title={
-        aniversario
-          ? "Aniversário nesta semana! 🎂"
-          : c.avisou_falta
-            ? "Avisou que não vem hoje (horário fixo mantido, vaga liberada)"
-            : horarioAvulso
-              ? "Aula avulsa (só nesta semana)"
-              : "Horário fixo"
+        excecao
+          ? `${ROTULO_TIPO_CALENDARIO[excecao.tipo]} — ${excecao.descricao}`
+          : aniversario
+            ? "Aniversário nesta semana! 🎂"
+            : c.avisou_falta
+              ? "Avisou que não vem hoje (horário fixo mantido, vaga liberada)"
+              : horarioAvulso
+                ? "Aula avulsa (só nesta semana)"
+                : "Horário fixo"
       }
     >
       {c.horario_especifico && (
@@ -687,6 +716,7 @@ function LinhaPreenchida({
         )}
       </button>
       {mostraLivro && c.aluno_nivel && <span className="shrink-0 opacity-70">{c.aluno_nivel}</span>}
+      {excecao && <span className="shrink-0">🎉</span>}
       {aniversario && <span className="shrink-0">🎂{diaAniversario}</span>}
       {c.aluno_avulso && <span className="shrink-0 text-[9px] uppercase opacity-70">avulso</span>}
       {onAlternarAusencia ? (

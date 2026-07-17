@@ -90,6 +90,86 @@ export function idiomaDoNivel(nivel: string): string | null {
   return IDIOMA_POR_LETRA[nivel.charAt(0)] ?? null;
 }
 
+// ============ Calendário escolar (feriados / recessos / férias) ============
+
+export type TipoCalendarioExcecao = "feriado" | "recesso" | "ferias";
+export type GrupoCalendario = "todos" | "kids" | "teens" | "adultos";
+
+export const ROTULO_TIPO_CALENDARIO: Record<TipoCalendarioExcecao, string> = {
+  feriado: "Feriado",
+  recesso: "Recesso",
+  ferias: "Férias",
+};
+
+export const ROTULO_GRUPO: Record<GrupoCalendario, string> = {
+  todos: "Toda a escola",
+  kids: "Kids",
+  teens: "Teens",
+  adultos: "Adultos",
+};
+
+export type CalendarioExcecao = {
+  id: string;
+  data: string;
+  tipo: TipoCalendarioExcecao;
+  descricao: string;
+  grupo: GrupoCalendario;
+};
+
+const GRUPO_POR_NIVEL: Record<string, GrupoCalendario> = {
+  K2: "kids",
+  K4: "kids",
+  NG: "kids",
+  PreT: "kids",
+  T2: "teens",
+  T4: "teens",
+  T6: "teens",
+  T8: "teens",
+  W2: "adultos",
+  W4: "adultos",
+  W6: "adultos",
+  W8: "adultos",
+  W10: "adultos",
+  W12: "adultos",
+  CONV: "adultos",
+  E2: "adultos",
+  E4: "adultos",
+  E6: "adultos",
+  A2: "adultos",
+  A4: "adultos",
+  A6: "adultos",
+  I2: "adultos",
+  I4: "adultos",
+  I6: "adultos",
+  F2: "adultos",
+  F4: "adultos",
+  F6: "adultos",
+  J2: "adultos",
+  J4: "adultos",
+  J6: "adultos",
+  C2: "adultos",
+  C4: "adultos",
+  C6: "adultos",
+};
+
+export function grupoDoNivel(nivel: string): GrupoCalendario {
+  return GRUPO_POR_NIVEL[nivel] ?? "adultos";
+}
+
+// Retorna a exceção de calendário (feriado/recesso/férias) que afeta esse
+// aluno nessa data, se houver — considerando tanto exceções de "toda a
+// escola" quanto as específicas do grupo dele (Kids/Teens/Adultos).
+export function excecaoQueAfeta(
+  dataIso: string,
+  nivel: string,
+  excecoes: CalendarioExcecao[],
+): CalendarioExcecao | null {
+  const grupo = grupoDoNivel(nivel);
+  return (
+    excecoes.find((e) => e.data === dataIso && (e.grupo === "todos" || e.grupo === grupo)) ?? null
+  );
+}
+
 // Tipos de horário (configuração da célula: dia × período × professora)
 export type TipoHorario =
   | "regular"

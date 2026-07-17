@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { Aluno, ConceitoNota, StatusPresenca } from "./types";
+import type { Aluno, CalendarioExcecao, ConceitoNota, StatusPresenca } from "./types";
+import { excecaoQueAfeta } from "./types";
 import { parseISODate, toISODate } from "./date-utils";
 import { dataInicioInferida, mesesDeAtraso, posicoesAlemDaR8 } from "./licoes";
 import { buscarTodasAsLinhas } from "./supabase-paginacao.server";
@@ -188,51 +189,61 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
   async (): Promise<AlertaAtivo[]> => {
     const sb = await publicClient();
     const hojeIso = toISODate(new Date());
-    const [alunosRes, presencas, notas, statusRes, baseRes, excFuturasRes, licoesTodas] =
-      await Promise.all([
-        sb.from("alunos").select("*").eq("ativo", true),
-        buscarTodasAsLinhas<RegistroPresenca>(async (inicio, fim) => {
-          const { data, error } = await sb
-            .from("aulas_presenca")
-            .select("aluno_id,data,periodo,status")
-            .eq("parte", 1)
-            .order("data", { ascending: false })
-            .order("periodo", { ascending: false })
-            .range(inicio, fim);
-          return { data: data as RegistroPresenca[] | null, error };
-        }),
-        buscarTodasAsLinhas<RegistroNota>(async (inicio, fim) => {
-          const { data, error } = await sb
-            .from("aulas_notas")
-            .select("aluno_id,data,periodo,parte,fala")
-            .order("data", { ascending: false })
-            .order("periodo", { ascending: false })
-            .order("parte", { ascending: false })
-            .range(inicio, fim);
-          return { data: data as RegistroNota[] | null, error };
-        }),
-        sb.from("alertas_status").select("*"),
-        sb.from("grade_base").select("id,aluno_id"),
-        sb
-          .from("excecoes_semana")
-          .select("id,data,tipo_excecao,aluno_id,grade_base_id")
-          .gte("data", hojeIso)
-          .in("tipo_excecao", ["adicionar", "mover"]),
-        buscarTodasAsLinhas<RegistroLicaoAlerta>(async (inicio, fim) => {
-          const { data, error } = await sb
-            .from("aulas_licoes")
-            .select("aluno_id,data,periodo,parte,licao,nivel_no_momento,praticado")
-            .order("data", { ascending: false })
-            .order("periodo", { ascending: false })
-            .order("parte", { ascending: false })
-            .range(inicio, fim);
-          return { data: data as RegistroLicaoAlerta[] | null, error };
-        }),
-      ]);
+    const [
+      alunosRes,
+      presencas,
+      notas,
+      statusRes,
+      baseRes,
+      excFuturasRes,
+      licoesTodas,
+      calendarioRes,
+    ] = await Promise.all([
+      sb.from("alunos").select("*").eq("ativo", true),
+      buscarTodasAsLinhas<RegistroPresenca>(async (inicio, fim) => {
+        const { data, error } = await sb
+          .from("aulas_presenca")
+          .select("aluno_id,data,periodo,status")
+          .eq("parte", 1)
+          .order("data", { ascending: false })
+          .order("periodo", { ascending: false })
+          .range(inicio, fim);
+        return { data: data as RegistroPresenca[] | null, error };
+      }),
+      buscarTodasAsLinhas<RegistroNota>(async (inicio, fim) => {
+        const { data, error } = await sb
+          .from("aulas_notas")
+          .select("aluno_id,data,periodo,parte,fala")
+          .order("data", { ascending: false })
+          .order("periodo", { ascending: false })
+          .order("parte", { ascending: false })
+          .range(inicio, fim);
+        return { data: data as RegistroNota[] | null, error };
+      }),
+      sb.from("alertas_status").select("*"),
+      sb.from("grade_base").select("id,aluno_id"),
+      sb
+        .from("excecoes_semana")
+        .select("id,data,tipo_excecao,aluno_id,grade_base_id")
+        .gte("data", hojeIso)
+        .in("tipo_excecao", ["adicionar", "mover"]),
+      buscarTodasAsLinhas<RegistroLicaoAlerta>(async (inicio, fim) => {
+        const { data, error } = await sb
+          .from("aulas_licoes")
+          .select("aluno_id,data,periodo,parte,licao,nivel_no_momento,praticado")
+          .order("data", { ascending: false })
+          .order("periodo", { ascending: false })
+          .order("parte", { ascending: false })
+          .range(inicio, fim);
+        return { data: data as RegistroLicaoAlerta[] | null, error };
+      }),
+      sb.from("calendario_excecoes").select("*"),
+    ]);
 
     const alunos = (alunosRes.data ?? []) as (Aluno & { created_at: string })[];
     const statusExistente = (statusRes.data ?? []) as AlertaStatusRow[];
     const baseRows = (baseRes.data ?? []) as { id: string; aluno_id: string | null }[];
+    const calendarioExcecoes = (calendarioRes.data ?? []) as CalendarioExcecao[];
     const excFuturas = (excFuturasRes.data ?? []) as {
       data: string;
       tipo_excecao: string;
@@ -271,12 +282,20 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
 
     // Dias desde a última aula de fato (presença registrada) — ou, se nunca teve
     // nenhuma, desde o cadastro. Zero se o aluno tem aula marcada hoje ou no futuro.
+    // Feriados/recessos/férias que caem no meio não contam (a escola tava fechada).
     function diasSemAula(aluno: Aluno & { created_at: string }): number {
       if (alunoIdsComAulaAgendada.has(aluno.id)) return 0;
       const ultimaAula = presPorAluno.get(aluno.id)?.[0]?.data ?? aluno.created_at.slice(0, 10);
-      return Math.round(
+      const diasCorridos = Math.round(
         (parseISODate(hojeIso).getTime() - parseISODate(ultimaAula).getTime()) / 86400000,
       );
+      const diasDeExcecao = calendarioExcecoes.filter(
+        (e) =>
+          e.data > ultimaAula &&
+          e.data <= hojeIso &&
+          excecaoQueAfeta(e.data, aluno.nivel, calendarioExcecoes),
+      ).length;
+      return Math.max(diasCorridos - diasDeExcecao, 0);
     }
 
     // Última linha de status por (aluno, tipo) — pode ter mais de um episódio no histórico.
@@ -415,7 +434,12 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
     }
 
     for (const aluno of alunos) {
-      sincronizar(aluno, "faltas", calcularSequenciaFaltas(presPorAluno.get(aluno.id) ?? []));
+      // Dias de feriado/recesso/férias não contam falta, mesmo se por engano
+      // alguém marcar presença nesse dia.
+      const registrosFaltas = (presPorAluno.get(aluno.id) ?? []).filter(
+        (r) => !excecaoQueAfeta(r.data, aluno.nivel, calendarioExcecoes),
+      );
+      sincronizar(aluno, "faltas", calcularSequenciaFaltas(registrosFaltas));
       sincronizar(
         aluno,
         "nota_fala",
