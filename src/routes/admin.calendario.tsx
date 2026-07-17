@@ -41,7 +41,6 @@ function CalendarioPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["calendario-excecoes"] });
       setSelecionados(new Set());
-      setDescricao("");
       setGruposSelecionados(new Set());
     },
   });
@@ -55,7 +54,6 @@ function CalendarioPage() {
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [tipo, setTipo] = useState<TipoCalendarioExcecao>("feriado");
   const [gruposSelecionados, setGruposSelecionados] = useState<Set<GrupoCalendario>>(new Set());
-  const [descricao, setDescricao] = useState("");
   const [erro, setErro] = useState<string | null>(null);
 
   const excecoesPorData = useMemo(() => {
@@ -97,44 +95,27 @@ function CalendarioPage() {
       setErro("Marque pelo menos um grupo (Kids, Teens ou Adultos).");
       return;
     }
-    if (!descricao.trim()) {
-      setErro("Descreva o motivo (ex.: Corpus Christi, Recesso de julho…).");
-      return;
-    }
     criar.mutate({
       data: {
         datas: [...selecionados],
         tipo,
-        descricao: descricao.trim(),
         grupos: [...gruposSelecionados],
       },
     });
   }
 
-  // Junta exceções com a mesma data+tipo+descrição numa linha só (ex.: marcar
-  // Kids e Teens de uma vez gera 2 linhas no banco, mas aparece "Kids, Teens"
-  // junto aqui em vez de duas linhas iguais).
+  // Junta exceções com a mesma data+tipo numa linha só (ex.: marcar Kids e
+  // Teens de uma vez gera 2 linhas no banco, mas aparece "Kids, Teens" junto
+  // aqui em vez de duas linhas iguais).
   const proximas = useMemo(() => {
     const grupos = new Map<
       string,
-      {
-        data: string;
-        tipo: TipoCalendarioExcecao;
-        descricao: string;
-        grupos: GrupoCalendario[];
-        ids: string[];
-      }
+      { data: string; tipo: TipoCalendarioExcecao; grupos: GrupoCalendario[]; ids: string[] }
     >();
     for (const e of (excecoes ?? []).filter((e) => e.data >= toISODate(new Date()))) {
-      const chave = `${e.data}|${e.tipo}|${e.descricao}`;
+      const chave = `${e.data}|${e.tipo}`;
       if (!grupos.has(chave)) {
-        grupos.set(chave, {
-          data: e.data,
-          tipo: e.tipo,
-          descricao: e.descricao,
-          grupos: [],
-          ids: [],
-        });
+        grupos.set(chave, { data: e.data, tipo: e.tipo, grupos: [], ids: [] });
       }
       const grupo = grupos.get(chave)!;
       grupo.grupos.push(e.grupo as GrupoCalendario);
@@ -229,12 +210,6 @@ function CalendarioPage() {
             </button>
           ))}
         </div>
-        <input
-          value={descricao}
-          onChange={(e) => setDescricao(e.target.value)}
-          placeholder="Descrição (ex.: Corpus Christi — antecipado)"
-          className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs"
-        />
         {erro && <p className="text-xs text-destructive">{erro}</p>}
         <button
           onClick={aplicar}
@@ -252,7 +227,7 @@ function CalendarioPage() {
         <ul className="space-y-1.5">
           {proximas.map((e) => (
             <li
-              key={`${e.data}|${e.tipo}|${e.descricao}`}
+              key={`${e.data}|${e.tipo}`}
               className="rounded-lg border border-border px-3 py-2 text-sm flex items-center justify-between gap-2 flex-wrap"
             >
               <div>
@@ -260,7 +235,7 @@ function CalendarioPage() {
                 <span className="text-muted-foreground">
                   {" "}
                   — {ROTULO_TIPO_CALENDARIO[e.tipo]} ·{" "}
-                  {e.grupos.map((g) => ROTULO_GRUPO[g]).join(", ")} · {e.descricao}
+                  {e.grupos.map((g) => ROTULO_GRUPO[g]).join(", ")}
                 </span>
               </div>
               <button
@@ -330,7 +305,7 @@ function MesCalendario({
             <button
               key={iso}
               onClick={() => onAlternarDia(iso)}
-              title={[...new Set(existentes.map((e) => e.descricao))].join(", ")}
+              title={[...new Set(existentes.map((e) => ROTULO_TIPO_CALENDARIO[e.tipo]))].join(", ")}
               className={`aspect-square rounded text-[10px] flex items-center justify-center border ${
                 selecionado
                   ? "bg-primary text-primary-foreground border-primary"

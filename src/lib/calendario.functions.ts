@@ -17,15 +17,10 @@ export const getCalendarioExcecoes = createServerFn({ method: "GET" }).handler(
 
 // Cria uma exceção pra cada combinação de data selecionada × grupo marcado
 // (um clique por dia no calendário, um ou mais grupos) — sempre com o mesmo
-// tipo/descrição. Marcar os 3 grupos de uma vez equivale a "toda a escola".
+// tipo. Marcar os 3 grupos de uma vez equivale a "toda a escola".
 export const criarCalendarioExcecoes = createServerFn({ method: "POST" })
   .inputValidator(
-    (data: {
-      datas: string[];
-      tipo: TipoCalendarioExcecao;
-      descricao: string;
-      grupos: GrupoCalendario[];
-    }) => data,
+    (data: { datas: string[]; tipo: TipoCalendarioExcecao; grupos: GrupoCalendario[] }) => data,
   )
   .handler(async ({ data }) => {
     const sb = await admin();
@@ -33,7 +28,7 @@ export const criarCalendarioExcecoes = createServerFn({ method: "POST" })
       data.grupos.map((grupo) => ({
         data: dataIso,
         tipo: data.tipo,
-        descricao: data.descricao,
+        descricao: "",
         grupo,
       })),
     );

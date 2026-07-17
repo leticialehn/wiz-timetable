@@ -783,7 +783,7 @@ function AlunoLinha({
 
       {excecaoCalendario ? (
         <div className="text-xs text-rose-700 dark:text-rose-400 mt-0.5 italic">
-          🎉 {ROTULO_TIPO_CALENDARIO[excecaoCalendario.tipo]} — {excecaoCalendario.descricao}
+          🎉 {ROTULO_TIPO_CALENDARIO[excecaoCalendario.tipo]}
         </div>
       ) : c.aluno_avulso ? (
         <div className="text-xs text-muted-foreground mt-0.5 italic">

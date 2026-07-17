@@ -685,7 +685,7 @@ function LinhaPreenchida({
       } ${horarioAvulso ? "text-blue-600 dark:text-blue-400" : ""} ${c.avisou_falta ? "opacity-50" : ""}`}
       title={
         excecao
-          ? `${ROTULO_TIPO_CALENDARIO[excecao.tipo]} — ${excecao.descricao}`
+          ? ROTULO_TIPO_CALENDARIO[excecao.tipo]
           : aniversario
             ? "Aniversário nesta semana! 🎂"
             : c.avisou_falta
