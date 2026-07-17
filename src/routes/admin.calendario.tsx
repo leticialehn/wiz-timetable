@@ -66,6 +66,7 @@ function CalendarioPage() {
   }, [excecoes]);
 
   const proximoMes = new Date(mesAtual.getFullYear(), mesAtual.getMonth() + 1, 1);
+  const terceiroMes = new Date(mesAtual.getFullYear(), mesAtual.getMonth() + 2, 1);
 
   function alternarDia(iso: string) {
     setSelecionados((prev) => {
@@ -159,7 +160,7 @@ function CalendarioPage() {
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-4 mb-4">
+      <div className="flex flex-wrap gap-3 mb-4">
         <MesCalendario
           mes={mesAtual}
           excecoesPorData={excecoesPorData}
@@ -168,6 +169,12 @@ function CalendarioPage() {
         />
         <MesCalendario
           mes={proximoMes}
+          excecoesPorData={excecoesPorData}
+          selecionados={selecionados}
+          onAlternarDia={alternarDia}
+        />
+        <MesCalendario
+          mes={terceiroMes}
           excecoesPorData={excecoesPorData}
           selecionados={selecionados}
           onAlternarDia={alternarDia}
@@ -282,7 +289,7 @@ function MesCalendario({
   }, [mes]);
 
   return (
-    <div className="rounded-lg border border-border p-2 w-[190px]">
+    <div className="rounded-lg border border-border p-2 w-[176px]">
       <div className="text-center text-xs font-semibold mb-1.5">
         {(() => {
           const rotulo = mes.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
