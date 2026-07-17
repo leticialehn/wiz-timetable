@@ -102,11 +102,10 @@ function AlunosPage() {
           className="flex flex-wrap gap-2 items-end"
         >
           <div className="flex-1 min-w-[180px]">
-            <label className="text-sm block mb-1">Nome do aluno novo</label>
             <input
               value={nome}
               onChange={(e) => setNome(e.target.value)}
-              placeholder="Digite aqui só se for cadastrar alguém novo"
+              placeholder="Digite nome do aluno novo"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
           </div>
