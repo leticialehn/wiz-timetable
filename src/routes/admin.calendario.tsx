@@ -50,6 +50,7 @@ function CalendarioPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["calendario-excecoes"] }),
   });
 
+  const [mostrarAjuda, setMostrarAjuda] = useState(false);
   const [mesAtual, setMesAtual] = useState(() => inicioDoMes());
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [tipo, setTipo] = useState<TipoCalendarioExcecao>("feriado");
@@ -144,11 +145,23 @@ function CalendarioPage() {
 
   return (
     <main className="max-w-3xl mx-auto px-4 py-6">
-      <h1 className="text-xl font-semibold mb-1">Calendário escolar</h1>
-      <p className="text-xs text-muted-foreground mb-3">
-        Clique nos dias sem aula, marque quem é afetado e descreva o motivo. Esses dias não contam
-        faltas nem "sem aula" nos alertas, e aparecem avisados na tela da professora.
-      </p>
+      <div className="flex items-center gap-1.5 mb-3">
+        <h1 className="text-xl font-semibold">Calendário escolar</h1>
+        <button
+          type="button"
+          onClick={() => setMostrarAjuda((v) => !v)}
+          title="Como funciona"
+          className="w-5 h-5 rounded-full border border-border text-[11px] text-muted-foreground hover:bg-accent flex items-center justify-center"
+        >
+          ?
+        </button>
+      </div>
+      {mostrarAjuda && (
+        <p className="text-xs text-muted-foreground mb-3 -mt-2">
+          Clique nos dias sem aula, marque quem é afetado e descreva o motivo. Esses dias não contam
+          faltas nem "sem aula" nos alertas, e aparecem avisados na tela da professora.
+        </p>
+      )}
 
       <div className="flex items-center justify-between mb-2">
         <button
