@@ -315,6 +315,13 @@ export const adicionarAluno = createServerFn({ method: "POST" })
       });
       if (error) throw new Error(error.message);
     }
+
+    // Agendar um aluno inativo (ex.: aluno antigo voltando) já reativa ele
+    // sozinho — não faz sentido ter um horário marcado pra alguém inativo.
+    if (data.aluno_id) {
+      await sb.from("alunos").update({ ativo: true }).eq("id", data.aluno_id);
+    }
+
     return { ok: true };
   });
 

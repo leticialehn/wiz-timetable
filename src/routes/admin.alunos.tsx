@@ -334,10 +334,10 @@ function LinhaAluno({
                     });
                   }
                 }}
-                placeholder="nascimento dd/mm/aa"
+                placeholder="dd/mm/aa"
                 inputMode="numeric"
                 title="Data de nascimento — digite só os 6 números (ex.: 190312)"
-                className="w-28 rounded border border-input bg-background px-1.5 py-0.5 text-xs"
+                className="w-20 rounded border border-input bg-background px-1 py-0.5 text-xs"
               />
             </span>
             {aniversario && <span className="text-sm">🎂</span>}

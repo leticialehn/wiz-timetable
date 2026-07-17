@@ -214,7 +214,7 @@ function GradePage() {
           celulas={data.celulasPorData[dataDoDia] ?? []}
           horariosConfig={data.horariosConfig}
           diaSemana={diaAtivo}
-          alunos={data.alunos.filter((a) => a.ativo)}
+          alunos={data.alunos}
           onAdicionar={handleAdicionar}
           onCriarEAdicionar={handleCriarEAdicionar}
           onEditarAluno={handleEditarAluno}
@@ -236,7 +236,7 @@ function GradePage() {
           celulas={(data.celulasPorData[dataDoDia] ?? []).filter(
             (c) => c.professora_id === editando.professora.id && c.periodo === editando.periodo,
           )}
-          alunos={data.alunos.filter((a) => a.ativo)}
+          alunos={data.alunos}
           onFechar={() => setEditando(null)}
         />
       )}
@@ -1318,6 +1318,12 @@ function CelulaEditor(props: {
                             }`}
                           >
                             {a.nome} <span className="text-muted-foreground">— {a.nivel}</span>
+                            {!a.ativo && (
+                              <span className="text-amber-600 dark:text-amber-400">
+                                {" "}
+                                (inativo — vai reativar)
+                              </span>
+                            )}
                           </button>
                         </li>
                       ))}

@@ -11,9 +11,8 @@ import {
 import { getUltimasLicoesPorAluno } from "@/lib/cadastros.functions";
 import { formatarDataBR } from "@/lib/date-utils";
 
-// Ordem de exibição dos grupos: faltas e rematrícula primeiro, por serem os
-// mais urgentes/frequentes hoje.
-const ORDEM_TIPO: TipoAlerta[] = ["faltas", "rematricula", "nota_fala", "atrasado", "sem_aula"];
+// Ordem de exibição dos grupos: rematrícula sempre primeiro.
+const ORDEM_TIPO: TipoAlerta[] = ["rematricula", "faltas", "nota_fala", "atrasado", "sem_aula"];
 
 const ROTULO_TIPO_ALERTA: Record<TipoAlerta, string> = {
   faltas: "Faltas seguidas",
