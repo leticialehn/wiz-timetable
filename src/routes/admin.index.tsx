@@ -649,6 +649,7 @@ function LinhaPreenchida({
   // Horário avulso: aula adicionada só nesta semana, sem vínculo com um horário fixo (grade_base).
   const horarioAvulso = c.origem === "excecao" && c.grade_base_id === null;
   const aniversario = estaNaSemanaDoAniversario(c.aluno_nascimento, toISODate(new Date()));
+  const diaAniversario = c.aluno_nascimento ? parseISODate(c.aluno_nascimento).getDate() : null;
 
   return (
     <div
@@ -686,7 +687,7 @@ function LinhaPreenchida({
         )}
       </button>
       {mostraLivro && c.aluno_nivel && <span className="shrink-0 opacity-70">{c.aluno_nivel}</span>}
-      {aniversario && <span className="shrink-0">🎂</span>}
+      {aniversario && <span className="shrink-0">🎂{diaAniversario}</span>}
       {c.aluno_avulso && <span className="shrink-0 text-[9px] uppercase opacity-70">avulso</span>}
       {onAlternarAusencia ? (
         <button

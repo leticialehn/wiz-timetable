@@ -53,11 +53,14 @@ export function temTrackingDeLicao(nivel: string): boolean {
 }
 
 // Aceita variações de digitação (l23, R 4, l 5) e converte pro formato
-// padrão (L23, R4). O que não parece lição/revisão (HW, Extra…) passa direto.
+// padrão (L23, R4). Número sozinho (sem L nem R) é sempre lição — vira L23.
+// O que não parece lição/revisão (HW, Extra…) passa direto.
 export function normalizarLicao(valor: string): string {
-  const m = /^\s*([lr])\s*(\d+)\s*$/i.exec(valor);
-  if (!m) return valor;
-  return `${m[1].toUpperCase()}${m[2]}`;
+  const comLetra = /^\s*([lr])\s*(\d+)\s*$/i.exec(valor);
+  if (comLetra) return `${comLetra[1].toUpperCase()}${comLetra[2]}`;
+  const soNumero = /^\s*(\d+)\s*$/.exec(valor);
+  if (soNumero) return `L${soNumero[1]}`;
+  return valor;
 }
 
 // posNoBloco: posição de 1 a 70 dentro do bloco de 60 lições do nível.

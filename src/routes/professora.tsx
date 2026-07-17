@@ -684,6 +684,7 @@ function AlunoLinha({
   );
 
   const aniversario = estaNaSemanaDoAniversario(c.aluno_nascimento, toISODate(new Date()));
+  const diaAniversario = c.aluno_nascimento ? parseISODate(c.aluno_nascimento).getDate() : null;
 
   return (
     <li
@@ -716,7 +717,7 @@ function AlunoLinha({
         )}
         {aniversario && (
           <span className="text-sm shrink-0" title="Aniversário nesta semana!">
-            🎂
+            🎂{diaAniversario}
           </span>
         )}
         {(c.observacao || idiomaDoNivel(c.aluno_nivel)) && (

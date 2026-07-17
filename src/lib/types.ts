@@ -84,6 +84,9 @@ const IDIOMA_POR_LETRA: Record<string, string> = {
 };
 
 export function idiomaDoNivel(nivel: string): string | null {
+  // "CONV" (conversação) começa com C mas não é Chinês — não é uma trilha de
+  // idioma com letra-prefixo, é o tipo de aula em si.
+  if (nivel === "CONV") return null;
   return IDIOMA_POR_LETRA[nivel.charAt(0)] ?? null;
 }
 
