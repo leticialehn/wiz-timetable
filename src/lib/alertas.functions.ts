@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { Aluno, CalendarioExcecao, ConceitoNota, StatusPresenca } from "./types";
 import { excecaoQueAfeta } from "./types";
-import { parseISODate, toISODate } from "./date-utils";
+import { parseISODate, toISODate, somarMeses } from "./date-utils";
 import { dataInicioInferida, mesesDeAtraso, posicoesAlemDaR8 } from "./licoes";
 import { buscarTodasAsLinhas } from "./supabase-paginacao.server";
 
@@ -189,6 +189,9 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
   async (): Promise<AlertaAtivo[]> => {
     const sb = await publicClient();
     const hojeIso = toISODate(new Date());
+    // Resolvidos somem da lista depois de 2 meses — senão "Resolvidos
+    // recentemente" só cresce pra sempre.
+    const limiteResolvidoAntigoIso = somarMeses(hojeIso, -2);
     const [
       alunosRes,
       presencas,
@@ -309,6 +312,17 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
     const atualizacoes: PromiseLike<unknown>[] = [];
     const resultado: AlertaAtivo[] = [];
 
+    // Resolvidos há mais de 2 meses saem da lista sozinhos (sem apagar do
+    // banco) — senão "Resolvidos recentemente" só cresce pra sempre. Pendentes
+    // nunca são afetados por esse limite.
+    function aindaVisivel(status: AlertaStatusRow): boolean {
+      return (
+        status.status !== "resolvido" ||
+        !status.resolvido_em ||
+        status.resolvido_em.slice(0, 10) >= limiteResolvidoAntigoIso
+      );
+    }
+
     function sincronizar(aluno: Aluno, tipo: TipoAlerta, contagemAtual: number) {
       const chave = `${aluno.id}-${tipo}`;
       const existente = statusPorChave.get(chave);
@@ -322,7 +336,7 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
           return;
         }
         // Já resolvido: mantém no histórico como está — não mexe.
-        if (existente) resultado.push(paraAlertaAtivo(existente, aluno));
+        if (existente && aindaVisivel(existente)) resultado.push(paraAlertaAtivo(existente, aluno));
         return;
       }
 
@@ -371,7 +385,7 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
             .eq("id", existente.id),
         );
         resultado.push(paraAlertaAtivo(reaberto, aluno));
-      } else {
+      } else if (aindaVisivel(existente)) {
         resultado.push(paraAlertaAtivo(existente, aluno));
       }
     }
@@ -393,7 +407,7 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
       const existente = statusRematriculaPorAluno.get(aluno.id);
 
       if (posicoesAlem === null) {
-        if (existente) resultado.push(paraAlertaAtivo(existente, aluno));
+        if (existente && aindaVisivel(existente)) resultado.push(paraAlertaAtivo(existente, aluno));
         return;
       }
 
@@ -405,7 +419,7 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
             );
           }
           resultado.push(paraAlertaAtivo({ ...existente, contagem: posicoesAlem }, aluno));
-        } else {
+        } else if (aindaVisivel(existente)) {
           // Já rematriculado neste mesmo nível — não reabre mesmo que ele
           // continue avançando (R9, R10…): a decisão já foi tomada.
           resultado.push(paraAlertaAtivo(existente, aluno));
