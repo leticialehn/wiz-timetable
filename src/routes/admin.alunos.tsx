@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -58,7 +58,9 @@ function AlunosPage() {
   const [busca, setBusca] = useState("");
   const [ordem, setOrdem] = useState<"nome" | "nivel">("nome");
 
-  const filtrados = (data?.alunos ?? [])
+  const ativos = (data?.alunos ?? []).filter((a) => a.ativo);
+  const inativos = (data?.alunos ?? []).filter((a) => !a.ativo);
+  const filtrados = ativos
     .filter((a) => a.nome.toLowerCase().includes(busca.toLowerCase()))
     .sort((a, b) =>
       ordem === "nome"
@@ -68,7 +70,15 @@ function AlunosPage() {
 
   return (
     <main className="max-w-3xl mx-auto px-4 py-6">
-      <h1 className="text-2xl font-semibold mb-4">Alunos</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-semibold">Alunos</h1>
+        <Link
+          to="/admin/alunos/inativos"
+          className="text-sm text-muted-foreground underline hover:text-foreground"
+        >
+          Ver alunos inativos ({inativos.length})
+        </Link>
+      </div>
 
       <div className="relative mb-2">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">🔍</span>
@@ -146,8 +156,8 @@ function AlunosPage() {
 
       <p className="text-sm text-muted-foreground mb-2">
         {busca.trim()
-          ? `${filtrados.length} de ${data?.alunos.length ?? 0} alunos encontrados`
-          : `${data?.alunos.length ?? 0} alunos no total`}
+          ? `${filtrados.length} de ${ativos.length} alunos encontrados`
+          : `${ativos.length} alunos no total`}
       </p>
 
       <ul className="space-y-2">
@@ -201,9 +211,6 @@ function LinhaAluno({
     setNome(aluno.nome);
     setNivel(aluno.nivel);
     setDataInicioNivel(aluno.data_inicio_nivel ?? "");
-    setNascimentoDigitos(
-      aluno.data_nascimento ? dataNascimentoParaDigitos(aluno.data_nascimento) : "",
-    );
     setEditando(true);
   }
 
@@ -214,7 +221,7 @@ function LinhaAluno({
       nivel: nivel.trim(),
       ativo: aluno.ativo,
       dataInicioNivel: dataInicioNivel || null,
-      dataNascimento: dataNascimentoDeDigitos(nascimentoDigitos),
+      dataNascimento: aluno.data_nascimento,
     });
     setEditando(false);
   }
@@ -223,9 +230,6 @@ function LinhaAluno({
     setNome(aluno.nome);
     setNivel(aluno.nivel);
     setDataInicioNivel(aluno.data_inicio_nivel ?? "");
-    setNascimentoDigitos(
-      aluno.data_nascimento ? dataNascimentoParaDigitos(aluno.data_nascimento) : "",
-    );
     setEditando(false);
   }
 
@@ -300,21 +304,6 @@ function LinhaAluno({
               />
             </label>
           )}
-          <label className="text-xs text-muted-foreground flex items-center gap-2">
-            Data de nascimento (só os 6 números, ex.: 190312)
-            <input
-              value={mascaraDataDigitando(nascimentoDigitos)}
-              onChange={(e) => setNascimentoDigitos(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") salvar();
-                if (e.key === "Escape") cancelar();
-              }}
-              onClick={(e) => e.stopPropagation()}
-              placeholder="dd/mm/aa"
-              inputMode="numeric"
-              className="w-24 rounded-md border border-input bg-background px-2 py-1 text-xs"
-            />
-          </label>
         </>
       ) : (
         <>
@@ -322,13 +311,36 @@ function LinhaAluno({
             <span className="font-medium">{aluno.nome}</span>
             <span className="text-muted-foreground text-sm"> — {aluno.nivel}</span>
             {ultimaLicao && <span className="text-muted-foreground text-sm"> · {ultimaLicao}</span>}
-            {aluno.data_nascimento && (
-              <span className="text-muted-foreground text-sm">
-                {" "}
-                · {formatarDataNascimentoBR(aluno.data_nascimento)}
-              </span>
-            )}
-            {aniversario && <span className="text-sm"> 🎂</span>}
+            <span
+              className="text-muted-foreground text-sm inline-flex items-center gap-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {" "}
+              ·{" "}
+              <input
+                value={mascaraDataDigitando(nascimentoDigitos)}
+                onChange={(e) =>
+                  setNascimentoDigitos(e.target.value.replace(/\D/g, "").slice(0, 6))
+                }
+                onBlur={() => {
+                  const novaData = dataNascimentoDeDigitos(nascimentoDigitos);
+                  if (novaData !== aluno.data_nascimento) {
+                    onAtualizar({
+                      nome: aluno.nome,
+                      nivel: aluno.nivel,
+                      ativo: aluno.ativo,
+                      dataInicioNivel: aluno.data_inicio_nivel,
+                      dataNascimento: novaData,
+                    });
+                  }
+                }}
+                placeholder="nascimento dd/mm/aa"
+                inputMode="numeric"
+                title="Data de nascimento — digite só os 6 números (ex.: 190312)"
+                className="w-28 rounded border border-input bg-background px-1.5 py-0.5 text-xs"
+              />
+            </span>
+            {aniversario && <span className="text-sm">🎂</span>}
           </div>
           <label className="text-xs flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
             <input

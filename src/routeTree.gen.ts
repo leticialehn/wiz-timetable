@@ -20,6 +20,7 @@ import { Route as AdminProfessorasRouteImport } from './routes/admin.professoras
 import { Route as AdminAlunosRouteImport } from './routes/admin.alunos'
 import { Route as AdminAlertasRouteImport } from './routes/admin.alertas'
 import { Route as ProfessoraAlunoIdRouteImport } from './routes/professora_.aluno.$id'
+import { Route as AdminAlunosInativosRouteImport } from './routes/admin.alunos_.inativos'
 import { Route as AdminAlunosIdRouteImport } from './routes/admin.alunos_.$id'
 
 const ProfessoraRoute = ProfessoraRouteImport.update({
@@ -77,6 +78,11 @@ const ProfessoraAlunoIdRoute = ProfessoraAlunoIdRouteImport.update({
   path: '/professora/aluno/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminAlunosInativosRoute = AdminAlunosInativosRouteImport.update({
+  id: '/alunos_/inativos',
+  path: '/alunos/inativos',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAlunosIdRoute = AdminAlunosIdRouteImport.update({
   id: '/alunos_/$id',
   path: '/alunos/$id',
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/professora/alertas': typeof ProfessoraAlertasRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/alunos/$id': typeof AdminAlunosIdRoute
+  '/admin/alunos/inativos': typeof AdminAlunosInativosRoute
   '/professora/aluno/$id': typeof ProfessoraAlunoIdRoute
 }
 export interface FileRoutesByTo {
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/professora/alertas': typeof ProfessoraAlertasRoute
   '/admin': typeof AdminIndexRoute
   '/admin/alunos/$id': typeof AdminAlunosIdRoute
+  '/admin/alunos/inativos': typeof AdminAlunosInativosRoute
   '/professora/aluno/$id': typeof ProfessoraAlunoIdRoute
 }
 export interface FileRoutesById {
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/professora_/alertas': typeof ProfessoraAlertasRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/alunos_/$id': typeof AdminAlunosIdRoute
+  '/admin/alunos_/inativos': typeof AdminAlunosInativosRoute
   '/professora_/aluno/$id': typeof ProfessoraAlunoIdRoute
 }
 export interface FileRouteTypes {
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/professora/alertas'
     | '/admin/'
     | '/admin/alunos/$id'
+    | '/admin/alunos/inativos'
     | '/professora/aluno/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/professora/alertas'
     | '/admin'
     | '/admin/alunos/$id'
+    | '/admin/alunos/inativos'
     | '/professora/aluno/$id'
   id:
     | '__root__'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/professora_/alertas'
     | '/admin/'
     | '/admin/alunos_/$id'
+    | '/admin/alunos_/inativos'
     | '/professora_/aluno/$id'
   fileRoutesById: FileRoutesById
 }
@@ -256,6 +268,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfessoraAlunoIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/alunos_/inativos': {
+      id: '/admin/alunos_/inativos'
+      path: '/alunos/inativos'
+      fullPath: '/admin/alunos/inativos'
+      preLoaderRoute: typeof AdminAlunosInativosRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/alunos_/$id': {
       id: '/admin/alunos_/$id'
       path: '/alunos/$id'
@@ -274,6 +293,7 @@ interface AdminRouteChildren {
   AdminUsuariosRoute: typeof AdminUsuariosRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminAlunosIdRoute: typeof AdminAlunosIdRoute
+  AdminAlunosInativosRoute: typeof AdminAlunosInativosRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
@@ -284,6 +304,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminUsuariosRoute: AdminUsuariosRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminAlunosIdRoute: AdminAlunosIdRoute,
+  AdminAlunosInativosRoute: AdminAlunosInativosRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
