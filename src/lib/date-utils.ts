@@ -108,6 +108,35 @@ export function mascaraDataDigitando(valor: string): string {
   return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
 }
 
+export function somarDiasISO(iso: string, n: number): string {
+  const d = parseISODate(iso);
+  d.setDate(d.getDate() + n);
+  return toISODate(d);
+}
+
+function nomeMesCapitalizado(d: Date): string {
+  const s = d.toLocaleDateString("pt-BR", { month: "long" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// Formata um período (ex.: pro "Próximas datas" do calendário escolar), num
+// dia só ou como intervalo — só inclui o ano se início e fim caírem em anos
+// diferentes, já que na prática isso quase nunca acontece.
+export function formatarIntervaloBR(inicioIso: string, fimIso: string): string {
+  const inicio = parseISODate(inicioIso);
+  const fim = parseISODate(fimIso);
+  if (inicioIso === fimIso) {
+    return `${inicio.getDate()} de ${nomeMesCapitalizado(inicio)}`;
+  }
+  if (inicio.getMonth() === fim.getMonth() && inicio.getFullYear() === fim.getFullYear()) {
+    return `${inicio.getDate()} a ${fim.getDate()} de ${nomeMesCapitalizado(inicio)}`;
+  }
+  const comAno = inicio.getFullYear() !== fim.getFullYear();
+  const anoInicio = comAno ? ` de ${inicio.getFullYear()}` : "";
+  const anoFim = comAno ? ` de ${fim.getFullYear()}` : "";
+  return `${inicio.getDate()} de ${nomeMesCapitalizado(inicio)}${anoInicio} a ${fim.getDate()} de ${nomeMesCapitalizado(fim)}${anoFim}`;
+}
+
 // Domingo de Páscoa do ano (algoritmo de Meeus/Jones/Butcher) — usado só pra
 // calcular os feriados móveis (Carnaval, Sexta-feira Santa, Corpus Christi).
 function dataDaPascoa(ano: number): Date {

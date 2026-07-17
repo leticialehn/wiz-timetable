@@ -18,6 +18,8 @@ import {
   toISODate,
   parseISODate,
   formatarDataBR,
+  formatarIntervaloBR,
+  somarDiasISO,
   inicioDoMes,
   feriadosNacionais,
 } from "@/lib/date-utils";
@@ -107,22 +109,53 @@ function CalendarioPage() {
 
   // Junta exceções com a mesma data+tipo numa linha só (ex.: marcar Kids e
   // Teens de uma vez gera 2 linhas no banco, mas aparece "Kids, Teens" junto
-  // aqui em vez de duas linhas iguais).
-  const proximas = useMemo(() => {
-    const grupos = new Map<
+  // aqui em vez de duas linhas iguais), e depois emenda dias seguidos que têm
+  // o mesmo tipo+grupos num intervalo só (ex.: "20 a 25 de Julho").
+  const periodos = useMemo(() => {
+    const porDia = new Map<
       string,
       { data: string; tipo: TipoCalendarioExcecao; grupos: GrupoCalendario[]; ids: string[] }
     >();
     for (const e of (excecoes ?? []).filter((e) => e.data >= toISODate(new Date()))) {
       const chave = `${e.data}|${e.tipo}`;
-      if (!grupos.has(chave)) {
-        grupos.set(chave, { data: e.data, tipo: e.tipo, grupos: [], ids: [] });
+      if (!porDia.has(chave)) {
+        porDia.set(chave, { data: e.data, tipo: e.tipo, grupos: [], ids: [] });
       }
-      const grupo = grupos.get(chave)!;
-      grupo.grupos.push(e.grupo as GrupoCalendario);
-      grupo.ids.push(e.id);
+      const dia = porDia.get(chave)!;
+      dia.grupos.push(e.grupo as GrupoCalendario);
+      dia.ids.push(e.id);
     }
-    return [...grupos.values()].sort((a, b) => a.data.localeCompare(b.data));
+    const diasOrdenados = [...porDia.values()].sort((a, b) => a.data.localeCompare(b.data));
+
+    const chaveGrupos = (grupos: GrupoCalendario[]) => [...grupos].sort().join(",");
+    const mesclados: {
+      inicio: string;
+      fim: string;
+      tipo: TipoCalendarioExcecao;
+      grupos: GrupoCalendario[];
+      ids: string[];
+    }[] = [];
+    for (const dia of diasOrdenados) {
+      const anterior = mesclados[mesclados.length - 1];
+      const seguidoDoAnterior =
+        anterior &&
+        anterior.tipo === dia.tipo &&
+        chaveGrupos(anterior.grupos) === chaveGrupos(dia.grupos) &&
+        somarDiasISO(anterior.fim, 1) === dia.data;
+      if (seguidoDoAnterior) {
+        anterior.fim = dia.data;
+        anterior.ids.push(...dia.ids);
+      } else {
+        mesclados.push({
+          inicio: dia.data,
+          fim: dia.data,
+          tipo: dia.tipo,
+          grupos: dia.grupos,
+          ids: dia.ids,
+        });
+      }
+    }
+    return mesclados;
   }, [excecoes]);
 
   return (
@@ -181,72 +214,68 @@ function CalendarioPage() {
         />
       </div>
 
-      <div className="rounded-lg border-2 border-dashed border-primary/40 bg-primary/5 p-3 mb-4 space-y-2">
-        <h2 className="text-xs font-semibold text-primary">
-          {selecionados.size === 0
-            ? "Selecione os dias no calendário acima"
-            : `${selecionados.size} dia${selecionados.size > 1 ? "s" : ""} selecionado${selecionados.size > 1 ? "s" : ""}`}
-        </h2>
-        <div className="flex flex-wrap gap-1.5">
-          {TIPOS.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTipo(t)}
-              className={`text-xs px-2 py-1 rounded border ${
-                tipo === t
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border hover:bg-accent"
-              }`}
-            >
-              {ROTULO_TIPO_CALENDARIO[t]}
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {GRUPOS.map((g) => (
-            <button
-              key={g}
-              onClick={() => alternarGrupo(g)}
-              className={`text-xs px-2 py-1 rounded border ${
-                gruposSelecionados.has(g)
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border hover:bg-accent"
-              }`}
-            >
-              {ROTULO_GRUPO[g]}
-            </button>
-          ))}
-        </div>
-        {erro && <p className="text-xs text-destructive">{erro}</p>}
+      <div className="flex flex-wrap items-center gap-1.5 rounded-md bg-muted/50 p-1.5 mb-1">
+        {TIPOS.map((t) => (
+          <button
+            key={t}
+            onClick={() => setTipo(t)}
+            className={`text-xs px-2 py-1 rounded border ${
+              tipo === t
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border hover:bg-accent"
+            }`}
+          >
+            {ROTULO_TIPO_CALENDARIO[t]}
+          </button>
+        ))}
+        <span className="w-px h-4 bg-border" />
+        {GRUPOS.map((g) => (
+          <button
+            key={g}
+            onClick={() => alternarGrupo(g)}
+            className={`text-xs px-2 py-1 rounded border ${
+              gruposSelecionados.has(g)
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border hover:bg-accent"
+            }`}
+          >
+            {ROTULO_GRUPO[g]}
+          </button>
+        ))}
         <button
           onClick={aplicar}
           disabled={criar.isPending}
-          className="rounded-md bg-primary text-primary-foreground px-4 py-1.5 text-xs disabled:opacity-50"
+          className="ml-auto rounded-md bg-primary text-primary-foreground px-3 py-1 text-xs disabled:opacity-50"
         >
-          {criar.isPending ? "Salvando…" : "Adicionar"}
+          {criar.isPending
+            ? "Salvando…"
+            : selecionados.size > 0
+              ? `Adicionar (${selecionados.size})`
+              : "Adicionar"}
         </button>
       </div>
+      {erro && <p className="text-xs text-destructive mb-3">{erro}</p>}
 
-      <h2 className="text-sm font-semibold text-muted-foreground mb-2">Próximas datas</h2>
-      {proximas.length === 0 ? (
+      <h2 className="text-sm font-semibold text-muted-foreground mb-2 mt-3">Próximas datas</h2>
+      {periodos.length === 0 ? (
         <p className="text-muted-foreground text-sm">Nenhuma data marcada.</p>
       ) : (
         <ul className="space-y-1.5">
-          {proximas.map((e) => (
+          {periodos.map((p) => (
             <li
-              key={`${e.data}|${e.tipo}`}
+              key={`${p.inicio}|${p.fim}|${p.tipo}`}
               className="rounded-lg border border-border px-3 py-2 text-sm flex items-center justify-between gap-2 flex-wrap"
             >
               <div>
-                <span className="font-medium">{formatarDataBR(e.data)}</span>
+                <span className="font-medium">{formatarIntervaloBR(p.inicio, p.fim)}</span>
                 <span className="text-muted-foreground">
                   {" "}
-                  — {ROTULO_TIPO_CALENDARIO[e.tipo]} ·{" "}
-                  {e.grupos.map((g) => ROTULO_GRUPO[g]).join(", ")}
+                  — {ROTULO_TIPO_CALENDARIO[p.tipo]} ·{" "}
+                  {p.grupos.map((g) => ROTULO_GRUPO[g]).join(", ")}
                 </span>
               </div>
               <button
-                onClick={() => remover.mutate({ data: { ids: e.ids } })}
+                onClick={() => remover.mutate({ data: { ids: p.ids } })}
                 className="text-xs px-2 py-1 rounded border border-border hover:bg-destructive hover:text-destructive-foreground"
               >
                 Remover
