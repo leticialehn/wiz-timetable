@@ -46,6 +46,7 @@ import {
   segundaDaSemana,
   somarSemanas,
   toISODate,
+  estaNaSemanaDoAniversario,
 } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/professora")({
@@ -682,8 +683,14 @@ function AlunoLinha({
     </button>
   );
 
+  const aniversario = estaNaSemanaDoAniversario(c.aluno_nascimento, toISODate(new Date()));
+
   return (
-    <li className="relative rounded-lg px-2 py-1.5 pr-7 bg-secondary">
+    <li
+      className={`relative rounded-lg px-2 py-1.5 pr-7 bg-secondary ${
+        aniversario ? "border-2 border-rose-500" : ""
+      }`}
+    >
       <button
         type="button"
         onClick={() => {
@@ -706,6 +713,11 @@ function AlunoLinha({
         </span>
         {mostraLivro && c.aluno_nivel && (
           <span className="text-xs opacity-70">— {c.aluno_nivel}</span>
+        )}
+        {aniversario && (
+          <span className="text-sm shrink-0" title="Aniversário nesta semana!">
+            🎂
+          </span>
         )}
         {(c.observacao || idiomaDoNivel(c.aluno_nivel)) && (
           <span className="text-xs italic text-muted-foreground shrink-0">

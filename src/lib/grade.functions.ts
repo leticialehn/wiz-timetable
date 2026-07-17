@@ -36,9 +36,14 @@ function nomeDoAluno(
 ) {
   if (row.aluno_id) {
     const a = alunosById.get(row.aluno_id);
-    return { nome: a?.nome ?? "?", nivel: a?.nivel ?? "", avulso: false };
+    return {
+      nome: a?.nome ?? "?",
+      nivel: a?.nivel ?? "",
+      nascimento: a?.data_nascimento ?? null,
+      avulso: false,
+    };
   }
-  return { nome: row.aluno_nome_avulso ?? "?", nivel: "", avulso: true };
+  return { nome: row.aluno_nome_avulso ?? "?", nivel: "", nascimento: null, avulso: true };
 }
 
 function celulaFromBase(
@@ -59,6 +64,7 @@ function celulaFromBase(
     aluno_id: row.aluno_id,
     aluno_nome: info.nome,
     aluno_nivel: info.nivel,
+    aluno_nascimento: info.nascimento,
     aluno_avulso: info.avulso,
     tipo: row.tipo,
     horario_especifico: row.horario_especifico,
@@ -133,6 +139,7 @@ export const getGradeSemana = createServerFn({ method: "GET" })
             aluno_id: m.aluno_id ?? row.aluno_id,
             aluno_nome: info.nome,
             aluno_nivel: info.nivel,
+            aluno_nascimento: info.nascimento,
             aluno_avulso: info.avulso,
             tipo: (m.tipo ?? row.tipo) as TipoAula,
             horario_especifico: m.horario_especifico ?? row.horario_especifico,
@@ -163,6 +170,7 @@ export const getGradeSemana = createServerFn({ method: "GET" })
           aluno_id: e.aluno_id,
           aluno_nome: info.nome,
           aluno_nivel: info.nivel,
+          aluno_nascimento: info.nascimento,
           aluno_avulso: info.avulso,
           tipo: (e.tipo ?? "regular") as TipoAula,
           horario_especifico: e.horario_especifico,

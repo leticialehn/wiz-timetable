@@ -32,6 +32,7 @@ export type Aluno = {
   // lição no site (senão o sistema infere sozinho pela 1ª lição registrada).
   // Usada pelo alerta de "atrasado no calendário pedagógico".
   data_inicio_nivel: string | null;
+  data_nascimento: string | null;
 };
 
 // Níveis de aluno pré-cadastrados — não é permitido usar outro valor além destes.
@@ -194,6 +195,7 @@ export type CelulaAula = {
   aluno_id: string | null;
   aluno_nome: string;
   aluno_nivel: string;
+  aluno_nascimento: string | null;
   aluno_avulso: boolean;
   tipo: TipoAula;
   horario_especifico: string | null;

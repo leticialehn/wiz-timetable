@@ -20,6 +20,7 @@ import {
   segundaDaSemana,
   somarSemanas,
   toISODate,
+  estaNaSemanaDoAniversario,
 } from "@/lib/date-utils";
 import {
   DIAS_SEMANA,
@@ -127,6 +128,7 @@ function GradePage() {
         nivel,
         ativo: true,
         dataInicioNivel: atual?.data_inicio_nivel ?? null,
+        dataNascimento: atual?.data_nascimento ?? null,
       },
     });
     qc.invalidateQueries();
@@ -646,18 +648,21 @@ function LinhaPreenchida({
 
   // Horário avulso: aula adicionada só nesta semana, sem vínculo com um horário fixo (grade_base).
   const horarioAvulso = c.origem === "excecao" && c.grade_base_id === null;
+  const aniversario = estaNaSemanaDoAniversario(c.aluno_nascimento, toISODate(new Date()));
 
   return (
     <div
-      className={`group/linha flex items-center gap-1 text-[12px] leading-tight ${
-        horarioAvulso ? "text-blue-600 dark:text-blue-400" : ""
-      } ${c.avisou_falta ? "opacity-50" : ""}`}
+      className={`group/linha flex items-center gap-1 text-[12px] leading-tight rounded ${
+        aniversario ? "border border-rose-500 px-1" : ""
+      } ${horarioAvulso ? "text-blue-600 dark:text-blue-400" : ""} ${c.avisou_falta ? "opacity-50" : ""}`}
       title={
-        c.avisou_falta
-          ? "Avisou que não vem hoje (horário fixo mantido, vaga liberada)"
-          : horarioAvulso
-            ? "Aula avulsa (só nesta semana)"
-            : "Horário fixo"
+        aniversario
+          ? "Aniversário nesta semana! 🎂"
+          : c.avisou_falta
+            ? "Avisou que não vem hoje (horário fixo mantido, vaga liberada)"
+            : horarioAvulso
+              ? "Aula avulsa (só nesta semana)"
+              : "Horário fixo"
       }
     >
       {c.horario_especifico && (
@@ -681,6 +686,7 @@ function LinhaPreenchida({
         )}
       </button>
       {mostraLivro && c.aluno_nivel && <span className="shrink-0 opacity-70">{c.aluno_nivel}</span>}
+      {aniversario && <span className="shrink-0">🎂</span>}
       {c.aluno_avulso && <span className="shrink-0 text-[9px] uppercase opacity-70">avulso</span>}
       {onAlternarAusencia ? (
         <button

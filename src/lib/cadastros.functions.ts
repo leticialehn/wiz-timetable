@@ -84,6 +84,7 @@ export const atualizarAluno = createServerFn({ method: "POST" })
       nivel: string;
       ativo: boolean;
       dataInicioNivel: string | null;
+      dataNascimento: string | null;
     }) => data,
   )
   .handler(async ({ data }) => {
@@ -100,11 +101,39 @@ export const atualizarAluno = createServerFn({ method: "POST" })
         nivel: validarNivel(data.nivel),
         ativo: data.ativo,
         data_inicio_nivel: mudouNivel ? null : data.dataInicioNivel,
+        data_nascimento: data.dataNascimento,
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// Última lição registrada de cada aluno (de qualquer nível/data), pra exibir
+// na lista de alunos. Pagina pra não cair no limite de 1000 linhas do
+// Supabase conforme aulas_licoes for crescendo.
+export const getUltimasLicoesPorAluno = createServerFn({ method: "GET" }).handler(
+  async (): Promise<Record<string, string>> => {
+    const sb = await admin();
+    const { buscarTodasAsLinhas } = await import("./supabase-paginacao.server");
+    const linhas = await buscarTodasAsLinhas<{ aluno_id: string; licao: string }>(
+      async (inicio, fim) => {
+        const { data, error } = await sb
+          .from("aulas_licoes")
+          .select("aluno_id,licao,data,periodo,parte")
+          .order("data", { ascending: false })
+          .order("periodo", { ascending: false })
+          .order("parte", { ascending: false })
+          .range(inicio, fim);
+        return { data: data as { aluno_id: string; licao: string }[] | null, error };
+      },
+    );
+    const resultado: Record<string, string> = {};
+    for (const l of linhas) {
+      if (!(l.aluno_id in resultado)) resultado[l.aluno_id] = l.licao;
+    }
+    return resultado;
+  },
+);
 
 export const removerAluno = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string }) => data)

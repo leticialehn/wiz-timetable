@@ -63,3 +63,63 @@ export function somarMeses(iso: string, n: number): string {
   d.setMonth(d.getMonth() + n);
   return toISODate(d);
 }
+
+// Data de nascimento (ISO) formatada como DD/MM/AA (ano com 2 dígitos, como
+// pedido pra caber compacto na lista de alunos).
+export function formatarDataNascimentoBR(iso: string): string {
+  const d = parseISODate(iso);
+  const dia = String(d.getDate()).padStart(2, "0");
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const ano = String(d.getFullYear()).slice(-2);
+  return `${dia}/${mes}/${ano}`;
+}
+
+// Converte a data ISO de nascimento de volta pros 6 dígitos (ddmmaa), pra
+// inicializar o campo de edição com o valor já salvo.
+export function dataNascimentoParaDigitos(iso: string): string {
+  const d = parseISODate(iso);
+  const dia = String(d.getDate()).padStart(2, "0");
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const ano = String(d.getFullYear()).slice(-2);
+  return `${dia}${mes}${ano}`;
+}
+
+// Converte 6 dígitos (ddmmaa) digitados em data ISO (yyyy-mm-dd), ou null se
+// incompleto/inválido. Ano de 2 dígitos assume o século mais próximo do ano
+// atual (ex.: em 2026, "12" vira 2012; "87" vira 1987).
+export function dataNascimentoDeDigitos(digitos: string): string | null {
+  const d = digitos.replace(/\D/g, "");
+  if (d.length !== 6) return null;
+  const dia = parseInt(d.slice(0, 2), 10);
+  const mes = parseInt(d.slice(2, 4), 10);
+  const aa = parseInt(d.slice(4, 6), 10);
+  if (dia < 1 || dia > 31 || mes < 1 || mes > 12) return null;
+  const anoAtual2Digitos = new Date().getFullYear() % 100;
+  const ano = aa <= anoAtual2Digitos ? 2000 + aa : 1900 + aa;
+  return `${ano}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+}
+
+// Aplica a máscara dd/mm/aa enquanto a pessoa digita só números, sem exigir
+// os 6 dígitos completos ainda.
+export function mascaraDataDigitando(valor: string): string {
+  const d = valor.replace(/\D/g, "").slice(0, 6);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+}
+
+// O aniversário (dia/mês, independente do ano) cai na semana atual (segunda a
+// sábado, igual ao resto da grade)? Testa ano anterior/atual/seguinte pra
+// cobrir corretamente a virada de ano.
+export function estaNaSemanaDoAniversario(dataNascimento: string | null, hojeIso: string): boolean {
+  if (!dataNascimento) return false;
+  const hoje = parseISODate(hojeIso);
+  const semana = datasDaSemana(segundaDaSemana(hoje));
+  const nascimento = parseISODate(dataNascimento);
+  const mes = nascimento.getMonth();
+  const dia = nascimento.getDate();
+  for (const ano of [hoje.getFullYear() - 1, hoje.getFullYear(), hoje.getFullYear() + 1]) {
+    if (semana.includes(toISODate(new Date(ano, mes, dia)))) return true;
+  }
+  return false;
+}

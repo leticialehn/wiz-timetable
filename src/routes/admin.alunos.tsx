@@ -3,8 +3,21 @@ import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { getGradeSemana } from "@/lib/grade.functions";
-import { criarAluno, atualizarAluno, removerAluno } from "@/lib/cadastros.functions";
-import { segundaDaSemana, toISODate } from "@/lib/date-utils";
+import {
+  criarAluno,
+  atualizarAluno,
+  removerAluno,
+  getUltimasLicoesPorAluno,
+} from "@/lib/cadastros.functions";
+import {
+  segundaDaSemana,
+  toISODate,
+  formatarDataNascimentoBR,
+  dataNascimentoParaDigitos,
+  dataNascimentoDeDigitos,
+  mascaraDataDigitando,
+  estaNaSemanaDoAniversario,
+} from "@/lib/date-utils";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
 import { NIVEIS, type Aluno } from "@/lib/types";
 import { temTrackingDeLicao } from "@/lib/licoes";
@@ -19,6 +32,12 @@ function AlunosPage() {
   const { data } = useQuery({
     queryKey: ["grade-semana", "alunos-page"],
     queryFn: () => getFn({ data: { dataSegunda: toISODate(segundaDaSemana()) } }),
+  });
+
+  const getUltimasLicoesFn = useServerFn(getUltimasLicoesPorAluno);
+  const { data: ultimasLicoes } = useQuery({
+    queryKey: ["ultimas-licoes-por-aluno"],
+    queryFn: () => getUltimasLicoesFn(),
   });
 
   const criar = useMutation({
@@ -136,6 +155,7 @@ function AlunosPage() {
           <LinhaAluno
             key={a.id}
             aluno={a}
+            ultimaLicao={ultimasLicoes?.[a.id]}
             onAtualizar={(campos) => atualizar.mutate({ data: { id: a.id, ...campos } })}
             onRemover={() => remover.mutate({ data: { id: a.id } })}
             onAbrirHistorico={() => navigate({ to: "/admin/alunos/$id", params: { id: a.id } })}
@@ -151,15 +171,18 @@ type CamposAluno = {
   nivel: string;
   ativo: boolean;
   dataInicioNivel: string | null;
+  dataNascimento: string | null;
 };
 
 function LinhaAluno({
   aluno,
+  ultimaLicao,
   onAtualizar,
   onRemover,
   onAbrirHistorico,
 }: {
   aluno: Aluno;
+  ultimaLicao: string | undefined;
   onAtualizar: (campos: CamposAluno) => void;
   onRemover: () => void;
   onAbrirHistorico: () => void;
@@ -168,11 +191,19 @@ function LinhaAluno({
   const [nome, setNome] = useState(aluno.nome);
   const [nivel, setNivel] = useState(aluno.nivel);
   const [dataInicioNivel, setDataInicioNivel] = useState(aluno.data_inicio_nivel ?? "");
+  const [nascimentoDigitos, setNascimentoDigitos] = useState(
+    aluno.data_nascimento ? dataNascimentoParaDigitos(aluno.data_nascimento) : "",
+  );
+
+  const aniversario = estaNaSemanaDoAniversario(aluno.data_nascimento, toISODate(new Date()));
 
   function abrirEdicao() {
     setNome(aluno.nome);
     setNivel(aluno.nivel);
     setDataInicioNivel(aluno.data_inicio_nivel ?? "");
+    setNascimentoDigitos(
+      aluno.data_nascimento ? dataNascimentoParaDigitos(aluno.data_nascimento) : "",
+    );
     setEditando(true);
   }
 
@@ -183,6 +214,7 @@ function LinhaAluno({
       nivel: nivel.trim(),
       ativo: aluno.ativo,
       dataInicioNivel: dataInicioNivel || null,
+      dataNascimento: dataNascimentoDeDigitos(nascimentoDigitos),
     });
     setEditando(false);
   }
@@ -191,6 +223,9 @@ function LinhaAluno({
     setNome(aluno.nome);
     setNivel(aluno.nivel);
     setDataInicioNivel(aluno.data_inicio_nivel ?? "");
+    setNascimentoDigitos(
+      aluno.data_nascimento ? dataNascimentoParaDigitos(aluno.data_nascimento) : "",
+    );
     setEditando(false);
   }
 
@@ -198,7 +233,7 @@ function LinhaAluno({
     <li
       onClick={editando ? undefined : onAbrirHistorico}
       title={editando ? undefined : "Clique para ver o histórico do aluno"}
-      className={`rounded-lg border border-border p-3 ${
+      className={`rounded-lg border p-3 ${aniversario ? "border-2 border-rose-500" : "border-border"} ${
         editando ? "space-y-2" : "flex items-center gap-3 cursor-pointer hover:bg-accent/50"
       }`}
     >
@@ -265,12 +300,35 @@ function LinhaAluno({
               />
             </label>
           )}
+          <label className="text-xs text-muted-foreground flex items-center gap-2">
+            Data de nascimento (só os 6 números, ex.: 190312)
+            <input
+              value={mascaraDataDigitando(nascimentoDigitos)}
+              onChange={(e) => setNascimentoDigitos(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") salvar();
+                if (e.key === "Escape") cancelar();
+              }}
+              onClick={(e) => e.stopPropagation()}
+              placeholder="dd/mm/aa"
+              inputMode="numeric"
+              className="w-24 rounded-md border border-input bg-background px-2 py-1 text-xs"
+            />
+          </label>
         </>
       ) : (
         <>
           <div className="flex-1">
             <span className="font-medium">{aluno.nome}</span>
             <span className="text-muted-foreground text-sm"> — {aluno.nivel}</span>
+            {ultimaLicao && <span className="text-muted-foreground text-sm"> · {ultimaLicao}</span>}
+            {aluno.data_nascimento && (
+              <span className="text-muted-foreground text-sm">
+                {" "}
+                · {formatarDataNascimentoBR(aluno.data_nascimento)}
+              </span>
+            )}
+            {aniversario && <span className="text-sm"> 🎂</span>}
           </div>
           <label className="text-xs flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
             <input
@@ -282,6 +340,7 @@ function LinhaAluno({
                   nivel: aluno.nivel,
                   ativo: e.target.checked,
                   dataInicioNivel: aluno.data_inicio_nivel,
+                  dataNascimento: aluno.data_nascimento,
                 })
               }
             />

@@ -66,6 +66,7 @@ export type Database = {
           ativo: boolean;
           created_at: string;
           data_inicio_nivel: string | null;
+          data_nascimento: string | null;
           id: string;
           nivel: string;
           nome: string;
@@ -74,6 +75,7 @@ export type Database = {
           ativo?: boolean;
           created_at?: string;
           data_inicio_nivel?: string | null;
+          data_nascimento?: string | null;
           id?: string;
           nivel?: string;
           nome: string;
@@ -82,6 +84,7 @@ export type Database = {
           ativo?: boolean;
           created_at?: string;
           data_inicio_nivel?: string | null;
+          data_nascimento?: string | null;
           id?: string;
           nivel?: string;
           nome?: string;
