@@ -17,9 +17,6 @@ export type Professora = {
   // Coordenação vê funções extras (hoje: alerta de faltas consecutivas)
   // que as demais professoras não veem.
   coordenadora: boolean;
-  // Perfis como "Idiomas" só precisam ver quem está marcado no horário —
-  // sem lançar presença, nota ou lição pra esses alunos (por enquanto).
-  sem_lancamento: boolean;
 };
 
 export type Aluno = {

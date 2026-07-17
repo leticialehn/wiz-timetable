@@ -26,15 +26,7 @@ export const criarProfessora = createServerFn({ method: "POST" })
   });
 
 export const atualizarProfessora = createServerFn({ method: "POST" })
-  .inputValidator(
-    (data: {
-      id: string;
-      nome: string;
-      cor: string;
-      coordenadora: boolean;
-      semLancamento: boolean;
-    }) => data,
-  )
+  .inputValidator((data: { id: string; nome: string; cor: string; coordenadora: boolean }) => data)
   .handler(async ({ data }) => {
     const sb = await admin();
     const { error } = await sb
@@ -43,7 +35,6 @@ export const atualizarProfessora = createServerFn({ method: "POST" })
         nome: data.nome,
         cor: data.cor,
         coordenadora: data.coordenadora,
-        sem_lancamento: data.semLancamento,
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);

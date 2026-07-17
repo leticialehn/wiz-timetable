@@ -1036,7 +1036,6 @@ function CelulaEditor(props: {
   const vagasFechadas = props.config?.vagas_fechadas ?? 0;
   const [busca, setBusca] = useState("");
   const [horario, setHorario] = useState("");
-  const [grupoIdioma, setGrupoIdioma] = useState("");
   const [pendingAlunoId, setPendingAlunoId] = useState<string | null>(null);
   const [avulsoNome, setAvulsoNome] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -1110,14 +1109,13 @@ function CelulaEditor(props: {
           aluno_id: pendingAlunoId ?? null,
           aluno_nome_avulso: pendingAlunoId ? null : avulsoNome.trim() || null,
           horario_especifico: tipo === "online" ? horario || null : null,
-          observacao: props.professora.sem_lancamento ? grupoIdioma.trim() || null : null,
+          observacao: null,
         },
       });
       setPendingAlunoId(null);
       setAvulsoNome("");
       setBusca("");
       setHorario("");
-      setGrupoIdioma("");
     } catch (e) {
       setErro((e as Error).message);
     }
@@ -1183,10 +1181,7 @@ function CelulaEditor(props: {
                   </button>
                 ))}
               </div>
-              {(tipo === "reforco" ||
-                tipo === "conversacao" ||
-                fechado ||
-                props.professora.sem_lancamento) && (
+              {(tipo === "reforco" || tipo === "conversacao" || fechado) && (
                 <input
                   value={tema}
                   onChange={(e) => setTema(e.target.value)}
@@ -1195,9 +1190,7 @@ function CelulaEditor(props: {
                       ? "Tema da conversação"
                       : tipo === "reforco"
                         ? "Conteúdo a ser estudado"
-                        : props.professora.sem_lancamento
-                          ? "Ex.: Marcos - Italiano"
-                          : "Observação (opcional)"
+                        : "Observação (opcional)"
                   }
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm mb-2"
                 />
@@ -1401,14 +1394,6 @@ function CelulaEditor(props: {
                             );
                           })}
                         </select>
-                      )}
-                      {props.professora.sem_lancamento && (
-                        <input
-                          value={grupoIdioma}
-                          onChange={(e) => setGrupoIdioma(e.target.value)}
-                          placeholder="Ex.: Marcos - Italiano"
-                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        />
                       )}
                       <div className="text-xs text-muted-foreground pt-1">Aplicar:</div>
                       <div className="flex gap-2">
