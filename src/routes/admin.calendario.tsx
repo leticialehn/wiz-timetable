@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -170,6 +170,12 @@ function CalendarioPage() {
         >
           ?
         </button>
+        <Link
+          to="/admin/calendario/imprimir"
+          className="ml-auto text-sm text-muted-foreground underline hover:text-foreground"
+        >
+          Imprimir calendário do ano
+        </Link>
       </div>
       {mostrarAjuda && (
         <p className="text-xs text-muted-foreground mb-3 -mt-2">

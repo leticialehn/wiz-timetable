@@ -21,6 +21,7 @@ import { Route as AdminCalendarioRouteImport } from './routes/admin.calendario'
 import { Route as AdminAlunosRouteImport } from './routes/admin.alunos'
 import { Route as AdminAlertasRouteImport } from './routes/admin.alertas'
 import { Route as ProfessoraAlunoIdRouteImport } from './routes/professora_.aluno.$id'
+import { Route as AdminCalendarioImprimirRouteImport } from './routes/admin.calendario_.imprimir'
 import { Route as AdminAlunosInativosRouteImport } from './routes/admin.alunos_.inativos'
 import { Route as AdminAlunosIdRouteImport } from './routes/admin.alunos_.$id'
 
@@ -84,6 +85,11 @@ const ProfessoraAlunoIdRoute = ProfessoraAlunoIdRouteImport.update({
   path: '/professora/aluno/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCalendarioImprimirRoute = AdminCalendarioImprimirRouteImport.update({
+  id: '/calendario_/imprimir',
+  path: '/calendario/imprimir',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAlunosInativosRoute = AdminAlunosInativosRouteImport.update({
   id: '/alunos_/inativos',
   path: '/alunos/inativos',
@@ -109,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/admin/alunos/$id': typeof AdminAlunosIdRoute
   '/admin/alunos/inativos': typeof AdminAlunosInativosRoute
+  '/admin/calendario/imprimir': typeof AdminCalendarioImprimirRoute
   '/professora/aluno/$id': typeof ProfessoraAlunoIdRoute
 }
 export interface FileRoutesByTo {
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/admin/alunos/$id': typeof AdminAlunosIdRoute
   '/admin/alunos/inativos': typeof AdminAlunosInativosRoute
+  '/admin/calendario/imprimir': typeof AdminCalendarioImprimirRoute
   '/professora/aluno/$id': typeof ProfessoraAlunoIdRoute
 }
 export interface FileRoutesById {
@@ -141,6 +149,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/admin/alunos_/$id': typeof AdminAlunosIdRoute
   '/admin/alunos_/inativos': typeof AdminAlunosInativosRoute
+  '/admin/calendario_/imprimir': typeof AdminCalendarioImprimirRoute
   '/professora_/aluno/$id': typeof ProfessoraAlunoIdRoute
 }
 export interface FileRouteTypes {
@@ -159,6 +168,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/admin/alunos/$id'
     | '/admin/alunos/inativos'
+    | '/admin/calendario/imprimir'
     | '/professora/aluno/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -174,6 +184,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin/alunos/$id'
     | '/admin/alunos/inativos'
+    | '/admin/calendario/imprimir'
     | '/professora/aluno/$id'
   id:
     | '__root__'
@@ -190,6 +201,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/admin/alunos_/$id'
     | '/admin/alunos_/inativos'
+    | '/admin/calendario_/imprimir'
     | '/professora_/aluno/$id'
   fileRoutesById: FileRoutesById
 }
@@ -287,6 +299,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfessoraAlunoIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/calendario_/imprimir': {
+      id: '/admin/calendario_/imprimir'
+      path: '/calendario/imprimir'
+      fullPath: '/admin/calendario/imprimir'
+      preLoaderRoute: typeof AdminCalendarioImprimirRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/alunos_/inativos': {
       id: '/admin/alunos_/inativos'
       path: '/alunos/inativos'
@@ -314,6 +333,7 @@ interface AdminRouteChildren {
   AdminIndexRoute: typeof AdminIndexRoute
   AdminAlunosIdRoute: typeof AdminAlunosIdRoute
   AdminAlunosInativosRoute: typeof AdminAlunosInativosRoute
+  AdminCalendarioImprimirRoute: typeof AdminCalendarioImprimirRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
@@ -326,6 +346,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminIndexRoute: AdminIndexRoute,
   AdminAlunosIdRoute: AdminAlunosIdRoute,
   AdminAlunosInativosRoute: AdminAlunosInativosRoute,
+  AdminCalendarioImprimirRoute: AdminCalendarioImprimirRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
