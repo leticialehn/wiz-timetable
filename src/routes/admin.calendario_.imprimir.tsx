@@ -42,21 +42,24 @@ const COR_TIPO: Record<TipoCalendarioExcecao, string> = {
 
 const AZUL_WIZARD = "#0a1e5c";
 
-// Ordem fixa das 3 faixinhas embaixo do número do dia.
-const GRUPOS_MINI: { grupo: GrupoCalendario; letra: string }[] = [
-  { grupo: "kids", letra: "K" },
-  { grupo: "teens", letra: "T" },
-  { grupo: "adultos", letra: "A" },
-];
+const LETRA_GRUPO: Record<Exclude<GrupoCalendario, "todos">, string> = {
+  kids: "K",
+  teens: "T",
+  adultos: "A",
+};
 
-// Cor da faixinha de um grupo nesse dia — "todos" cobre os 3, senão só o
-// grupo específico daquela exceção.
-function corDoGrupoNoDia(
-  existentes: CalendarioExcecao[],
-  grupo: GrupoCalendario,
-): string | undefined {
-  const excecao = existentes.find((e) => e.grupo === "todos" || e.grupo === grupo);
-  return excecao ? COR_TIPO[excecao.tipo] : undefined;
+// Letrinhas (K/T/A) só quando o dia NÃO é pra escola toda — evita marcar todo
+// dia de feriado/recesso (que normalmente já é geral) com as 3 letras.
+function letrasDoGrupo(existentes: CalendarioExcecao[]): string | null {
+  if (existentes.length === 0) return null;
+  const grupos = new Set(existentes.map((e) => e.grupo));
+  const todaEscola =
+    grupos.has("todos") || (grupos.has("kids") && grupos.has("teens") && grupos.has("adultos"));
+  if (todaEscola) return null;
+  return (Object.keys(LETRA_GRUPO) as (keyof typeof LETRA_GRUPO)[])
+    .filter((g) => grupos.has(g))
+    .map((g) => LETRA_GRUPO[g])
+    .join("");
 }
 
 function ImprimirCalendarioPage() {
@@ -144,8 +147,8 @@ function ImprimirCalendarioPage() {
             </div>
           ))}
           <span className="ml-auto">
-            As 3 faixinhas embaixo do número indicam quem é afetado: <strong>K</strong>ids ·{" "}
-            <strong>T</strong>eens · <strong>A</strong>dultos
+            Quando o dia tem uma letrinha (<strong>K</strong>ids/<strong>T</strong>eens/
+            <strong>A</strong>dultos), é só pra aquele grupo — sem letra é pra escola toda.
           </span>
         </div>
       </div>
@@ -197,25 +200,16 @@ function MesMiniatura({
         {dias.map((iso, i) => {
           if (!iso) return <div key={i} />;
           const existentes = excecoesPorData.get(iso) ?? [];
-          const afetados = GRUPOS_MINI.filter(({ grupo }) => corDoGrupoNoDia(existentes, grupo));
+          const cor = existentes[0] ? COR_TIPO[existentes[0].tipo] : undefined;
+          const letras = letrasDoGrupo(existentes);
           return (
             <div
               key={iso}
-              title={afetados.length > 0 ? afetados.map((g) => g.letra).join("+") : undefined}
-              className="relative flex items-center justify-center overflow-hidden rounded-sm"
+              className="flex flex-col items-center justify-center rounded-sm leading-none"
+              style={{ backgroundColor: cor }}
             >
-              <div className="absolute inset-0 flex">
-                {GRUPOS_MINI.map(({ grupo }) => (
-                  <div
-                    key={grupo}
-                    className="flex-1"
-                    style={{ backgroundColor: corDoGrupoNoDia(existentes, grupo) ?? "transparent" }}
-                  />
-                ))}
-              </div>
-              <span className="relative text-[7px] text-gray-800">
-                {parseInt(iso.slice(-2), 10)}
-              </span>
+              <span className="text-[7px] text-gray-800">{parseInt(iso.slice(-2), 10)}</span>
+              {letras && <span className="text-[5px] font-bold text-gray-700">{letras}</span>}
             </div>
           );
         })}
