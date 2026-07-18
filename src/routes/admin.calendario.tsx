@@ -10,6 +10,7 @@ import {
 import {
   ROTULO_TIPO_CALENDARIO,
   ROTULO_GRUPO,
+  mesclarPeriodosCalendario,
   type TipoCalendarioExcecao,
   type GrupoCalendario,
   type CalendarioExcecao,
@@ -19,7 +20,6 @@ import {
   parseISODate,
   formatarDataBR,
   formatarIntervaloBR,
-  somarDiasISO,
   inicioDoMes,
   feriadosNacionais,
 } from "@/lib/date-utils";
@@ -107,56 +107,10 @@ function CalendarioPage() {
     });
   }
 
-  // Junta exceções com a mesma data+tipo numa linha só (ex.: marcar Kids e
-  // Teens de uma vez gera 2 linhas no banco, mas aparece "Kids, Teens" junto
-  // aqui em vez de duas linhas iguais), e depois emenda dias seguidos que têm
-  // o mesmo tipo+grupos num intervalo só (ex.: "20 a 25 de Julho").
-  const periodos = useMemo(() => {
-    const porDia = new Map<
-      string,
-      { data: string; tipo: TipoCalendarioExcecao; grupos: GrupoCalendario[]; ids: string[] }
-    >();
-    for (const e of (excecoes ?? []).filter((e) => e.data >= toISODate(new Date()))) {
-      const chave = `${e.data}|${e.tipo}`;
-      if (!porDia.has(chave)) {
-        porDia.set(chave, { data: e.data, tipo: e.tipo, grupos: [], ids: [] });
-      }
-      const dia = porDia.get(chave)!;
-      dia.grupos.push(e.grupo as GrupoCalendario);
-      dia.ids.push(e.id);
-    }
-    const diasOrdenados = [...porDia.values()].sort((a, b) => a.data.localeCompare(b.data));
-
-    const chaveGrupos = (grupos: GrupoCalendario[]) => [...grupos].sort().join(",");
-    const mesclados: {
-      inicio: string;
-      fim: string;
-      tipo: TipoCalendarioExcecao;
-      grupos: GrupoCalendario[];
-      ids: string[];
-    }[] = [];
-    for (const dia of diasOrdenados) {
-      const anterior = mesclados[mesclados.length - 1];
-      const seguidoDoAnterior =
-        anterior &&
-        anterior.tipo === dia.tipo &&
-        chaveGrupos(anterior.grupos) === chaveGrupos(dia.grupos) &&
-        somarDiasISO(anterior.fim, 1) === dia.data;
-      if (seguidoDoAnterior) {
-        anterior.fim = dia.data;
-        anterior.ids.push(...dia.ids);
-      } else {
-        mesclados.push({
-          inicio: dia.data,
-          fim: dia.data,
-          tipo: dia.tipo,
-          grupos: dia.grupos,
-          ids: dia.ids,
-        });
-      }
-    }
-    return mesclados;
-  }, [excecoes]);
+  const periodos = useMemo(
+    () => mesclarPeriodosCalendario(excecoes ?? [], { apenasApartirDe: toISODate(new Date()) }),
+    [excecoes],
+  );
 
   return (
     <main className="max-w-3xl mx-auto px-4 py-6">

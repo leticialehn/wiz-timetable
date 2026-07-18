@@ -5,11 +5,12 @@ import { useMemo, useState } from "react";
 import { getCalendarioExcecoes } from "@/lib/calendario.functions";
 import {
   ROTULO_TIPO_CALENDARIO,
+  ROTULO_GRUPO,
+  mesclarPeriodosCalendario,
   type TipoCalendarioExcecao,
-  type GrupoCalendario,
   type CalendarioExcecao,
 } from "@/lib/types";
-import { toISODate } from "@/lib/date-utils";
+import { toISODate, formatarIntervaloBR } from "@/lib/date-utils";
 
 export const Route = createFileRoute("/admin/calendario_/imprimir")({
   component: ImprimirCalendarioPage,
@@ -42,31 +43,6 @@ const COR_TIPO: Record<TipoCalendarioExcecao, string> = {
 
 const AZUL_WIZARD = "#0a1e5c";
 
-// Cor fixa por grupo (bem diferente das cores de tipo, pra não confundir com
-// o fundo do dia) — vira uma bolinha embaixo do número quando não é pra
-// escola toda.
-const COR_GRUPO: Record<Exclude<GrupoCalendario, "todos">, string> = {
-  kids: "#ec4899",
-  teens: "#8b5cf6",
-  adultos: "#f97316",
-};
-const ROTULO_GRUPO_MINI: Record<Exclude<GrupoCalendario, "todos">, string> = {
-  kids: "Kids",
-  teens: "Teens",
-  adultos: "Adultos",
-};
-
-// Bolinhas só quando o dia NÃO é pra escola toda — evita marcar todo dia de
-// feriado/recesso (que normalmente já é geral) com as 3 bolinhas.
-function gruposParciais(existentes: CalendarioExcecao[]): Exclude<GrupoCalendario, "todos">[] {
-  if (existentes.length === 0) return [];
-  const grupos = new Set(existentes.map((e) => e.grupo));
-  const todaEscola =
-    grupos.has("todos") || (grupos.has("kids") && grupos.has("teens") && grupos.has("adultos"));
-  if (todaEscola) return [];
-  return (Object.keys(COR_GRUPO) as (keyof typeof COR_GRUPO)[]).filter((g) => grupos.has(g));
-}
-
 function ImprimirCalendarioPage() {
   const getFn = useServerFn(getCalendarioExcecoes);
   const { data: excecoes } = useQuery({
@@ -77,14 +53,32 @@ function ImprimirCalendarioPage() {
   // Sempre abre no ano atual — nada de ano fixo pra lembrar de trocar.
   const [ano, setAno] = useState(() => new Date().getFullYear());
 
+  const excecoesDoAno = useMemo(
+    () => (excecoes ?? []).filter((e) => e.data.startsWith(`${ano}-`)),
+    [excecoes, ano],
+  );
+
   const excecoesPorData = useMemo(() => {
     const m = new Map<string, CalendarioExcecao[]>();
-    for (const e of excecoes ?? []) {
+    for (const e of excecoesDoAno) {
       if (!m.has(e.data)) m.set(e.data, []);
       m.get(e.data)!.push(e);
     }
     return m;
-  }, [excecoes]);
+  }, [excecoesDoAno]);
+
+  // Só os períodos que NÃO são pra escola toda — pra listar embaixo do
+  // calendário quem exatamente é afetado (Kids/Teens/Adultos), já que dentro
+  // do quadradinho do dia não cabe essa informação de forma legível.
+  const periodosPorTurma = useMemo(() => {
+    return mesclarPeriodosCalendario(excecoesDoAno).filter((p) => {
+      const grupos = new Set(p.grupos);
+      return !(
+        grupos.has("todos") ||
+        (grupos.has("kids") && grupos.has("teens") && grupos.has("adultos"))
+      );
+    });
+  }, [excecoesDoAno]);
 
   return (
     <div className="min-h-screen bg-muted/30 py-6 print:bg-white print:py-0">
@@ -116,14 +110,14 @@ function ImprimirCalendarioPage() {
         className="mx-auto bg-white shadow-lg print:shadow-none flex flex-col"
         style={{ width: "210mm", minHeight: "297mm", padding: "10mm" }}
       >
-        <div className="flex items-center gap-4 mb-4">
+        <div className="flex items-center gap-4 mb-3">
           <img src="/wizard-logo.jpg" alt="Wizard" style={{ height: "16mm" }} />
           <h1 className="text-2xl font-bold" style={{ color: AZUL_WIZARD }}>
             Calendário Pedagógico {ano}
           </h1>
         </div>
 
-        <div className="grid grid-cols-3 grid-rows-4 gap-3 flex-1">
+        <div className="grid grid-cols-3 grid-rows-4 gap-3" style={{ height: "205mm" }}>
           {NOMES_MESES.map((nome, mesIndex) => (
             <MesMiniatura
               key={mesIndex}
@@ -145,18 +139,21 @@ function ImprimirCalendarioPage() {
               {ROTULO_TIPO_CALENDARIO[t]}
             </div>
           ))}
-          <span className="flex items-center gap-3 ml-auto">
-            {(Object.keys(COR_GRUPO) as (keyof typeof COR_GRUPO)[]).map((g) => (
-              <span key={g} className="flex items-center gap-1">
-                <span
-                  className="inline-block w-2 h-2 rounded-full"
-                  style={{ backgroundColor: COR_GRUPO[g] }}
-                />
-                {ROTULO_GRUPO_MINI[g]}
-              </span>
-            ))}
-          </span>
         </div>
+
+        {periodosPorTurma.length > 0 && (
+          <div className="mt-2 text-[9px] text-gray-700">
+            <span className="font-semibold">Datas específicas por turma: </span>
+            {periodosPorTurma
+              .map(
+                (p) =>
+                  `${formatarIntervaloBR(p.inicio, p.fim)} (${ROTULO_TIPO_CALENDARIO[p.tipo]}) — ${p.grupos
+                    .map((g) => ROTULO_GRUPO[g])
+                    .join(", ")}`,
+              )
+              .join("  ·  ")}
+          </div>
+        )}
       </div>
 
       <style>{`
@@ -207,24 +204,13 @@ function MesMiniatura({
           if (!iso) return <div key={i} />;
           const existentes = excecoesPorData.get(iso) ?? [];
           const cor = existentes[0] ? COR_TIPO[existentes[0].tipo] : undefined;
-          const grupos = gruposParciais(existentes);
           return (
             <div
               key={iso}
-              className="flex flex-col items-center justify-center gap-[1px] rounded-sm leading-none"
+              className="flex items-center justify-center rounded-sm leading-none"
               style={{ backgroundColor: cor }}
             >
               <span className="text-[7px] text-gray-800">{parseInt(iso.slice(-2), 10)}</span>
-              <span className="flex gap-[1.5px] h-[5px] items-center">
-                {grupos.map((g) => (
-                  <span
-                    key={g}
-                    title={ROTULO_GRUPO_MINI[g]}
-                    className="block w-[5px] h-[5px] rounded-full"
-                    style={{ backgroundColor: COR_GRUPO[g] }}
-                  />
-                ))}
-              </span>
             </div>
           );
         })}

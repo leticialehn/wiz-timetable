@@ -1,3 +1,5 @@
+import { somarDiasISO } from "./date-utils";
+
 // Preto ou branco, o que ficar mais legível sobre a cor de fundo dada (hex #rrggbb).
 export function corTextoLegivel(corFundo: string): string {
   const hex = corFundo.replace("#", "");
@@ -165,6 +167,65 @@ export function excecaoQueAfeta(
   return (
     excecoes.find((e) => e.data === dataIso && (e.grupo === "todos" || e.grupo === grupo)) ?? null
   );
+}
+
+export type PeriodoCalendario = {
+  inicio: string;
+  fim: string;
+  tipo: TipoCalendarioExcecao;
+  grupos: GrupoCalendario[];
+  ids: string[];
+};
+
+// Junta exceções com a mesma data+tipo numa "grupos" só (ex.: marcar Kids e
+// Teens de uma vez gera 2 linhas no banco, mas vira um item só com
+// grupos:["kids","teens"]), e depois emenda dias seguidos que têm o mesmo
+// tipo+grupos num intervalo só (ex.: "20 a 25 de Julho").
+export function mesclarPeriodosCalendario(
+  excecoes: CalendarioExcecao[],
+  opts?: { apenasApartirDe?: string },
+): PeriodoCalendario[] {
+  const porDia = new Map<
+    string,
+    { data: string; tipo: TipoCalendarioExcecao; grupos: GrupoCalendario[]; ids: string[] }
+  >();
+  const filtradas = opts?.apenasApartirDe
+    ? excecoes.filter((e) => e.data >= opts.apenasApartirDe!)
+    : excecoes;
+  for (const e of filtradas) {
+    const chave = `${e.data}|${e.tipo}`;
+    if (!porDia.has(chave)) {
+      porDia.set(chave, { data: e.data, tipo: e.tipo, grupos: [], ids: [] });
+    }
+    const dia = porDia.get(chave)!;
+    dia.grupos.push(e.grupo);
+    dia.ids.push(e.id);
+  }
+  const diasOrdenados = [...porDia.values()].sort((a, b) => a.data.localeCompare(b.data));
+
+  const chaveGrupos = (grupos: GrupoCalendario[]) => [...grupos].sort().join(",");
+  const mesclados: PeriodoCalendario[] = [];
+  for (const dia of diasOrdenados) {
+    const anterior = mesclados[mesclados.length - 1];
+    const seguidoDoAnterior =
+      anterior &&
+      anterior.tipo === dia.tipo &&
+      chaveGrupos(anterior.grupos) === chaveGrupos(dia.grupos) &&
+      somarDiasISO(anterior.fim, 1) === dia.data;
+    if (seguidoDoAnterior) {
+      anterior.fim = dia.data;
+      anterior.ids.push(...dia.ids);
+    } else {
+      mesclados.push({
+        inicio: dia.data,
+        fim: dia.data,
+        tipo: dia.tipo,
+        grupos: dia.grupos,
+        ids: dia.ids,
+      });
+    }
+  }
+  return mesclados;
 }
 
 // Tipos de horário (configuração da célula: dia × período × professora)
