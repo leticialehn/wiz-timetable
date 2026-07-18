@@ -96,12 +96,6 @@ function ImprimirCalendarioPage() {
           ← Voltar pro calendário
         </Link>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setAno((a) => a - 1)}
-            className="px-3 py-1.5 rounded-md border border-border hover:bg-accent text-sm"
-          >
-            ← {ano - 1}
-          </button>
           <span className="font-semibold w-12 text-center">{ano}</span>
           <button
             onClick={() => setAno((a) => a + 1)}
