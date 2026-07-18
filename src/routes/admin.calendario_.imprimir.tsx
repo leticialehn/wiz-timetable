@@ -43,12 +43,12 @@ const COR_TIPO: Record<TipoCalendarioExcecao, string> = {
 const AZUL_WIZARD = "#0a1e5c";
 
 // Cor fixa por grupo (bem diferente das cores de tipo, pra não confundir com
-// o fundo do dia) — vira uma bolinha no canto do dia quando não é pra escola
-// toda.
+// o fundo do dia) — vira uma bolinha embaixo do número quando não é pra
+// escola toda.
 const COR_GRUPO: Record<Exclude<GrupoCalendario, "todos">, string> = {
   kids: "#ec4899",
   teens: "#8b5cf6",
-  adultos: "#10b981",
+  adultos: "#f97316",
 };
 const ROTULO_GRUPO_MINI: Record<Exclude<GrupoCalendario, "todos">, string> = {
   kids: "Kids",
@@ -151,7 +151,7 @@ function ImprimirCalendarioPage() {
               {ROTULO_TIPO_CALENDARIO[t]}
             </div>
           ))}
-          <span className="flex items-center gap-3 ml-4">
+          <span className="flex items-center gap-3 ml-auto">
             {(Object.keys(COR_GRUPO) as (keyof typeof COR_GRUPO)[]).map((g) => (
               <span key={g} className="flex items-center gap-1">
                 <span
@@ -161,9 +161,6 @@ function ImprimirCalendarioPage() {
                 {ROTULO_GRUPO_MINI[g]}
               </span>
             ))}
-          </span>
-          <span className="ml-auto">
-            Bolinha no canto = só aquele grupo — sem bolinha é pra escola toda.
           </span>
         </div>
       </div>
