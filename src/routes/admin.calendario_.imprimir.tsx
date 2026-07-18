@@ -193,22 +193,28 @@ function MesMiniatura({
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-px flex-1">
+      <div className="grid grid-cols-7 gap-px flex-1" style={{ gridAutoRows: "1fr" }}>
         {dias.map((iso, i) => {
           if (!iso) return <div key={i} />;
           const existentes = excecoesPorData.get(iso) ?? [];
+          const afetados = GRUPOS_MINI.filter(({ grupo }) => corDoGrupoNoDia(existentes, grupo));
           return (
-            <div key={iso} className="flex flex-col items-center leading-tight text-gray-700">
-              <span className="text-[7px]">{parseInt(iso.slice(-2), 10)}</span>
-              <span className="flex gap-px">
-                {GRUPOS_MINI.map(({ grupo, letra }) => (
-                  <span
+            <div
+              key={iso}
+              title={afetados.length > 0 ? afetados.map((g) => g.letra).join("+") : undefined}
+              className="relative flex items-center justify-center overflow-hidden rounded-sm"
+            >
+              <div className="absolute inset-0 flex">
+                {GRUPOS_MINI.map(({ grupo }) => (
+                  <div
                     key={grupo}
-                    title={letra}
-                    className="block w-[2.2px] h-[2.2px]"
-                    style={{ backgroundColor: corDoGrupoNoDia(existentes, grupo) ?? "#e5e7eb" }}
+                    className="flex-1"
+                    style={{ backgroundColor: corDoGrupoNoDia(existentes, grupo) ?? "transparent" }}
                   />
                 ))}
+              </div>
+              <span className="relative text-[7px] text-gray-800">
+                {parseInt(iso.slice(-2), 10)}
               </span>
             </div>
           );
