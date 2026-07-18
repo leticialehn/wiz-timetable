@@ -220,22 +220,20 @@ function MesMiniatura({
           return (
             <div
               key={iso}
-              className="relative flex items-center justify-center rounded-sm leading-none"
+              className="flex flex-col items-center justify-center gap-[1px] rounded-sm leading-none"
               style={{ backgroundColor: cor }}
             >
               <span className="text-[7px] text-gray-800">{parseInt(iso.slice(-2), 10)}</span>
-              {grupos.length > 0 && (
-                <span className="absolute top-[1px] right-[1px] flex gap-[1px]">
-                  {grupos.map((g) => (
-                    <span
-                      key={g}
-                      title={ROTULO_GRUPO_MINI[g]}
-                      className="block w-[3px] h-[3px] rounded-full"
-                      style={{ backgroundColor: COR_GRUPO[g] }}
-                    />
-                  ))}
-                </span>
-              )}
+              <span className="flex gap-[1.5px] h-[5px] items-center">
+                {grupos.map((g) => (
+                  <span
+                    key={g}
+                    title={ROTULO_GRUPO_MINI[g]}
+                    className="block w-[5px] h-[5px] rounded-full"
+                    style={{ backgroundColor: COR_GRUPO[g] }}
+                  />
+                ))}
+              </span>
             </div>
           );
         })}
