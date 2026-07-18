@@ -6,6 +6,7 @@ import { getCalendarioExcecoes } from "@/lib/calendario.functions";
 import {
   ROTULO_TIPO_CALENDARIO,
   type TipoCalendarioExcecao,
+  type GrupoCalendario,
   type CalendarioExcecao,
 } from "@/lib/types";
 import { toISODate } from "@/lib/date-utils";
@@ -40,6 +41,23 @@ const COR_TIPO: Record<TipoCalendarioExcecao, string> = {
 };
 
 const AZUL_WIZARD = "#0a1e5c";
+
+// Ordem fixa das 3 faixinhas embaixo do número do dia.
+const GRUPOS_MINI: { grupo: GrupoCalendario; letra: string }[] = [
+  { grupo: "kids", letra: "K" },
+  { grupo: "teens", letra: "T" },
+  { grupo: "adultos", letra: "A" },
+];
+
+// Cor da faixinha de um grupo nesse dia — "todos" cobre os 3, senão só o
+// grupo específico daquela exceção.
+function corDoGrupoNoDia(
+  existentes: CalendarioExcecao[],
+  grupo: GrupoCalendario,
+): string | undefined {
+  const excecao = existentes.find((e) => e.grupo === "todos" || e.grupo === grupo);
+  return excecao ? COR_TIPO[excecao.tipo] : undefined;
+}
 
 function ImprimirCalendarioPage() {
   const getFn = useServerFn(getCalendarioExcecoes);
@@ -125,8 +143,9 @@ function ImprimirCalendarioPage() {
               {ROTULO_TIPO_CALENDARIO[t]}
             </div>
           ))}
-          <span className="ml-auto italic">
-            Algumas datas podem ser específicas de turma — confirme na recepção em caso de dúvida.
+          <span className="ml-auto">
+            As 3 faixinhas embaixo do número indicam quem é afetado: <strong>K</strong>ids ·{" "}
+            <strong>T</strong>eens · <strong>A</strong>dultos
           </span>
         </div>
       </div>
@@ -178,14 +197,19 @@ function MesMiniatura({
         {dias.map((iso, i) => {
           if (!iso) return <div key={i} />;
           const existentes = excecoesPorData.get(iso) ?? [];
-          const cor = existentes[0] ? COR_TIPO[existentes[0].tipo] : undefined;
           return (
-            <div
-              key={iso}
-              className="text-center text-[7px] leading-tight rounded-sm text-gray-700"
-              style={{ backgroundColor: cor }}
-            >
-              {parseInt(iso.slice(-2), 10)}
+            <div key={iso} className="flex flex-col items-center leading-tight text-gray-700">
+              <span className="text-[7px]">{parseInt(iso.slice(-2), 10)}</span>
+              <span className="flex gap-px">
+                {GRUPOS_MINI.map(({ grupo, letra }) => (
+                  <span
+                    key={grupo}
+                    title={letra}
+                    className="block w-[2.2px] h-[2.2px]"
+                    style={{ backgroundColor: corDoGrupoNoDia(existentes, grupo) ?? "#e5e7eb" }}
+                  />
+                ))}
+              </span>
             </div>
           );
         })}
