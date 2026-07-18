@@ -42,24 +42,29 @@ const COR_TIPO: Record<TipoCalendarioExcecao, string> = {
 
 const AZUL_WIZARD = "#0a1e5c";
 
-const LETRA_GRUPO: Record<Exclude<GrupoCalendario, "todos">, string> = {
-  kids: "K",
-  teens: "T",
-  adultos: "A",
+// Cor fixa por grupo (bem diferente das cores de tipo, pra não confundir com
+// o fundo do dia) — vira uma bolinha no canto do dia quando não é pra escola
+// toda.
+const COR_GRUPO: Record<Exclude<GrupoCalendario, "todos">, string> = {
+  kids: "#ec4899",
+  teens: "#8b5cf6",
+  adultos: "#10b981",
+};
+const ROTULO_GRUPO_MINI: Record<Exclude<GrupoCalendario, "todos">, string> = {
+  kids: "Kids",
+  teens: "Teens",
+  adultos: "Adultos",
 };
 
-// Letrinhas (K/T/A) só quando o dia NÃO é pra escola toda — evita marcar todo
-// dia de feriado/recesso (que normalmente já é geral) com as 3 letras.
-function letrasDoGrupo(existentes: CalendarioExcecao[]): string | null {
-  if (existentes.length === 0) return null;
+// Bolinhas só quando o dia NÃO é pra escola toda — evita marcar todo dia de
+// feriado/recesso (que normalmente já é geral) com as 3 bolinhas.
+function gruposParciais(existentes: CalendarioExcecao[]): Exclude<GrupoCalendario, "todos">[] {
+  if (existentes.length === 0) return [];
   const grupos = new Set(existentes.map((e) => e.grupo));
   const todaEscola =
     grupos.has("todos") || (grupos.has("kids") && grupos.has("teens") && grupos.has("adultos"));
-  if (todaEscola) return null;
-  return (Object.keys(LETRA_GRUPO) as (keyof typeof LETRA_GRUPO)[])
-    .filter((g) => grupos.has(g))
-    .map((g) => LETRA_GRUPO[g])
-    .join("");
+  if (todaEscola) return [];
+  return (Object.keys(COR_GRUPO) as (keyof typeof COR_GRUPO)[]).filter((g) => grupos.has(g));
 }
 
 function ImprimirCalendarioPage() {
@@ -146,9 +151,19 @@ function ImprimirCalendarioPage() {
               {ROTULO_TIPO_CALENDARIO[t]}
             </div>
           ))}
+          <span className="flex items-center gap-3 ml-4">
+            {(Object.keys(COR_GRUPO) as (keyof typeof COR_GRUPO)[]).map((g) => (
+              <span key={g} className="flex items-center gap-1">
+                <span
+                  className="inline-block w-2 h-2 rounded-full"
+                  style={{ backgroundColor: COR_GRUPO[g] }}
+                />
+                {ROTULO_GRUPO_MINI[g]}
+              </span>
+            ))}
+          </span>
           <span className="ml-auto">
-            Quando o dia tem uma letrinha (<strong>K</strong>ids/<strong>T</strong>eens/
-            <strong>A</strong>dultos), é só pra aquele grupo — sem letra é pra escola toda.
+            Bolinha no canto = só aquele grupo — sem bolinha é pra escola toda.
           </span>
         </div>
       </div>
@@ -201,15 +216,26 @@ function MesMiniatura({
           if (!iso) return <div key={i} />;
           const existentes = excecoesPorData.get(iso) ?? [];
           const cor = existentes[0] ? COR_TIPO[existentes[0].tipo] : undefined;
-          const letras = letrasDoGrupo(existentes);
+          const grupos = gruposParciais(existentes);
           return (
             <div
               key={iso}
-              className="flex flex-col items-center justify-center rounded-sm leading-none"
+              className="relative flex items-center justify-center rounded-sm leading-none"
               style={{ backgroundColor: cor }}
             >
               <span className="text-[7px] text-gray-800">{parseInt(iso.slice(-2), 10)}</span>
-              {letras && <span className="text-[5px] font-bold text-gray-700">{letras}</span>}
+              {grupos.length > 0 && (
+                <span className="absolute top-[1px] right-[1px] flex gap-[1px]">
+                  {grupos.map((g) => (
+                    <span
+                      key={g}
+                      title={ROTULO_GRUPO_MINI[g]}
+                      className="block w-[3px] h-[3px] rounded-full"
+                      style={{ backgroundColor: COR_GRUPO[g] }}
+                    />
+                  ))}
+                </span>
+              )}
             </div>
           );
         })}
