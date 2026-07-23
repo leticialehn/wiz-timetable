@@ -61,14 +61,17 @@ const TIPOS_ORDEM: TipoHorario[] = [
   "sem_aula",
 ];
 
+// Segunda(1)..sábado(6) — domingo (0) cai em segunda, já que não há aula nesse dia.
+function diaAtivoHoje(): number {
+  const hoje = new Date().getDay();
+  return hoje >= 1 && hoje <= 6 ? hoje : 1;
+}
+
 function GradePage() {
   useRealtimeGrade();
   const qc = useQueryClient();
   const [dataSegunda, setDataSegunda] = useState(() => toISODate(segundaDaSemana()));
-  const [diaAtivo, setDiaAtivo] = useState<number>(() => {
-    const hoje = new Date().getDay();
-    return hoje >= 1 && hoje <= 6 ? hoje : 1;
-  });
+  const [diaAtivo, setDiaAtivo] = useState<number>(diaAtivoHoje);
 
   const getFn = useServerFn(getGradeSemana);
   const { data } = useQuery({
@@ -183,7 +186,10 @@ function GradePage() {
             ← Semana anterior
           </button>
           <button
-            onClick={() => setDataSegunda(toISODate(segundaDaSemana()))}
+            onClick={() => {
+              setDataSegunda(toISODate(segundaDaSemana()));
+              setDiaAtivo(diaAtivoHoje());
+            }}
             className="px-3 py-1.5 rounded-md border border-border hover:bg-accent bg-card"
           >
             Hoje
