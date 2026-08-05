@@ -145,6 +145,23 @@ function ProfessoraPage() {
     queryFn: () => getHistoricoLicoesFn({ data: { aluno_ids: alunoIdsHoje, antesDe: dataDoDia } }),
   });
 
+  // Lição sendo digitada agora noutro horário do MESMO dia pro mesmo aluno
+  // (ainda sem salvar) — assim, se ele tem 2 aulas hoje, a 2ª já sugere a
+  // lição seguinte assim que a professora digita na 1ª, sem precisar salvar
+  // primeiro. Reseta ao trocar de dia.
+  const [licaoAoVivoPorAluno, setLicaoAoVivoPorAluno] = useState<
+    Record<string, { periodo: number; licao: string; nivel_no_momento: string; praticado: boolean }>
+  >({});
+  useEffect(() => {
+    setLicaoAoVivoPorAluno({});
+  }, [dataDoDia]);
+  function atualizarLicaoAoVivo(
+    alunoId: string,
+    entrada: { periodo: number; licao: string; nivel_no_momento: string; praticado: boolean },
+  ) {
+    setLicaoAoVivoPorAluno((prev) => ({ ...prev, [alunoId]: entrada }));
+  }
+
   const getLicaoPendenteFn = useServerFn(getAlertasLicaoPendente);
   const { data: licoesPendentes } = useQuery({
     queryKey: ["licoes-pendentes"],
@@ -314,6 +331,8 @@ function ProfessoraPage() {
                     notas={notasDoDia}
                     licoes={licoesDoDia}
                     historicoLicoes={historicoLicoes ?? {}}
+                    licaoAoVivoPorAluno={licaoAoVivoPorAluno}
+                    onLicaoAoVivoChange={atualizarLicaoAoVivo}
                     pendenciasPorAluno={pendenciasPorAluno}
                     calendarioExcecoes={calendarioExcecoes ?? []}
                     dataDoDia={dataDoDia}
@@ -343,6 +362,8 @@ function agruparPorPeriodo(cels: CelulaAula[]) {
     .map(([periodo, celsPer]) => ({ periodo, celsPer }));
 }
 
+type LicaoAoVivo = { periodo: number; licao: string; nivel_no_momento: string; praticado: boolean };
+
 function AulaCard({
   periodo,
   tipo,
@@ -352,6 +373,8 @@ function AulaCard({
   notas,
   licoes,
   historicoLicoes,
+  licaoAoVivoPorAluno,
+  onLicaoAoVivoChange,
   pendenciasPorAluno,
   calendarioExcecoes,
   dataDoDia,
@@ -371,6 +394,8 @@ function AulaCard({
     string,
     { licao: string; nivel_no_momento: string; praticado: boolean }[]
   >;
+  licaoAoVivoPorAluno: Record<string, LicaoAoVivo>;
+  onLicaoAoVivoChange: (alunoId: string, entrada: LicaoAoVivo) => void;
   pendenciasPorAluno: Map<string, AlunoLicaoPendente>;
   calendarioExcecoes: CalendarioExcecao[];
   dataDoDia: string;
@@ -436,11 +461,18 @@ function AulaCard({
                         // mesmo dia) conta como mais recente que o histórico
                         // de dias anteriores, senão os dois horários sugerem
                         // a mesma lição em vez de continuar de onde parou.
+                        // A versão "ao vivo" (ainda não salva) tem prioridade
+                        // sobre a já salva, caso as duas existam.
+                        ...(licaoAoVivoPorAluno[c.aluno_id] &&
+                        licaoAoVivoPorAluno[c.aluno_id].periodo !== periodo
+                          ? [licaoAoVivoPorAluno[c.aluno_id]]
+                          : []),
                         ...licoes.filter((l) => l.aluno_id === c.aluno_id && l.periodo !== periodo),
                         ...(historicoLicoes[c.aluno_id] ?? []),
                       ]
                     : []
                 }
+                onLicaoAoVivoChange={onLicaoAoVivoChange}
                 pendencia={c.aluno_id ? pendenciasPorAluno.get(c.aluno_id) : undefined}
                 calendarioExcecoes={calendarioExcecoes}
                 dataDoDia={dataDoDia}
@@ -530,6 +562,7 @@ function AlunoLinha({
   notas,
   licoes,
   historicoLicao,
+  onLicaoAoVivoChange,
   pendencia,
   calendarioExcecoes,
   dataDoDia,
@@ -544,6 +577,7 @@ function AlunoLinha({
   notas: NotaRow[];
   licoes: LicaoRow[];
   historicoLicao: { licao: string; nivel_no_momento: string; praticado: boolean }[];
+  onLicaoAoVivoChange: (alunoId: string, entrada: LicaoAoVivo) => void;
   pendencia: AlunoLicaoPendente | undefined;
   calendarioExcecoes: CalendarioExcecao[];
   dataDoDia: string;
@@ -577,6 +611,20 @@ function AlunoLinha({
     licao: licoes.find((l) => l.parte === 1) ?? null,
     licaoSugestao: licaoSugestao1,
   });
+
+  // Avisa a tela toda (não só esta célula) qual lição está sendo digitada
+  // agora — pra outro horário do mesmo aluno hoje já sugerir a seguinte
+  // mesmo antes de clicar em Salvar.
+  useEffect(() => {
+    if (!c.aluno_id || !temLicao) return;
+    onLicaoAoVivoChange(c.aluno_id, {
+      periodo: c.periodo,
+      licao: parte1.licaoLocal || licaoSugestao1,
+      nivel_no_momento: c.aluno_nivel,
+      praticado: parte1.praticadoLocal,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [c.aluno_id, c.periodo, c.aluno_nivel, parte1.licaoLocal, parte1.praticadoLocal, temLicao]);
 
   // A 2ª lição é sempre a seguinte à maior lição já atingida — encadeia a
   // partir do valor (editado ou sugerido) que está na parte 1 agora mesmo,
