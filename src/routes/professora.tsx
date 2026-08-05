@@ -429,7 +429,18 @@ function AulaCard({
                     ? licoes.filter((l) => l.aluno_id === c.aluno_id && l.periodo === periodo)
                     : []
                 }
-                historicoLicao={c.aluno_id ? (historicoLicoes[c.aluno_id] ?? []) : []}
+                historicoLicao={
+                  c.aluno_id
+                    ? [
+                        // Mesmo aluno em outro horário HOJE (ex.: 2 aulas no
+                        // mesmo dia) conta como mais recente que o histórico
+                        // de dias anteriores, senão os dois horários sugerem
+                        // a mesma lição em vez de continuar de onde parou.
+                        ...licoes.filter((l) => l.aluno_id === c.aluno_id && l.periodo !== periodo),
+                        ...(historicoLicoes[c.aluno_id] ?? []),
+                      ]
+                    : []
+                }
                 pendencia={c.aluno_id ? pendenciasPorAluno.get(c.aluno_id) : undefined}
                 calendarioExcecoes={calendarioExcecoes}
                 dataDoDia={dataDoDia}
