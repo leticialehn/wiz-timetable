@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import type { Aluno, CampoNota, ConceitoNota, StatusPresenca } from "./types";
 import { toISODate } from "./date-utils";
 import { buscarTodasAsLinhas } from "./supabase-paginacao.server";
+import { dataInicioInferida } from "./licoes";
 
 async function publicClient() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -24,10 +25,10 @@ export type HistoricoItem = {
 
 export type ResumoAluno = {
   aulasNoMes: number;
+  aulasNoLivroAtual: number;
   presencas: number;
   faltas: number;
   sequenciaFaltas: number;
-  distribuicaoConceitos: Record<CampoNota, Record<ConceitoNota, number>>;
 };
 
 export type HistoricoAluno = {
@@ -35,9 +36,6 @@ export type HistoricoAluno = {
   timeline: HistoricoItem[];
   resumo: ResumoAluno;
 };
-
-const CAMPOS: CampoNota[] = ["fala", "audicao", "leitura", "escrita"];
-const CONCEITOS: ConceitoNota[] = ["O", "MB", "B", "R"];
 
 function chaveDe(r: { data: string; periodo: number; professora_id: string; parte: number }) {
   return `${r.data}-${r.periodo}-${r.professora_id}-${r.parte}`;
@@ -77,6 +75,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
       parte: number;
       professora_id: string;
       licao: string;
+      nivel_no_momento: string;
       praticado: boolean;
     };
     const [alunoRes, presencas, notas, licoes, profRes] = await Promise.all([
@@ -100,7 +99,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
       buscarTodasAsLinhas<RegistroLicaoHist>(async (inicio, fim) => {
         const { data: rows, error } = await sb
           .from("aulas_licoes")
-          .select("data,periodo,parte,professora_id,licao,praticado")
+          .select("data,periodo,parte,professora_id,licao,nivel_no_momento,praticado")
           .eq("aluno_id", data.aluno_id)
           .range(inicio, fim);
         return { data: rows as RegistroLicaoHist[] | null, error };
@@ -197,28 +196,24 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
       else break;
     }
 
-    const distribuicaoConceitos = Object.fromEntries(
-      CAMPOS.map((c) => [
-        c,
-        Object.fromEntries(CONCEITOS.map((v) => [v, 0])) as Record<ConceitoNota, number>,
-      ]),
-    ) as Record<CampoNota, Record<ConceitoNota, number>>;
-    for (const n of notas) {
-      for (const c of CAMPOS) {
-        const v = n[c];
-        if (v) distribuicaoConceitos[c][v]++;
-      }
-    }
+    // Aulas realizadas desde que o aluno começou o livro/nível atual — usa a data
+    // manual se tiver, senão infere pela 1ª lição registrada neste nível.
+    const licoesAscendente = [...licoes].sort((a, b) => a.data.localeCompare(b.data));
+    const dataInicioNivel =
+      aluno.data_inicio_nivel ?? dataInicioInferida(aluno.nivel, licoesAscendente);
+    const aulasNoLivroAtual = presencas.filter(
+      (p) => p.status === "presente" && (!dataInicioNivel || p.data >= dataInicioNivel),
+    ).length;
 
     return {
       aluno,
       timeline,
       resumo: {
         aulasNoMes,
+        aulasNoLivroAtual,
         presencas: totalPresencas,
         faltas: totalFaltas,
         sequenciaFaltas,
-        distribuicaoConceitos,
       },
     };
   });
