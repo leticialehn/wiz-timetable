@@ -524,33 +524,63 @@ function useParte(
 ) {
   const licaoOriginal = registro.licao?.licao ?? "";
   const praticadoOriginal = registro.licao?.praticado ?? true;
-  const [presencaLocal, setPresencaLocal] = useState<StatusPresenca | null>(
-    registro.presenca?.status ?? null,
-  );
-  const [notasLocal, setNotasLocal] = useState<Record<CampoNota, ConceitoNota | null>>({
-    fala: registro.nota?.fala ?? null,
-    audicao: registro.nota?.audicao ?? null,
-    leitura: registro.nota?.leitura ?? null,
-    escrita: registro.nota?.escrita ?? null,
-  });
-  const [licaoLocal, setLicaoLocal] = useState(licaoOriginal || registro.licaoSugestao);
-  const [licaoEditadaManualmente, setLicaoEditadaManualmente] = useState(false);
-  const [praticadoLocal, setPraticadoLocal] = useState(praticadoOriginal);
+  const presencaOriginal = registro.presenca?.status ?? null;
+  const notaOriginal = registro.nota;
+  const notasOriginais: Record<CampoNota, ConceitoNota | null> = {
+    fala: notaOriginal?.fala ?? null,
+    audicao: notaOriginal?.audicao ?? null,
+    leitura: notaOriginal?.leitura ?? null,
+    escrita: notaOriginal?.escrita ?? null,
+  };
 
-  // A sugestão de lição depende de uma consulta que carrega depois da grade
-  // (getHistoricoLicoes), ou — na parte 2 — do valor digitado na parte 1. Se ela
-  // mudar depois do primeiro render, atualiza o valor mostrado — a menos que a
-  // professora já tenha mexido no campo.
+  const [presencaLocal, setPresencaLocalRaw] = useState(presencaOriginal);
+  const [notasLocal, setNotasLocalRaw] =
+    useState<Record<CampoNota, ConceitoNota | null>>(notasOriginais);
+  const [licaoLocal, setLicaoLocalRaw] = useState(licaoOriginal || registro.licaoSugestao);
+  const [praticadoLocal, setPraticadoLocalRaw] = useState(praticadoOriginal);
+  const [editadoManualmente, setEditadoManualmente] = useState(false);
+
+  // Presença/nota/lição podem chegar depois do 1º render desta linha (a consulta
+  // de lançamentos carrega separada da grade, e pode demorar mais) ou mudar por
+  // causa de uma atualização em tempo real de outra aba/dispositivo — sem isso, a
+  // tela ficava presa nos valores (vazios) de quando a linha apareceu pela 1ª vez,
+  // mesmo depois do servidor já ter os dados de verdade (professora saía da
+  // página, voltava, e via tudo em branco mesmo já tendo lançado a nota). Só não
+  // sincroniza se a professora já mexeu em algo aqui e ainda não salvou, pra não
+  // apagar uma edição em andamento.
   useEffect(() => {
-    if (!licaoEditadaManualmente) {
-      setLicaoLocal(licaoOriginal || registro.licaoSugestao);
-    }
+    if (editadoManualmente) return;
+    setPresencaLocalRaw(presencaOriginal);
+    setNotasLocalRaw(notasOriginais);
+    setLicaoLocalRaw(licaoOriginal || registro.licaoSugestao);
+    setPraticadoLocalRaw(praticadoOriginal);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [licaoOriginal, registro.licaoSugestao]);
+  }, [presencaOriginal, notaOriginal, licaoOriginal, registro.licaoSugestao, praticadoOriginal]);
+
+  function setPresencaLocal(v: StatusPresenca | null) {
+    setEditadoManualmente(true);
+    setPresencaLocalRaw(v);
+  }
+  function setNotasLocal(
+    updater:
+      | Record<CampoNota, ConceitoNota | null>
+      | ((prev: Record<CampoNota, ConceitoNota | null>) => Record<CampoNota, ConceitoNota | null>),
+  ) {
+    setEditadoManualmente(true);
+    setNotasLocalRaw(updater);
+  }
+  function setLicaoLocal(v: string) {
+    setEditadoManualmente(true);
+    setLicaoLocalRaw(v);
+  }
+  function setPraticadoLocal(v: boolean) {
+    setEditadoManualmente(true);
+    setPraticadoLocalRaw(v);
+  }
 
   const alterado =
-    presencaLocal !== (registro.presenca?.status ?? null) ||
-    CAMPOS_NOTA.some(({ key }) => notasLocal[key] !== (registro.nota?.[key] ?? null)) ||
+    presencaLocal !== presencaOriginal ||
+    CAMPOS_NOTA.some(({ key }) => notasLocal[key] !== notasOriginais[key]) ||
     licaoLocal !== licaoOriginal ||
     praticadoLocal !== praticadoOriginal;
 
@@ -561,17 +591,14 @@ function useParte(
     notasLocal,
     setNotasLocal,
     licaoLocal,
-    setLicaoLocal: (v: string) => {
-      setLicaoLocal(v);
-      setLicaoEditadaManualmente(true);
-    },
+    setLicaoLocal,
     licaoOriginal,
     licaoSugestao: registro.licaoSugestao,
     praticadoLocal,
     setPraticadoLocal,
     praticadoOriginal,
-    presencaOriginal: registro.presenca?.status ?? null,
-    notaOriginal: registro.nota,
+    presencaOriginal,
+    notaOriginal,
     alterado,
   };
 }
