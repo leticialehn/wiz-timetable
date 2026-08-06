@@ -358,6 +358,14 @@ function LinhaAluno({
             />
             Ativo
           </label>
+          <Link
+            to="/admin/alunos/$id/historico"
+            params={{ id: aluno.id }}
+            onClick={(e) => e.stopPropagation()}
+            className="text-xs px-2 py-1 rounded border border-border hover:bg-accent"
+          >
+            Histórico
+          </Link>
           <button
             onClick={(e) => {
               e.stopPropagation();

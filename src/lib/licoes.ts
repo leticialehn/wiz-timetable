@@ -45,6 +45,11 @@ const LICOES_POR_CICLO = 6;
 const CICLOS_POR_BLOCO = 10;
 export const POSICOES_POR_BLOCO = CICLOS_POR_BLOCO * (LICOES_POR_CICLO + 1); // 70
 const POSICAO_R8 = 8 * (LICOES_POR_CICLO + 1); // 56
+
+// Posição (1..70) em que a revisão N cai dentro do bloco do nível.
+export function posicaoDaRevisao(n: number): number {
+  return n * (LICOES_POR_CICLO + 1);
+}
 // Ritmo esperado: completar o nível (70 posições) em 12 meses.
 export const MESES_ESPERADOS_POR_NIVEL = 12;
 
@@ -98,7 +103,7 @@ function posicaoDoLabel(labelBruto: string, blockStart: number): number | null {
 // recente pro mais antigo até achar uma entrada de um nível diferente (troca).
 // null se o aluno mudou de nível desde então, ou não tem nenhum lançamento
 // reconhecido e praticado (HW, Extra, pendente…) neste nível.
-function maiorPosicaoAtingida(
+export function maiorPosicaoAtingida(
   nivelAtual: string,
   historico: { licao: string; nivel_no_momento: string; praticado: boolean }[],
 ): number | null {

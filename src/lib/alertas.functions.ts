@@ -1,8 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { Aluno, CalendarioExcecao, ConceitoNota, StatusPresenca } from "./types";
-import { excecaoQueAfeta } from "./types";
-import { parseISODate, toISODate, somarMeses } from "./date-utils";
-import { dataInicioInferida, mesesDeAtraso, posicoesAlemDaR8 } from "./licoes";
+import { excecaoQueAfeta, grupoDoNivel } from "./types";
+import { parseISODate, toISODate, somarMeses, idadeEmAnos } from "./date-utils";
+import {
+  dataInicioInferida,
+  mesesDeAtraso,
+  posicoesAlemDaR8,
+  maiorPosicaoAtingida,
+  posicaoDaRevisao,
+} from "./licoes";
 import { buscarTodasAsLinhas } from "./supabase-paginacao.server";
 
 async function publicClient() {
@@ -96,11 +102,54 @@ export const getAlertasLicaoPendente = createServerFn({ method: "GET" }).handler
   },
 );
 
+export type Aniversariante = { aluno_id: string; nome: string; nivel: string; dia: number };
+
+// Lista simples (sem status/resolução, só um lembrete) dos alunos ativos que
+// fazem aniversário no mês atual — pra Wizard e professoras avisarem/comemorarem.
+export const getAniversariantesDoMes = createServerFn({ method: "GET" }).handler(
+  async (): Promise<Aniversariante[]> => {
+    const sb = await publicClient();
+    const { data } = await sb
+      .from("alunos")
+      .select("id,nome,nivel,data_nascimento")
+      .eq("ativo", true);
+    const alunos = (data ?? []) as Aluno[];
+    const mesAtual = new Date().getMonth();
+
+    return alunos
+      .filter((a) => a.data_nascimento && parseISODate(a.data_nascimento).getMonth() === mesAtual)
+      .map((a) => ({
+        aluno_id: a.id,
+        nome: a.nome,
+        nivel: a.nivel,
+        dia: parseISODate(a.data_nascimento!).getDate(),
+      }))
+      .sort((a, b) => a.dia - b.dia);
+  },
+);
+
 // ============ Alertas com fluxo de ação (faltas seguidas / nota baixa em Fala) ============
 // Diferente do alerta de lição pendente acima (que qualquer professora vê), estes só
 // aparecem numa aba própria pra Wizard e coordenação — as demais professoras não veem.
 
-export type TipoAlerta = "faltas" | "nota_fala" | "sem_aula" | "rematricula" | "atrasado";
+export type TipoAlerta =
+  | "faltas"
+  | "nota_fala"
+  | "sem_aula"
+  | "rematricula"
+  | "atrasado"
+  | "escrita_pendente"
+  | "gravacao_r3r4"
+  | "gravacao_r7r8";
+
+// Alertas que interessam à professora no dia a dia da aula (cobrar tarefa,
+// lembrar de gravar) — os demais (faltas, nota, rematrícula…) são só pra
+// coordenação/Wizard.
+export const TIPOS_ALERTA_PROFESSORA: TipoAlerta[] = [
+  "escrita_pendente",
+  "gravacao_r3r4",
+  "gravacao_r7r8",
+];
 
 export type AlertaAtivo = {
   id: string;
@@ -138,6 +187,7 @@ type RegistroNota = {
   periodo: number;
   parte: number;
   fala: ConceitoNota | null;
+  escrita: ConceitoNota | null;
 };
 
 // Conta quantas das últimas vezes que Fala foi avaliada deram B ou pior (R), andando do
@@ -152,13 +202,46 @@ function calcularSequenciaNotaFalaRuim(registros: RegistroNota[]): number {
   return streak;
 }
 
+// Conta quantas aulas seguidas o aluno ficou sem entregar a tarefa escrita (nota de
+// Escrita ainda não lançada porque ele ainda não trouxe pra corrigir), andando do
+// lançamento mais recente pro mais antigo — para assim que achar uma aula com Escrita
+// já avaliada (nota lançada = tarefa entregue e corrigida).
+function calcularSequenciaEscritaPendente(registros: RegistroNota[]): number {
+  let streak = 0;
+  for (const r of registros) {
+    if (r.escrita === null) {
+      streak++;
+      continue;
+    }
+    break;
+  }
+  return streak;
+}
+
 const LIMIAR_ALERTA: Record<TipoAlerta, number> = {
   faltas: 2,
   nota_fala: 4,
   sem_aula: 14,
   rematricula: 0,
   atrasado: 1,
+  escrita_pendente: 4,
+  // gravacao_r3r4/r7r8 não usam limiar por contagem — a sincronização delas
+  // é por janela de lição (ver sincronizarGravacao), não por essa tabela.
+  gravacao_r3r4: 0,
+  gravacao_r7r8: 0,
 };
+
+// Kids, Teens e qualquer aluno menor de 18 anos (mesmo em nível "adultos")
+// precisam ser gravados 1x por semestre pra mandar o vídeo pros pais
+// acompanharem o desenvolvimento — sem data de nascimento cadastrada, não dá
+// pra saber a idade de um aluno de nível "adultos", então ele fica de fora
+// até alguém preencher.
+function elegivelParaGravacao(aluno: Aluno, hojeIso: string): boolean {
+  const grupo = grupoDoNivel(aluno.nivel);
+  if (grupo === "kids" || grupo === "teens") return true;
+  if (!aluno.data_nascimento) return false;
+  return idadeEmAnos(aluno.data_nascimento, hojeIso) < 18;
+}
 
 function paraAlertaAtivo(row: AlertaStatusRow, aluno: Aluno): AlertaAtivo {
   return {
@@ -216,7 +299,7 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
       buscarTodasAsLinhas<RegistroNota>(async (inicio, fim) => {
         const { data, error } = await sb
           .from("aulas_notas")
-          .select("aluno_id,data,periodo,parte,fala")
+          .select("aluno_id,data,periodo,parte,fala,escrita")
           .order("data", { ascending: false })
           .order("periodo", { ascending: false })
           .order("parte", { ascending: false })
@@ -447,6 +530,56 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
       );
     }
 
+    // Gravação (vídeo pra mandar pros pais): um episódio por NÍVEL e por janela
+    // (R3-R4 e depois R7-R8), no mesmo espírito da rematrícula acima — uma vez
+    // que o aluno entra na janela, o alerta fica pendente até alguém marcar
+    // "Gravado", mesmo que ele já tenha avançado além da janela sem gravar.
+    const statusGravacaoPorAlunoTipo = new Map<string, AlertaStatusRow>();
+    for (const s of statusExistente) {
+      if (s.tipo !== "gravacao_r3r4" && s.tipo !== "gravacao_r7r8") continue;
+      const chave = `${s.aluno_id}-${s.tipo}`;
+      const atual = statusGravacaoPorAlunoTipo.get(chave);
+      if (!atual || s.created_at > atual.created_at) statusGravacaoPorAlunoTipo.set(chave, s);
+    }
+
+    function sincronizarGravacao(
+      aluno: Aluno,
+      tipo: "gravacao_r3r4" | "gravacao_r7r8",
+      jaEntrouNaJanela: boolean,
+    ) {
+      const chave = `${aluno.id}-${tipo}`;
+      const existente = statusGravacaoPorAlunoTipo.get(chave);
+
+      if (existente && existente.nivel === aluno.nivel) {
+        if (existente.status === "pendente" || aindaVisivel(existente)) {
+          resultado.push(paraAlertaAtivo(existente, aluno));
+        }
+        return;
+      }
+
+      if (!jaEntrouNaJanela) return;
+
+      atualizacoes.push(
+        sb
+          .from("alertas_status")
+          .insert({
+            aluno_id: aluno.id,
+            tipo,
+            status: "pendente",
+            contagem: 1,
+            nivel: aluno.nivel,
+          })
+          .select()
+          .single()
+          .then(({ data }) => {
+            if (data) resultado.push(paraAlertaAtivo(data as AlertaStatusRow, aluno));
+          }),
+      );
+    }
+
+    const posR3 = posicaoDaRevisao(3);
+    const posR7 = posicaoDaRevisao(7);
+
     for (const aluno of alunos) {
       // Dias de feriado/recesso/férias não contam falta, mesmo se por engano
       // alguém marcar presença nesse dia.
@@ -460,9 +593,20 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
         calcularSequenciaNotaFalaRuim(notasPorAluno.get(aluno.id) ?? []),
       );
       sincronizar(aluno, "sem_aula", diasSemAula(aluno));
+      sincronizar(
+        aluno,
+        "escrita_pendente",
+        calcularSequenciaEscritaPendente(notasPorAluno.get(aluno.id) ?? []),
+      );
 
       const historicoLicao = licoesPorAluno.get(aluno.id) ?? [];
       sincronizarRematricula(aluno, posicoesAlemDaR8(aluno.nivel, historicoLicao));
+
+      if (elegivelParaGravacao(aluno, hojeIso)) {
+        const maiorPos = maiorPosicaoAtingida(aluno.nivel, historicoLicao);
+        sincronizarGravacao(aluno, "gravacao_r3r4", maiorPos !== null && maiorPos >= posR3);
+        sincronizarGravacao(aluno, "gravacao_r7r8", maiorPos !== null && maiorPos >= posR7);
+      }
 
       const dataInicio =
         aluno.data_inicio_nivel ?? dataInicioInferida(aluno.nivel, [...historicoLicao].reverse());

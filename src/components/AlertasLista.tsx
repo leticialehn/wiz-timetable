@@ -5,6 +5,7 @@ import {
   getAlertasAtivos,
   resolverAlerta,
   marcarContactado,
+  getAniversariantesDoMes,
   type AlertaAtivo,
   type TipoAlerta,
 } from "@/lib/alertas.functions";
@@ -12,7 +13,16 @@ import { getUltimasLicoesPorAluno } from "@/lib/cadastros.functions";
 import { formatarDataBR } from "@/lib/date-utils";
 
 // Ordem de exibição dos grupos: rematrícula sempre primeiro.
-const ORDEM_TIPO: TipoAlerta[] = ["rematricula", "faltas", "nota_fala", "atrasado", "sem_aula"];
+const ORDEM_TIPO: TipoAlerta[] = [
+  "rematricula",
+  "faltas",
+  "nota_fala",
+  "atrasado",
+  "sem_aula",
+  "escrita_pendente",
+  "gravacao_r3r4",
+  "gravacao_r7r8",
+];
 
 const ROTULO_TIPO_ALERTA: Record<TipoAlerta, string> = {
   faltas: "Faltas seguidas",
@@ -20,6 +30,9 @@ const ROTULO_TIPO_ALERTA: Record<TipoAlerta, string> = {
   nota_fala: "Nota baixa em Fala",
   atrasado: "Atrasado no calendário",
   sem_aula: "Sem aula agendada",
+  escrita_pendente: "Tarefa escrita pendente",
+  gravacao_r3r4: "Gravação pendente (entre R3 e R4)",
+  gravacao_r7r8: "Gravação pendente (entre R7 e R8)",
 };
 
 function descricaoAlerta(a: AlertaAtivo): string {
@@ -33,7 +46,9 @@ function descricaoAlerta(a: AlertaAtivo): string {
   if (a.tipo === "atrasado") {
     return `Atrasado ~${a.contagem} ${a.contagem === 1 ? "mês" : "meses"} no calendário do nível`;
   }
-  return `B ou pior em Fala nas últimas ${a.contagem} lições`;
+  if (a.tipo === "nota_fala") return `B ou pior em Fala nas últimas ${a.contagem} lições`;
+  if (a.tipo === "escrita_pendente") return `${a.contagem} tarefas escritas seguidas sem entregar`;
+  return "Ainda não foi gravado nesta janela de revisões";
 }
 
 function agruparPorTipo(alertas: AlertaAtivo[]): { tipo: TipoAlerta; itens: AlertaAtivo[] }[] {
@@ -42,12 +57,19 @@ function agruparPorTipo(alertas: AlertaAtivo[]): { tipo: TipoAlerta; itens: Aler
   );
 }
 
-export function AlertasLista({ resolvidoPor }: { resolvidoPor: string }) {
+export function AlertasLista({
+  resolvidoPor,
+  apenasTipos,
+}: {
+  resolvidoPor: string;
+  apenasTipos?: TipoAlerta[];
+}) {
   const qc = useQueryClient();
   const getFn = useServerFn(getAlertasAtivos);
   const resolverFn = useServerFn(resolverAlerta);
   const contactarFn = useServerFn(marcarContactado);
   const getUltimasLicoesFn = useServerFn(getUltimasLicoesPorAluno);
+  const getAniversariantesFn = useServerFn(getAniversariantesDoMes);
   const [salvando, setSalvando] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
@@ -57,6 +79,10 @@ export function AlertasLista({ resolvidoPor }: { resolvidoPor: string }) {
   const { data: ultimasLicoes } = useQuery({
     queryKey: ["ultimas-licoes-por-aluno"],
     queryFn: () => getUltimasLicoesFn(),
+  });
+  const { data: aniversariantes } = useQuery({
+    queryKey: ["aniversariantes-do-mes"],
+    queryFn: () => getAniversariantesFn(),
   });
 
   async function marcarResolvido(id: string) {
@@ -81,13 +107,32 @@ export function AlertasLista({ resolvidoPor }: { resolvidoPor: string }) {
 
   if (isLoading) return <p className="text-muted-foreground text-sm">Carregando…</p>;
 
-  const pendentes = (data ?? []).filter((a) => a.status === "pendente");
-  const resolvidos = (data ?? []).filter((a) => a.status === "resolvido");
+  const alertas = apenasTipos ? (data ?? []).filter((a) => apenasTipos.includes(a.tipo)) : (data ?? []);
+  const pendentes = alertas.filter((a) => a.status === "pendente");
+  const resolvidos = alertas.filter((a) => a.status === "resolvido");
   const gruposPendentes = agruparPorTipo(pendentes);
   const gruposResolvidos = agruparPorTipo(resolvidos);
 
+  const nomeMesAtual = new Date().toLocaleDateString("pt-BR", { month: "long" });
+
   return (
     <div>
+      {aniversariantes && aniversariantes.length > 0 && (
+        <div className="mb-6 rounded-lg border border-border bg-muted/40 p-3">
+          <h2 className="text-sm font-semibold mb-2">
+            🎂 Aniversariantes de {nomeMesAtual} ({aniversariantes.length})
+          </h2>
+          <ul className="space-y-1 text-sm">
+            {aniversariantes.map((a) => (
+              <li key={a.aluno_id}>
+                <span className="font-medium">Dia {a.dia}</span> — {a.nome}{" "}
+                <span className="text-muted-foreground">({a.nivel})</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <h2 className="text-lg font-semibold mb-3">
         Pendentes {pendentes.length > 0 && `(${pendentes.length})`}
       </h2>
@@ -103,6 +148,7 @@ export function AlertasLista({ resolvidoPor }: { resolvidoPor: string }) {
               <ul className="space-y-2">
                 {itens.map((a) => {
                   const ehRematricula = a.tipo === "rematricula";
+                  const ehGravacao = a.tipo === "gravacao_r3r4" || a.tipo === "gravacao_r7r8";
                   const jaContactado = ehRematricula && a.contactado_em;
                   return (
                     <li
@@ -140,7 +186,9 @@ export function AlertasLista({ resolvidoPor }: { resolvidoPor: string }) {
                             ? jaContactado
                               ? "Rematriculado"
                               : "Contato feito"
-                            : "Contato feito"}
+                            : ehGravacao
+                              ? "Gravado"
+                              : "Contato feito"}
                       </button>
                     </li>
                   );

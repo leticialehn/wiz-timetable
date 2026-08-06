@@ -53,6 +53,17 @@ export function inicioDoMes(base: Date | string = new Date()): Date {
   return new Date(d.getFullYear(), d.getMonth(), 1);
 }
 
+export function idadeEmAnos(dataNascimentoIso: string, hojeIso: string): number {
+  const nasc = parseISODate(dataNascimentoIso);
+  const hoje = parseISODate(hojeIso);
+  let idade = hoje.getFullYear() - nasc.getFullYear();
+  const aindaNaoFezAniversario =
+    hoje.getMonth() < nasc.getMonth() ||
+    (hoje.getMonth() === nasc.getMonth() && hoje.getDate() < nasc.getDate());
+  if (aindaNaoFezAniversario) idade--;
+  return idade;
+}
+
 export function fimDoMes(base: Date | string = new Date()): Date {
   const d = typeof base === "string" ? parseISODate(base) : new Date(base);
   return new Date(d.getFullYear(), d.getMonth() + 1, 0);

@@ -13,6 +13,7 @@ import {
 import {
   getAlertasLicaoPendente,
   getAlertasAtivos,
+  TIPOS_ALERTA_PROFESSORA,
   type AlunoLicaoPendente,
 } from "@/lib/alertas.functions";
 import { temTrackingDeLicao, licaoSugerida, normalizarLicao } from "@/lib/licoes";
@@ -176,14 +177,17 @@ function ProfessoraPage() {
     [licoesPendentes],
   );
 
-  // Alertas de faltas/nota baixa: não aparecem na grade — só na aba própria de
-  // Alertas, e só pra coordenação (hoje, só a Letícia).
+  // Alertas de tarefa escrita pendente e gravação pendente — só esses dois
+  // aparecem pra professora; os demais (faltas, nota, rematrícula…) são só
+  // pra coordenação/Wizard.
   const getAlertasAtivosFn = useServerFn(getAlertasAtivos);
   const { data: alertasAtivos } = useQuery({
     queryKey: ["alertas-ativos"],
     queryFn: () => getAlertasAtivosFn(),
   });
-  const alertasPendentes = (alertasAtivos ?? []).filter((a) => a.status === "pendente").length;
+  const alertasPendentes = (alertasAtivos ?? []).filter(
+    (a) => a.status === "pendente" && TIPOS_ALERTA_PROFESSORA.includes(a.tipo),
+  ).length;
 
   const getCalendarioFn = useServerFn(getCalendarioExcecoes);
   const { data: calendarioExcecoes } = useQuery({
@@ -225,19 +229,17 @@ function ProfessoraPage() {
             <h1 className="text-2xl font-bold">{professora.nome}</h1>
           </div>
           <div className="flex items-center gap-2">
-            {professora.coordenadora && (
-              <Link
-                to="/professora/alertas"
-                className="text-xs px-3 py-1.5 rounded bg-black/10 hover:bg-black/20 flex items-center gap-1"
-              >
-                Alertas
-                {alertasPendentes > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500 text-white font-bold">
-                    {alertasPendentes}
-                  </span>
-                )}
-              </Link>
-            )}
+            <Link
+              to="/professora/alertas"
+              className="text-xs px-3 py-1.5 rounded bg-black/10 hover:bg-black/20 flex items-center gap-1"
+            >
+              Alertas
+              {alertasPendentes > 0 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500 text-white font-bold">
+                  {alertasPendentes}
+                </span>
+              )}
+            </Link>
             <button
               onClick={() => {
                 localStorage.removeItem(STORAGE_KEY);

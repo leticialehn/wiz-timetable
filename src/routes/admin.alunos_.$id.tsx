@@ -1,10 +1,19 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { getHistoricoAluno } from "@/lib/historico.functions";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
-import { formatarDataBR } from "@/lib/date-utils";
-import { CAMPOS_NOTA, CONCEITOS } from "@/lib/types";
+import { formatarDataBR, toISODate } from "@/lib/date-utils";
+import { CAMPOS_NOTA, CONCEITOS, type CampoNota, type ConceitoNota } from "@/lib/types";
+
+const REGEX_REVISAO = /^R(\d+)$/;
+
+function numeroRevisao(licao: string | null): number | null {
+  if (!licao) return null;
+  const m = REGEX_REVISAO.exec(licao);
+  return m ? parseInt(m[1], 10) : null;
+}
 
 export const Route = createFileRoute("/admin/alunos_/$id")({ component: HistoricoAlunoPage });
 
@@ -16,6 +25,28 @@ function HistoricoAlunoPage() {
     queryKey: ["historico-aluno", id],
     queryFn: () => getFn({ data: { aluno_id: id } }),
   });
+
+  const revisoes = useMemo(
+    () =>
+      (data?.timeline ?? [])
+        .filter((item) => numeroRevisao(item.licao) !== null)
+        .sort((a, b) => numeroRevisao(a.licao)! - numeroRevisao(b.licao)!),
+    [data],
+  );
+
+  const distribuicaoRevisoes = useMemo(() => {
+    const dist = Object.fromEntries(
+      CAMPOS_NOTA.map(({ key }) => [key, Object.fromEntries(CONCEITOS.map((c) => [c, 0]))]),
+    ) as Record<CampoNota, Record<ConceitoNota, number>>;
+    for (const r of revisoes) {
+      if (!r.notas) continue;
+      for (const { key } of CAMPOS_NOTA) {
+        const v = r.notas[key];
+        if (v) dist[key][v]++;
+      }
+    }
+    return dist;
+  }, [revisoes]);
 
   if (isLoading) {
     return <main className="max-w-3xl mx-auto px-4 py-6 text-muted-foreground">Carregando…</main>;
@@ -32,16 +63,31 @@ function HistoricoAlunoPage() {
     );
   }
 
-  const { aluno, timeline, resumo } = data;
+  const { aluno, resumo } = data;
+  const hojeBR = formatarDataBR(toISODate(new Date()));
 
   return (
-    <main className="max-w-3xl mx-auto px-4 py-6">
-      <Link
-        to="/admin/alunos"
-        className="text-sm text-muted-foreground underline mb-4 inline-block"
-      >
-        ← Voltar a Alunos
-      </Link>
+    <main className="max-w-3xl mx-auto px-4 py-6 print:max-w-full print:px-8">
+      <div className="print:hidden flex items-center justify-between mb-4">
+        <Link to="/admin/alunos" className="text-sm text-muted-foreground underline">
+          ← Voltar a Alunos
+        </Link>
+        <button
+          onClick={() => window.print()}
+          className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-accent bg-card"
+        >
+          Imprimir / Salvar PDF
+        </button>
+      </div>
+
+      <div className="hidden print:flex items-center gap-3 mb-6">
+        <img src="/wizard-logo.jpg" alt="Wizard" style={{ height: "16mm" }} />
+        <div>
+          <div className="text-lg font-semibold">Boletim do aluno</div>
+          <div className="text-xs text-muted-foreground">Emitido em {hojeBR}</div>
+        </div>
+      </div>
+
       <h1 className="text-2xl font-semibold mb-1">{aluno.nome}</h1>
       <p className="text-sm text-muted-foreground mb-6">
         Nível {aluno.nivel}
@@ -61,7 +107,7 @@ function HistoricoAlunoPage() {
 
       <div className="rounded-lg border border-border p-4 mb-8">
         <h2 className="text-sm font-medium text-muted-foreground mb-3">
-          Distribuição de conceitos por habilidade
+          Distribuição de conceitos por habilidade (revisões)
         </h2>
         <div className="space-y-2">
           {CAMPOS_NOTA.map(({ key, label }) => (
@@ -70,7 +116,7 @@ function HistoricoAlunoPage() {
               <div className="flex gap-2">
                 {CONCEITOS.map((c) => (
                   <span key={c} className="px-2 py-0.5 rounded bg-muted text-xs font-medium">
-                    {c}: {resumo.distribuicaoConceitos[key][c]}
+                    {c}: {distribuicaoRevisoes[key][c]}
                   </span>
                 ))}
               </div>
@@ -79,59 +125,46 @@ function HistoricoAlunoPage() {
         </div>
       </div>
 
-      <h2 className="text-lg font-semibold mb-3">Linha do tempo</h2>
-      {timeline.length === 0 ? (
-        <p className="text-muted-foreground text-sm">Nenhum registro encontrado.</p>
+      <h2 className="text-lg font-semibold mb-3">Notas das revisões</h2>
+      {revisoes.length === 0 ? (
+        <p className="text-muted-foreground text-sm">Nenhuma revisão registrada ainda.</p>
       ) : (
-        <ol className="space-y-3">
-          {timeline.map((item) => (
-            <li key={item.chave} className="rounded-lg border border-border p-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="font-medium">
-                  {formatarDataBR(item.data)} · Período {item.periodo} · {item.professora_nome}
-                  {item.parte === 2 && " · 2ª aula"}
-                </div>
-                <div className="flex items-center gap-2">
-                  {item.licao && (
-                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-muted">
-                      {item.licao}
-                      {item.praticado === false && (
-                        <span className="text-amber-600 dark:text-amber-400"> ⏳ pendente</span>
-                      )}
-                    </span>
-                  )}
-                  {item.presenca && (
-                    <span
-                      className={`text-xs font-bold uppercase px-2 py-0.5 rounded ${
-                        item.presenca === "presente"
-                          ? "bg-emerald-500/15 text-emerald-600"
-                          : "bg-rose-500/15 text-rose-600"
-                      }`}
-                    >
-                      {item.presenca}
-                    </span>
-                  )}
-                </div>
-              </div>
-              {item.notas && (
-                <div className="flex gap-2 mt-2 flex-wrap text-xs">
-                  {CAMPOS_NOTA.map(
-                    ({ key, label }) =>
-                      item.notas![key] && (
-                        <span key={key} className="px-2 py-0.5 rounded bg-muted font-medium">
-                          {label}: {item.notas![key]}
-                        </span>
-                      ),
-                  )}
-                </div>
-              )}
-              {item.observacao && (
-                <div className="text-xs text-muted-foreground italic mt-2">{item.observacao}</div>
-              )}
-            </li>
-          ))}
-        </ol>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="text-left text-muted-foreground border-b border-border">
+                <th className="py-2 pr-3 font-medium">Revisão</th>
+                <th className="py-2 pr-3 font-medium">Data</th>
+                {CAMPOS_NOTA.map(({ key, label }) => (
+                  <th key={key} className="py-2 pr-3 font-medium">
+                    {label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {revisoes.map((r) => (
+                <tr key={r.chave} className="border-b border-border/60">
+                  <td className="py-2 pr-3 font-semibold">{r.licao}</td>
+                  <td className="py-2 pr-3 text-muted-foreground">{formatarDataBR(r.data)}</td>
+                  {CAMPOS_NOTA.map(({ key }) => (
+                    <td key={key} className="py-2 pr-3">
+                      {r.notas?.[key] ?? "—"}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
+
+      <style>{`
+        @media print {
+          @page { margin: 12mm; }
+          html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+      `}</style>
     </main>
   );
 }

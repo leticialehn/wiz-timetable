@@ -24,6 +24,7 @@ import { Route as ProfessoraAlunoIdRouteImport } from './routes/professora_.alun
 import { Route as AdminCalendarioImprimirRouteImport } from './routes/admin.calendario_.imprimir'
 import { Route as AdminAlunosInativosRouteImport } from './routes/admin.alunos_.inativos'
 import { Route as AdminAlunosIdRouteImport } from './routes/admin.alunos_.$id'
+import { Route as AdminAlunosIdHistoricoRouteImport } from './routes/admin.alunos_.$id_.historico'
 
 const ProfessoraRoute = ProfessoraRouteImport.update({
   id: '/professora',
@@ -100,6 +101,11 @@ const AdminAlunosIdRoute = AdminAlunosIdRouteImport.update({
   path: '/alunos/$id',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAlunosIdHistoricoRoute = AdminAlunosIdHistoricoRouteImport.update({
+  id: '/alunos_/$id_/historico',
+  path: '/alunos/$id/historico',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -117,6 +123,7 @@ export interface FileRoutesByFullPath {
   '/admin/alunos/inativos': typeof AdminAlunosInativosRoute
   '/admin/calendario/imprimir': typeof AdminCalendarioImprimirRoute
   '/professora/aluno/$id': typeof ProfessoraAlunoIdRoute
+  '/admin/alunos/$id/historico': typeof AdminAlunosIdHistoricoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -133,6 +140,7 @@ export interface FileRoutesByTo {
   '/admin/alunos/inativos': typeof AdminAlunosInativosRoute
   '/admin/calendario/imprimir': typeof AdminCalendarioImprimirRoute
   '/professora/aluno/$id': typeof ProfessoraAlunoIdRoute
+  '/admin/alunos/$id/historico': typeof AdminAlunosIdHistoricoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -151,6 +159,7 @@ export interface FileRoutesById {
   '/admin/alunos_/inativos': typeof AdminAlunosInativosRoute
   '/admin/calendario_/imprimir': typeof AdminCalendarioImprimirRoute
   '/professora_/aluno/$id': typeof ProfessoraAlunoIdRoute
+  '/admin/alunos_/$id_/historico': typeof AdminAlunosIdHistoricoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -170,6 +179,7 @@ export interface FileRouteTypes {
     | '/admin/alunos/inativos'
     | '/admin/calendario/imprimir'
     | '/professora/aluno/$id'
+    | '/admin/alunos/$id/historico'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/admin/alunos/inativos'
     | '/admin/calendario/imprimir'
     | '/professora/aluno/$id'
+    | '/admin/alunos/$id/historico'
   id:
     | '__root__'
     | '/'
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '/admin/alunos_/inativos'
     | '/admin/calendario_/imprimir'
     | '/professora_/aluno/$id'
+    | '/admin/alunos_/$id_/historico'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -320,6 +332,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAlunosIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/alunos_/$id_/historico': {
+      id: '/admin/alunos_/$id_/historico'
+      path: '/alunos/$id/historico'
+      fullPath: '/admin/alunos/$id/historico'
+      preLoaderRoute: typeof AdminAlunosIdHistoricoRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
@@ -334,6 +353,7 @@ interface AdminRouteChildren {
   AdminAlunosIdRoute: typeof AdminAlunosIdRoute
   AdminAlunosInativosRoute: typeof AdminAlunosInativosRoute
   AdminCalendarioImprimirRoute: typeof AdminCalendarioImprimirRoute
+  AdminAlunosIdHistoricoRoute: typeof AdminAlunosIdHistoricoRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
@@ -347,6 +367,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAlunosIdRoute: AdminAlunosIdRoute,
   AdminAlunosInativosRoute: AdminAlunosInativosRoute,
   AdminCalendarioImprimirRoute: AdminCalendarioImprimirRoute,
+  AdminAlunosIdHistoricoRoute: AdminAlunosIdHistoricoRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)

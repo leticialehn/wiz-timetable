@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { getGradeSemana } from "@/lib/grade.functions";
 import { segundaDaSemana, toISODate } from "@/lib/date-utils";
 import { AlertasLista } from "@/components/AlertasLista";
+import { TIPOS_ALERTA_PROFESSORA } from "@/lib/alertas.functions";
 
 export const Route = createFileRoute("/professora_/alertas")({
   component: AlertasProfessoraPage,
@@ -32,7 +33,7 @@ function AlertasProfessoraPage() {
 
   const professora = data?.professoras.find((p) => p.id === professoraId);
 
-  if (!professora || !professora.coordenadora) {
+  if (!professora) {
     return (
       <main className="min-h-screen bg-background max-w-2xl mx-auto px-4 py-4">
         <Link
@@ -41,7 +42,7 @@ function AlertasProfessoraPage() {
         >
           ← Voltar
         </Link>
-        <p className="text-muted-foreground text-sm">Essa página é só para coordenação.</p>
+        <p className="text-muted-foreground text-sm">Escolha sua professora primeiro.</p>
       </main>
     );
   }
@@ -52,7 +53,7 @@ function AlertasProfessoraPage() {
         ← Voltar
       </Link>
       <h1 className="text-xl font-bold mb-4">Alertas</h1>
-      <AlertasLista resolvidoPor={professora.nome} />
+      <AlertasLista resolvidoPor={professora.nome} apenasTipos={TIPOS_ALERTA_PROFESSORA} />
     </main>
   );
 }
