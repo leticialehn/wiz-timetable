@@ -613,8 +613,10 @@ function AlunoLinha({
   const licaoFn = useServerFn(setLicao);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  // Raro: aluno adiantado faz 2 lições na mesma hora de aula regular — a
+  // Raro: aluno adiantado faz lição a mais na mesma hora de aula — a
   // professora aciona manualmente, sem duplicar presença (é a mesma visita).
+  // Na aula regular isso abre a 2ª lição; na online (que já tem 1ª e 2ª por
+  // padrão), abre a 3ª.
   const [licaoExtraAtiva, setLicaoExtraAtiva] = useState(false);
   // Aluno avisou com antecedência que não vem — não é falta (não conta pro
   // alerta de faltas seguidas) e não há presença/notas/lição pra lançar.
@@ -624,6 +626,7 @@ function AlunoLinha({
 
   const ehOnline = c.tipo === "online";
   const mostraParte2 = ehOnline || licaoExtraAtiva;
+  const mostraParte3 = ehOnline && licaoExtraAtiva;
   const temLicao = temTrackingDeLicao(c.aluno_nivel);
 
   const licaoSugestao1 = temLicao ? licaoSugerida(c.aluno_nivel, historicoLicao) : "";
@@ -667,9 +670,33 @@ function AlunoLinha({
     licaoSugestao: licaoSugestao2,
   });
 
+  // A 3ª lição (só na aula online) encadeia da mesma forma, a partir da 2ª.
+  const licaoSugestao3 = temLicao
+    ? licaoSugerida(c.aluno_nivel, [
+        {
+          licao: parte2.licaoLocal || licaoSugestao2,
+          nivel_no_momento: c.aluno_nivel,
+          praticado: parte2.praticadoLocal,
+        },
+        {
+          licao: parte1.licaoLocal || licaoSugestao1,
+          nivel_no_momento: c.aluno_nivel,
+          praticado: parte1.praticadoLocal,
+        },
+        ...historicoLicao,
+      ])
+    : "";
+  const parte3 = useParte(3, {
+    presenca: presencas.find((p) => p.parte === 3) ?? null,
+    nota: notas.find((n) => n.parte === 3) ?? null,
+    licao: licoes.find((l) => l.parte === 3) ?? null,
+    licaoSugestao: licaoSugestao3,
+  });
+
   const alterado =
     avisado !== avisadoOriginal ||
-    (!avisado && (parte1.alterado || (mostraParte2 && parte2.alterado)));
+    (!avisado &&
+      (parte1.alterado || (mostraParte2 && parte2.alterado) || (mostraParte3 && parte3.alterado)));
 
   async function salvarParte(estado: EstadoParte) {
     const chamadas: Promise<unknown>[] = [];
@@ -737,7 +764,7 @@ function AlunoLinha({
     setSalvando(true);
     try {
       const chamadas = avisado
-        ? [1, ...(ehOnline ? [2] : [])].map((parte) =>
+        ? [1, ...(mostraParte2 ? [2] : []), ...(mostraParte3 ? [3] : [])].map((parte) =>
             presencaFn({
               data: {
                 data: dataDoDia,
@@ -750,7 +777,11 @@ function AlunoLinha({
               },
             }),
           )
-        : [...(await salvarParte(parte1)), ...(mostraParte2 ? await salvarParte(parte2) : [])];
+        : [
+            ...(await salvarParte(parte1)),
+            ...(mostraParte2 ? await salvarParte(parte2) : []),
+            ...(mostraParte3 ? await salvarParte(parte3) : []),
+          ];
       await Promise.all(chamadas);
       qc.invalidateQueries({ queryKey: ["lancamentos-semana"] });
       qc.invalidateQueries({ queryKey: ["historico-licoes"] });
@@ -897,6 +928,22 @@ function AlunoLinha({
               mostraLicao={mostraNotasELicao && temLicao}
               mostraPresenca={ehOnline}
               estado={parte2}
+              onAdicionarExtra={
+                ehOnline && !licaoExtraAtiva && mostraNotasELicao && temLicao
+                  ? () => setLicaoExtraAtiva(true)
+                  : undefined
+              }
+              salvarSlot={!mostraParte3 ? botaoSalvar : undefined}
+            />
+          )}
+          {mostraParte3 && (
+            <BlocoLancamento
+              rotulo="3ª lição"
+              salvando={salvando}
+              mostraNotasELicao={mostraNotasELicao}
+              mostraLicao={mostraNotasELicao && temLicao}
+              mostraPresenca
+              estado={parte3}
               salvarSlot={botaoSalvar}
             />
           )}
