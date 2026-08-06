@@ -576,6 +576,17 @@ function useParte(
 
 type EstadoParte = ReturnType<typeof useParte>;
 
+// Já tem presença, lição ou alguma nota salva nesta parte (antes de qualquer
+// edição não salva de agora) — usado só pra colorir o botão de verde quando
+// não há nada novo pra salvar mas o lançamento já foi feito antes.
+function temDadosSalvos(estado: EstadoParte): boolean {
+  return (
+    estado.presencaOriginal !== null ||
+    !!estado.licaoOriginal ||
+    Object.values(estado.notaOriginal ?? {}).some((v) => v !== null && v !== undefined)
+  );
+}
+
 function AlunoLinha({
   c,
   mostraLivro,
@@ -698,6 +709,17 @@ function AlunoLinha({
     (!avisado &&
       (parte1.alterado || (mostraParte2 && parte2.alterado) || (mostraParte3 && parte3.alterado)));
 
+  // Sem nada novo pra salvar, mas já tinha sido lançado antes — mostra o
+  // botão verde em vez de cinza, pra dar pra ver de longe (depois de um
+  // tempo em aula) que esse aluno já está com tudo registrado.
+  const jaSalvo =
+    !alterado &&
+    (avisado
+      ? avisadoOriginal
+      : temDadosSalvos(parte1) ||
+        (mostraParte2 && temDadosSalvos(parte2)) ||
+        (mostraParte3 && temDadosSalvos(parte3)));
+
   async function salvarParte(estado: EstadoParte) {
     const chamadas: Promise<unknown>[] = [];
     if (estado.presencaLocal && estado.presencaLocal !== estado.presencaOriginal) {
@@ -797,13 +819,16 @@ function AlunoLinha({
     <button
       disabled={!alterado || salvando}
       onClick={salvar}
+      title={jaSalvo ? "Já lançado — nada de novo pra salvar" : undefined}
       className={`ml-auto shrink-0 text-xs px-2.5 py-1 rounded font-medium ${
         alterado
-          ? "bg-primary text-primary-foreground hover:opacity-90"
-          : "bg-muted text-muted-foreground"
-      } disabled:opacity-50`}
+          ? "bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          : jaSalvo
+            ? "bg-emerald-500 text-white"
+            : "bg-muted text-muted-foreground disabled:opacity-50"
+      }`}
     >
-      {salvando ? "Salvando…" : "Salvar"}
+      {salvando ? "Salvando…" : jaSalvo ? "Salvo ✓" : "Salvar"}
     </button>
   );
 
