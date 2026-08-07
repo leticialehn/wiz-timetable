@@ -299,6 +299,7 @@ export type Database = {
           created_at: string;
           data: string;
           dia_semana: number | null;
+          experimental: boolean;
           grade_base_id: string | null;
           horario_especifico: string | null;
           id: string;
@@ -314,6 +315,7 @@ export type Database = {
           created_at?: string;
           data: string;
           dia_semana?: number | null;
+          experimental?: boolean;
           grade_base_id?: string | null;
           horario_especifico?: string | null;
           id?: string;
@@ -329,6 +331,7 @@ export type Database = {
           created_at?: string;
           data?: string;
           dia_semana?: number | null;
+          experimental?: boolean;
           grade_base_id?: string | null;
           horario_especifico?: string | null;
           id?: string;

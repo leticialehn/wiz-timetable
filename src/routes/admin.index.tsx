@@ -1051,7 +1051,6 @@ function CelulaEditor(props: {
   const cap = CAPACIDADE[tipo];
   const capEfetiva = Math.max(cap - vagasFechadas, 0);
   const mostraLivro = TIPO_MOSTRA_LIVRO[tipo];
-  const permiteAvulso = tipo === "reforco";
   const cheio = props.celulas.length >= capEfetiva;
 
   const alunosFiltrados = props.alunos
@@ -1359,23 +1358,21 @@ function CelulaEditor(props: {
                     </ul>
                   )}
 
-                  {permiteAvulso && (
-                    <div className="mt-3">
-                      <div className="text-xs text-muted-foreground mb-1">
-                        …ou aluno avulso (não matriculado):
-                      </div>
-                      <input
-                        value={avulsoNome}
-                        onChange={(e) => {
-                          setAvulsoNome(e.target.value);
-                          setPendingAlunoId(null);
-                          setBusca("");
-                        }}
-                        placeholder="Nome do aluno avulso"
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      />
+                  <div className="mt-3">
+                    <div className="text-xs text-muted-foreground mb-1">
+                      …ou aluno avulso (não matriculado):
                     </div>
-                  )}
+                    <input
+                      value={avulsoNome}
+                      onChange={(e) => {
+                        setAvulsoNome(e.target.value);
+                        setPendingAlunoId(null);
+                        setBusca("");
+                      }}
+                      placeholder="Nome do aluno avulso"
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    />
+                  </div>
 
                   {(pendingAlunoId || avulsoNome.trim()) && (
                     <div className="mt-3 space-y-2 rounded border border-border p-3">

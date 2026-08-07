@@ -269,9 +269,6 @@ export const adicionarAluno = createServerFn({ method: "POST" })
     if (TIPO_FECHADO[tipoHorario]) {
       throw new Error("Este horário está fechado (break / preparação).");
     }
-    if (tipoHorario !== "reforco" && data.aluno_nome_avulso && !data.aluno_id) {
-      throw new Error("Aluno avulso só é permitido em horário de Reforço.");
-    }
 
     const dataSegunda = toISODate(segundaDaSemana(parseISODate(data.data)));
     const grade = await getGradeSemana({ data: { dataSegunda } });
