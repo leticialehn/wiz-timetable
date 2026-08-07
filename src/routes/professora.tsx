@@ -662,7 +662,23 @@ function AlunoLinha({
   // alerta de faltas seguidas) e não há presença/notas/lição pra lançar.
   const avisadoOriginal =
     (presencas.find((p) => p.parte === 1)?.status ?? null) === "falta_avisada";
-  const [avisado, setAvisado] = useState(avisadoOriginal);
+  const [avisado, setAvisadoRaw] = useState(avisadoOriginal);
+  const [avisadoEditadoManualmente, setAvisadoEditadoManualmente] = useState(false);
+
+  // Se alguém (a secretaria, pelo painel admin, ou outra aba) marcar "avisou
+  // que não vem" enquanto a professora já está com a tela aberta, ela precisa
+  // ver isso aparecer sozinho — sem precisar sair e voltar da página. Só não
+  // sincroniza se ela mesma já mexeu nesse botão e ainda não salvou.
+  useEffect(() => {
+    if (avisadoEditadoManualmente) return;
+    setAvisadoRaw(avisadoOriginal);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [avisadoOriginal]);
+
+  function setAvisado(updater: boolean | ((v: boolean) => boolean)) {
+    setAvisadoEditadoManualmente(true);
+    setAvisadoRaw(updater);
+  }
 
   const ehOnline = c.tipo === "online";
   const mostraParte2 = ehOnline || licaoExtraAtiva;

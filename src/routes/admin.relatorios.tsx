@@ -37,6 +37,26 @@ function RelatoriosPage() {
           titulo="Carga de professoras"
           descricao="Quantas aulas cada professora dá por semana ou mês, por tipo de aula, com exportação em CSV."
         />
+        <RelatorioCard
+          to="/admin/relatorios/aniversariantes"
+          titulo="Aniversariantes"
+          descricao="Lista de aniversariantes por mês ou o ano inteiro, sempre em ordem de data."
+        />
+        <RelatorioCard
+          to="/admin/relatorios/faltas"
+          titulo="Faltas por aluno"
+          descricao="Quem mais faltou (sem avisar) numa semana ou mês, pra decisões de retenção."
+        />
+        <RelatorioCard
+          to="/admin/relatorios/declaracao"
+          titulo="Declaração de matrícula e frequência"
+          descricao="Documento pra imprimir, com a logo da escola, que os pais podem pedir pra outros fins."
+        />
+        <RelatorioCard
+          to="/admin/relatorios/niveis"
+          titulo="Alunos por nível"
+          descricao="Quantos alunos ativos em cada nível e em Kids/Teens/Adultos, pra planejar turmas."
+        />
       </div>
     </main>
   );

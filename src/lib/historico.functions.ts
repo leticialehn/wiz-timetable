@@ -26,6 +26,7 @@ export type HistoricoItem = {
 export type ResumoAluno = {
   aulasNoMes: number;
   aulasNoLivroAtual: number;
+  dataInicioNivel: string | null;
   presencas: number;
   faltas: number;
   sequenciaFaltas: number;
@@ -211,6 +212,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
       resumo: {
         aulasNoMes,
         aulasNoLivroAtual,
+        dataInicioNivel,
         presencas: totalPresencas,
         faltas: totalFaltas,
         sequenciaFaltas,

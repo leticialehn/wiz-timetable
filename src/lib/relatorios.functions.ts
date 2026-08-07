@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { ExcecaoSemana, GradeBaseRow, Professora, TipoAula } from "./types";
+import type { Aluno, ExcecaoSemana, GradeBaseRow, Professora, TipoAula } from "./types";
 import { diaSemanaISO, parseISODate, toISODate } from "./date-utils";
 
 async function publicClient() {
@@ -146,3 +146,76 @@ export const getCargaProfessoras = createServerFn({ method: "GET" })
       };
     });
   });
+
+export type FrequenciaAluno = {
+  aluno_id: string;
+  nome: string;
+  nivel: string;
+  aulas: number;
+  faltas: number;
+  faltasAvisadas: number;
+};
+
+// Faltas por aluno num período (mês/semana) — só conta a parte 1 de cada dia,
+// pra um dia inteiro de aula online faltada não valer como 2 faltas. Só
+// devolve quem teve alguma falta (sem aviso) no período, ordenado das mais
+// faltas pras menos — é isso que interessa pra decisão de retenção.
+export const getFrequenciaAlunos = createServerFn({ method: "GET" })
+  .inputValidator((data: { dataInicio: string; dataFim: string }) => data)
+  .handler(async ({ data }): Promise<FrequenciaAluno[]> => {
+    const sb = await publicClient();
+    const [alunosRes, presRes] = await Promise.all([
+      sb.from("alunos").select("id,nome,nivel").eq("ativo", true),
+      sb
+        .from("aulas_presenca")
+        .select("aluno_id,status")
+        .eq("parte", 1)
+        .gte("data", data.dataInicio)
+        .lte("data", data.dataFim),
+    ]);
+    const alunos = (alunosRes.data ?? []) as { id: string; nome: string; nivel: string }[];
+    const presencas = (presRes.data ?? []) as { aluno_id: string; status: string }[];
+    const nomeENivel = new Map(alunos.map((a) => [a.id, a]));
+
+    const porAluno = new Map<string, { aulas: number; faltas: number; faltasAvisadas: number }>();
+    for (const p of presencas) {
+      if (!nomeENivel.has(p.aluno_id)) continue;
+      if (!porAluno.has(p.aluno_id)) porAluno.set(p.aluno_id, { aulas: 0, faltas: 0, faltasAvisadas: 0 });
+      const contagem = porAluno.get(p.aluno_id)!;
+      contagem.aulas++;
+      if (p.status === "falta") contagem.faltas++;
+      if (p.status === "falta_avisada") contagem.faltasAvisadas++;
+    }
+
+    return [...porAluno.entries()]
+      .filter(([, c]) => c.faltas > 0)
+      .map(([aluno_id, c]) => {
+        const aluno = nomeENivel.get(aluno_id)!;
+        return { aluno_id, nome: aluno.nome, nivel: aluno.nivel, ...c };
+      })
+      .sort((a, b) => b.faltas - a.faltas || a.nome.localeCompare(b.nome));
+  });
+
+export type Aniversariante = { aluno_id: string; nome: string; nivel: string; mes: number; dia: number };
+
+// Todos os alunos ativos com data de nascimento cadastrada, ordenados por
+// mês e dia (não por nome) — a lista de aniversariantes do ano ou de um mês
+// específico é sempre um recorte/agrupamento desta mesma lista já ordenada.
+export const getAniversariantes = createServerFn({ method: "GET" }).handler(
+  async (): Promise<Aniversariante[]> => {
+    const sb = await publicClient();
+    const { data } = await sb
+      .from("alunos")
+      .select("id,nome,nivel,data_nascimento")
+      .eq("ativo", true);
+    const alunos = (data ?? []) as Aluno[];
+
+    return alunos
+      .filter((a) => a.data_nascimento)
+      .map((a) => {
+        const d = parseISODate(a.data_nascimento!);
+        return { aluno_id: a.id, nome: a.nome, nivel: a.nivel, mes: d.getMonth(), dia: d.getDate() };
+      })
+      .sort((a, b) => a.mes - b.mes || a.dia - b.dia);
+  },
+);

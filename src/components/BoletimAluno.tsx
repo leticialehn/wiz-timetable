@@ -72,7 +72,7 @@ export function BoletimAluno({ alunoId }: { alunoId: string }) {
 
       <div className="grid grid-cols-2 gap-3 mb-8 max-w-sm">
         <ResumoCard label="Aulas no mês" valor={resumo.aulasNoMes} />
-        <ResumoCard label="Aulas totais neste livro" valor={resumo.aulasNoLivroAtual} />
+        <ResumoCard label="Aulas totais" valor={resumo.aulasNoLivroAtual} />
       </div>
 
       <h2 className="text-lg font-semibold mb-3">Notas das revisões</h2>

@@ -5,17 +5,18 @@ import { useState } from "react";
 import { getGradeSemana } from "@/lib/grade.functions";
 import { segundaDaSemana, toISODate } from "@/lib/date-utils";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
-import { BoletimAluno } from "@/components/BoletimAluno";
-import { HistoricoEditavel } from "@/components/HistoricoEditavel";
+import { DeclaracaoAluno } from "@/components/DeclaracaoAluno";
 import { BuscaAluno } from "@/components/BuscaAluno";
 
-export const Route = createFileRoute("/admin/relatorios_/aluno")({ component: RelatorioAlunoPage });
+export const Route = createFileRoute("/admin/relatorios_/declaracao")({
+  component: DeclaracaoPage,
+});
 
-function RelatorioAlunoPage() {
+function DeclaracaoPage() {
   useRealtimeGrade();
   const getFn = useServerFn(getGradeSemana);
   const { data } = useQuery({
-    queryKey: ["grade-semana", "relatorio-aluno"],
+    queryKey: ["grade-semana", "relatorio-declaracao"],
     queryFn: () => getFn({ data: { dataSegunda: toISODate(segundaDaSemana()) } }),
   });
 
@@ -24,25 +25,24 @@ function RelatorioAlunoPage() {
   const alunoSelecionado = alunos.find((a) => a.id === alunoId);
 
   return (
-    <main className="max-w-3xl mx-auto px-4 py-6 print:max-w-full print:px-8">
+    <main className="max-w-2xl mx-auto px-4 py-6 print:max-w-full print:px-16 print:py-16">
       <Link
         to="/admin/relatorios"
         className="print:hidden text-sm text-muted-foreground underline mb-4 inline-block"
       >
         ← Voltar a Relatórios
       </Link>
-      <h1 className="print:hidden text-2xl font-semibold mb-4">Boletim e histórico do aluno</h1>
+      <h1 className="print:hidden text-2xl font-semibold mb-4">Declaração de matrícula e frequência</h1>
 
       <BuscaAluno alunos={alunos} selecionado={alunoSelecionado} onSelecionar={setAlunoId} />
 
-      {alunoSelecionado && (
-        <>
-          <BoletimAluno alunoId={alunoSelecionado.id} />
-          <div className="print:hidden mt-10 pt-8 border-t border-border">
-            <HistoricoEditavel alunoId={alunoSelecionado.id} />
-          </div>
-        </>
-      )}
+      {alunoSelecionado && <DeclaracaoAluno alunoId={alunoSelecionado.id} />}
+
+      <style>{`
+        @media print {
+          @page { margin: 12mm; }
+        }
+      `}</style>
     </main>
   );
 }
