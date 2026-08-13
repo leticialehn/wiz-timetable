@@ -223,7 +223,7 @@ function calcularSequenciaEscritaPendente(registros: RegistroNota[]): number {
 const LIMIAR_ALERTA: Record<TipoAlerta, number> = {
   faltas: 2,
   nota_fala: 4,
-  sem_aula: 14,
+  sem_aula: 7,
   rematricula: 0,
   atrasado: 1,
   escrita_pendente: 4,
