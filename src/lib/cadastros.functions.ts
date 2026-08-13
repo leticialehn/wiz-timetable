@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { capitalizarNome } from "./utils";
-import { NIVEIS } from "./types";
+import { NIVEIS, type SituacaoAluno } from "./types";
 
 function validarNivel(nivel: string): string {
   if (!NIVEIS.includes(nivel as (typeof NIVEIS)[number])) {
@@ -72,6 +72,7 @@ export const atualizarAluno = createServerFn({ method: "POST" })
       nome: string;
       nivel: string;
       ativo: boolean;
+      situacao?: SituacaoAluno;
       dataInicioNivel: string | null;
       dataNascimento: string | null;
     }) => data,
@@ -83,12 +84,19 @@ export const atualizarAluno = createServerFn({ method: "POST" })
     // mais — some sozinha (o próximo lançamento de lição já marca o início do
     // novo nível automaticamente).
     const mudouNivel = atual !== null && atual.nivel !== data.nivel;
+    // situacao manda no ativo, não o contrário — "matriculado" força ativo=true,
+    // qualquer outra situação força ativo=false. Chamadas antigas que só mandam
+    // `ativo` (sem `situacao`) continuam funcionando: matriculado quando ativo,
+    // "cancelado" como motivo padrão quando inativo.
+    const situacao: SituacaoAluno = data.situacao ?? (data.ativo ? "matriculado" : "cancelado");
+    const ativo = situacao === "matriculado";
     const { error } = await sb
       .from("alunos")
       .update({
         nome: capitalizarNome(data.nome),
         nivel: validarNivel(data.nivel),
-        ativo: data.ativo,
+        ativo,
+        situacao,
         data_inicio_nivel: mudouNivel ? null : data.dataInicioNivel,
         data_nascimento: data.dataNascimento,
       })

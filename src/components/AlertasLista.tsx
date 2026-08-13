@@ -71,6 +71,8 @@ export function AlertasLista({
   const getUltimasLicoesFn = useServerFn(getUltimasLicoesPorAluno);
   const getAniversariantesFn = useServerFn(getAniversariantesDoMes);
   const [salvando, setSalvando] = useState<string | null>(null);
+  const [naoRematriculandoId, setNaoRematriculandoId] = useState<string | null>(null);
+  const [motivo, setMotivo] = useState("");
 
   const { data, isLoading } = useQuery({
     queryKey: ["alertas-ativos"],
@@ -85,11 +87,13 @@ export function AlertasLista({
     queryFn: () => getAniversariantesFn(),
   });
 
-  async function marcarResolvido(id: string) {
+  async function marcarResolvido(id: string, motivoTexto?: string) {
     setSalvando(id);
     try {
-      await resolverFn({ data: { id, resolvido_por: resolvidoPor } });
+      await resolverFn({ data: { id, resolvido_por: resolvidoPor, motivo: motivoTexto } });
       qc.invalidateQueries({ queryKey: ["alertas-ativos"] });
+      setNaoRematriculandoId(null);
+      setMotivo("");
     } finally {
       setSalvando(null);
     }
@@ -150,6 +154,7 @@ export function AlertasLista({
                   const ehRematricula = a.tipo === "rematricula";
                   const ehGravacao = a.tipo === "gravacao_r3r4" || a.tipo === "gravacao_r7r8";
                   const jaContactado = ehRematricula && a.contactado_em;
+                  const escrevendoMotivo = naoRematriculandoId === a.id;
                   return (
                     <li
                       key={a.id}
@@ -170,26 +175,76 @@ export function AlertasLista({
                             {formatarDataBR(a.contactado_em!.slice(0, 10))} — aguardando decisão
                           </div>
                         )}
+                        {escrevendoMotivo && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <input
+                              autoFocus
+                              value={motivo}
+                              onChange={(e) => setMotivo(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && motivo.trim()) marcarResolvido(a.id, motivo.trim());
+                                if (e.key === "Escape") {
+                                  setNaoRematriculandoId(null);
+                                  setMotivo("");
+                                }
+                              }}
+                              placeholder="Motivo (ex.: terminou o último livro, não vai continuar)"
+                              className="flex-1 min-w-[220px] rounded-md border border-input bg-background px-2 py-1 text-xs"
+                            />
+                            <button
+                              disabled={salvando === a.id || !motivo.trim()}
+                              onClick={() => marcarResolvido(a.id, motivo.trim())}
+                              className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground disabled:opacity-50"
+                            >
+                              Confirmar
+                            </button>
+                            <button
+                              onClick={() => {
+                                setNaoRematriculandoId(null);
+                                setMotivo("");
+                              }}
+                              className="text-xs px-2 py-1 rounded border border-border hover:bg-accent"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        )}
                       </div>
-                      <button
-                        disabled={salvando === a.id}
-                        onClick={() =>
-                          ehRematricula && !jaContactado
-                            ? marcarContatoFeito(a.id)
-                            : marcarResolvido(a.id)
-                        }
-                        className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 shrink-0"
-                      >
-                        {salvando === a.id
-                          ? "Salvando…"
-                          : ehRematricula
-                            ? jaContactado
-                              ? "Rematriculado"
-                              : "Contato feito"
-                            : ehGravacao
-                              ? "Gravado"
-                              : "Contato feito"}
-                      </button>
+                      {!escrevendoMotivo && (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            disabled={salvando === a.id}
+                            onClick={() =>
+                              ehRematricula && !jaContactado
+                                ? marcarContatoFeito(a.id)
+                                : marcarResolvido(a.id)
+                            }
+                            className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                          >
+                            {salvando === a.id
+                              ? "Salvando…"
+                              : ehRematricula
+                                ? jaContactado
+                                  ? "Rematriculado"
+                                  : "Contato feito"
+                                : ehGravacao
+                                  ? "Gravado"
+                                  : "Contato feito"}
+                          </button>
+                          {ehRematricula && jaContactado && (
+                            <button
+                              disabled={salvando === a.id}
+                              onClick={() => {
+                                setNaoRematriculandoId(a.id);
+                                setMotivo("");
+                              }}
+                              className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-accent disabled:opacity-50"
+                            >
+                              Não rematriculado
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </li>
                   );
                 })}
@@ -227,7 +282,9 @@ export function AlertasLista({
                     <span className="text-xs text-muted-foreground whitespace-nowrap">
                       ✓{" "}
                       {a.tipo === "rematricula"
-                        ? `Rematriculado por ${a.resolvido_por}`
+                        ? a.motivo
+                          ? `Não rematriculado por ${a.resolvido_por} — ${a.motivo}`
+                          : `Rematriculado por ${a.resolvido_por}`
                         : a.resolvido_por}
                       {a.resolvido_em ? ` em ${formatarDataBR(a.resolvido_em.slice(0, 10))}` : ""}
                     </span>

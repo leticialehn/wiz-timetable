@@ -45,6 +45,7 @@ import {
   type TipoHorario,
 } from "@/lib/types";
 import { getCalendarioExcecoes } from "@/lib/calendario.functions";
+import { BuscaAlunoNaSemana } from "@/components/BuscaAlunoNaSemana";
 
 export const Route = createFileRoute("/admin/")({
   component: GradePage,
@@ -200,6 +201,15 @@ function GradePage() {
           >
             Próxima semana →
           </button>
+          {data && (
+            <BuscaAlunoNaSemana
+              alunos={data.alunos}
+              celulasPorData={data.celulasPorData}
+              datasSemana={datas}
+              professoras={data.professoras}
+              onIrParaDia={setDiaAtivo}
+            />
+          )}
           <div className="ml-auto text-sm text-muted-foreground">
             Semana de {formatarDataBR(datas[0])} a {formatarDataBR(datas[5])}
           </div>

@@ -16,6 +16,7 @@ export type Database = {
           contagem: number;
           created_at: string;
           id: string;
+          motivo: string | null;
           nivel: string | null;
           resolvido_em: string | null;
           resolvido_por: string | null;
@@ -30,6 +31,7 @@ export type Database = {
           contagem: number;
           created_at?: string;
           id?: string;
+          motivo?: string | null;
           nivel?: string | null;
           resolvido_em?: string | null;
           resolvido_por?: string | null;
@@ -44,6 +46,7 @@ export type Database = {
           contagem?: number;
           created_at?: string;
           id?: string;
+          motivo?: string | null;
           nivel?: string | null;
           resolvido_em?: string | null;
           resolvido_por?: string | null;
@@ -97,6 +100,7 @@ export type Database = {
           id: string;
           nivel: string;
           nome: string;
+          situacao: string;
         };
         Insert: {
           ativo?: boolean;
@@ -106,6 +110,7 @@ export type Database = {
           id?: string;
           nivel?: string;
           nome: string;
+          situacao?: string;
         };
         Update: {
           ativo?: boolean;
@@ -115,6 +120,7 @@ export type Database = {
           id?: string;
           nivel?: string;
           nome?: string;
+          situacao?: string;
         };
         Relationships: [];
       };

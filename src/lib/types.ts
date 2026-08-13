@@ -21,11 +21,23 @@ export type Professora = {
   coordenadora: boolean;
 };
 
+// Por que o aluno ficou inativo (situacao só é != "matriculado" quando
+// ativo=false). "nao_rematriculado": terminou o livro/curso mas não vai pro
+// próximo. "cancelado": parou no meio do curso/livro.
+export type SituacaoAluno = "matriculado" | "nao_rematriculado" | "cancelado";
+
+export const ROTULO_SITUACAO: Record<SituacaoAluno, string> = {
+  matriculado: "Matriculado",
+  nao_rematriculado: "Não Rematriculado",
+  cancelado: "Cancelado",
+};
+
 export type Aluno = {
   id: string;
   nome: string;
   nivel: string;
   ativo: boolean;
+  situacao: SituacaoAluno;
   // Data em que o aluno começou o nível atual — só precisa ser preenchida à mão
   // quando ele já estava no meio desse livro antes de começarmos a lançar
   // lição no site (senão o sistema infere sozinho pela 1ª lição registrada).

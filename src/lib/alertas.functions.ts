@@ -163,6 +163,7 @@ export type AlertaAtivo = {
   resolvido_em: string | null;
   contactado_por: string | null;
   contactado_em: string | null;
+  motivo: string | null;
   created_at: string;
 };
 
@@ -177,6 +178,7 @@ type AlertaStatusRow = {
   resolvido_em: string | null;
   contactado_por: string | null;
   contactado_em: string | null;
+  motivo: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -256,6 +258,7 @@ function paraAlertaAtivo(row: AlertaStatusRow, aluno: Aluno): AlertaAtivo {
     resolvido_em: row.resolvido_em,
     contactado_por: row.contactado_por,
     contactado_em: row.contactado_em,
+    motivo: row.motivo,
     created_at: row.created_at,
   };
 }
@@ -285,7 +288,10 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
       licoesTodas,
       calendarioRes,
     ] = await Promise.all([
-      sb.from("alunos").select("*").eq("ativo", true),
+      // Sem filtro de ativo aqui — "Não rematriculado" desativa o aluno na
+      // hora de resolver o alerta, e o histórico de "Resolvidos recentemente"
+      // continua precisando do nome/nível dele mesmo depois disso.
+      sb.from("alunos").select("*"),
       buscarTodasAsLinhas<RegistroPresenca>(async (inicio, fim) => {
         const { data, error } = await sb
           .from("aulas_presenca")
@@ -326,7 +332,12 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
       sb.from("calendario_excecoes").select("*"),
     ]);
 
-    const alunos = (alunosRes.data ?? []) as (Aluno & { created_at: string })[];
+    const todosAlunos = (alunosRes.data ?? []) as (Aluno & { created_at: string })[];
+    const alunoPorId = new Map(todosAlunos.map((a) => [a.id, a]));
+    // Pendências (faltas, sem_aula, rematrícula...) só são calculadas pra quem
+    // está ativo — igual sempre foi. todosAlunos existe só pra achar nome/nível
+    // de alguém que já ficou inativo mas ainda tem alerta resolvido no histórico.
+    const alunos = todosAlunos.filter((a) => a.ativo);
     const statusExistente = (statusRes.data ?? []) as AlertaStatusRow[];
     const baseRows = (baseRes.data ?? []) as { id: string; aluno_id: string | null }[];
     const calendarioExcecoes = (calendarioRes.data ?? []) as CalendarioExcecao[];
@@ -614,6 +625,17 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
       sincronizar(aluno, "atrasado", atraso !== null ? Math.round(atraso) : -1);
     }
 
+    // "Não rematriculado" já deixa o aluno inativo, então ele não passa pelo
+    // loop acima na próxima consulta — sem isso, o episódio resolvido some da
+    // lista de "Resolvidos recentemente" em vez de continuar mostrando o motivo.
+    const alunoIdsAtivos = new Set(alunos.map((a) => a.id));
+    for (const [alunoId, status] of statusRematriculaPorAluno) {
+      if (alunoIdsAtivos.has(alunoId)) continue;
+      if (status.status !== "resolvido" || !aindaVisivel(status)) continue;
+      const aluno = alunoPorId.get(alunoId);
+      if (aluno) resultado.push(paraAlertaAtivo(status, aluno));
+    }
+
     await Promise.all(atualizacoes);
 
     resultado.sort((a, b) => {
@@ -625,19 +647,40 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
   },
 );
 
+// motivo só é usado pra rematrícula: presente = aluno não vai continuar
+// (fecha como "Não rematriculado" em vez de "Rematriculado"), e nesse caso a
+// situação do aluno já é atualizada junto pra "nao_rematriculado" — evita ter
+// que repetir a mesma decisão em dois lugares (alerta e cadastro do aluno).
 export const resolverAlerta = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string; resolvido_por: string }) => data)
+  .inputValidator((data: { id: string; resolvido_por: string; motivo?: string }) => data)
   .handler(async ({ data }) => {
     const sb = await publicClient();
+    const { data: alerta, error: erroAlerta } = await sb
+      .from("alertas_status")
+      .select("aluno_id,tipo")
+      .eq("id", data.id)
+      .single();
+    if (erroAlerta) throw new Error(erroAlerta.message);
+
     const { error } = await sb
       .from("alertas_status")
       .update({
         status: "resolvido",
         resolvido_por: data.resolvido_por,
         resolvido_em: new Date().toISOString(),
+        motivo: data.motivo ?? null,
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
+
+    if (alerta.tipo === "rematricula" && data.motivo) {
+      const { error: erroAluno } = await sb
+        .from("alunos")
+        .update({ ativo: false, situacao: "nao_rematriculado" })
+        .eq("id", alerta.aluno_id);
+      if (erroAluno) throw new Error(erroAluno.message);
+    }
+
     return { ok: true };
   });
 

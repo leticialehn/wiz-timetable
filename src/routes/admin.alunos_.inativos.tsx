@@ -6,7 +6,7 @@ import { getGradeSemana } from "@/lib/grade.functions";
 import { atualizarAluno, getUltimasLicoesPorAluno } from "@/lib/cadastros.functions";
 import { segundaDaSemana, toISODate, formatarDataNascimentoBR } from "@/lib/date-utils";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
-import type { Aluno } from "@/lib/types";
+import { ROTULO_SITUACAO, type Aluno, type SituacaoAluno } from "@/lib/types";
 
 export const Route = createFileRoute("/admin/alunos_/inativos")({ component: AlunosInativosPage });
 
@@ -90,28 +90,30 @@ function AlunosInativosPage() {
                   </span>
                 )}
               </div>
-              <label
-                className="text-xs flex items-center gap-1"
+              <select
+                value={a.situacao}
                 onClick={(e) => e.stopPropagation()}
+                onChange={(e) =>
+                  atualizar.mutate({
+                    data: {
+                      id: a.id,
+                      nome: a.nome,
+                      nivel: a.nivel,
+                      ativo: e.target.value === "matriculado",
+                      situacao: e.target.value as SituacaoAluno,
+                      dataInicioNivel: a.data_inicio_nivel,
+                      dataNascimento: a.data_nascimento,
+                    },
+                  })
+                }
+                className="text-xs rounded-md border border-input bg-background px-2 py-1"
               >
-                <input
-                  type="checkbox"
-                  checked={a.ativo}
-                  onChange={(e) =>
-                    atualizar.mutate({
-                      data: {
-                        id: a.id,
-                        nome: a.nome,
-                        nivel: a.nivel,
-                        ativo: e.target.checked,
-                        dataInicioNivel: a.data_inicio_nivel,
-                        dataNascimento: a.data_nascimento,
-                      },
-                    })
-                  }
-                />
-                Ativo
-              </label>
+                {(Object.keys(ROTULO_SITUACAO) as SituacaoAluno[]).map((s) => (
+                  <option key={s} value={s}>
+                    {ROTULO_SITUACAO[s]}
+                  </option>
+                ))}
+              </select>
             </li>
           ))}
         </ul>

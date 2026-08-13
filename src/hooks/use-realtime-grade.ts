@@ -10,6 +10,7 @@ const TABELAS = [
   "excecoes_semana",
   "aulas_presenca",
   "aulas_notas",
+  "aulas_licoes",
 ] as const;
 
 export function useRealtimeGrade() {

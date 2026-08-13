@@ -19,7 +19,7 @@ import {
   estaNaSemanaDoAniversario,
 } from "@/lib/date-utils";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
-import { NIVEIS, type Aluno } from "@/lib/types";
+import { NIVEIS, ROTULO_SITUACAO, type Aluno, type SituacaoAluno } from "@/lib/types";
 import { temTrackingDeLicao } from "@/lib/licoes";
 
 export const Route = createFileRoute("/admin/alunos")({ component: AlunosPage });
@@ -179,6 +179,7 @@ type CamposAluno = {
   nome: string;
   nivel: string;
   ativo: boolean;
+  situacao: SituacaoAluno;
   dataInicioNivel: string | null;
   dataNascimento: string | null;
 };
@@ -219,6 +220,7 @@ function LinhaAluno({
       nome: nome.trim(),
       nivel: nivel.trim(),
       ativo: aluno.ativo,
+      situacao: aluno.situacao,
       dataInicioNivel: dataInicioNivel || null,
       dataNascimento: aluno.data_nascimento,
     });
@@ -328,6 +330,7 @@ function LinhaAluno({
                       nome: aluno.nome,
                       nivel: aluno.nivel,
                       ativo: aluno.ativo,
+                      situacao: aluno.situacao,
                       dataInicioNivel: aluno.data_inicio_nivel,
                       dataNascimento: novaData,
                     });
@@ -342,22 +345,27 @@ function LinhaAluno({
             </span>
             {aniversario && <span className="text-sm">🎂</span>}
           </div>
-          <label className="text-xs flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-            <input
-              type="checkbox"
-              checked={aluno.ativo}
-              onChange={(e) =>
-                onAtualizar({
-                  nome: aluno.nome,
-                  nivel: aluno.nivel,
-                  ativo: e.target.checked,
-                  dataInicioNivel: aluno.data_inicio_nivel,
-                  dataNascimento: aluno.data_nascimento,
-                })
-              }
-            />
-            Ativo
-          </label>
+          <select
+            value={aluno.situacao}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) =>
+              onAtualizar({
+                nome: aluno.nome,
+                nivel: aluno.nivel,
+                ativo: e.target.value === "matriculado",
+                situacao: e.target.value as SituacaoAluno,
+                dataInicioNivel: aluno.data_inicio_nivel,
+                dataNascimento: aluno.data_nascimento,
+              })
+            }
+            className="text-xs rounded-md border border-input bg-background px-2 py-1"
+          >
+            {(Object.keys(ROTULO_SITUACAO) as SituacaoAluno[]).map((s) => (
+              <option key={s} value={s}>
+                {ROTULO_SITUACAO[s]}
+              </option>
+            ))}
+          </select>
           <Link
             to="/admin/alunos/$id/historico"
             params={{ id: aluno.id }}
