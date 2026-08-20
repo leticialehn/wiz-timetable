@@ -154,18 +154,53 @@ export function BoletimAluno({
     queryFn: () => getFn({ data: { aluno_id: alunoId } }),
   });
 
+  // Livro sendo visto no boletim — começa no nível atual do aluno, mas dá
+  // pra trocar pra um livro anterior (ex.: aluno que já trocou de nível e
+  // você quer ver/completar o boletim do livro de antes).
+  const [nivelEscolhido, setNivelEscolhido] = useState<string | null>(null);
+
+  // Todo nível que já apareceu em alguma lição, mais o nível atual (mesmo que
+  // ele ainda não tenha nenhuma lição lançada) — ordenado do mais recente
+  // praticado pro mais antigo, com o atual sempre primeiro.
+  const niveisComHistorico = useMemo(() => {
+    if (!data) return [];
+    const ultimaDataPorNivel = new Map<string, string>();
+    for (const item of data.timeline) {
+      if (!item.nivel_no_momento) continue;
+      const atual = ultimaDataPorNivel.get(item.nivel_no_momento);
+      if (!atual || item.data > atual) ultimaDataPorNivel.set(item.nivel_no_momento, item.data);
+    }
+    if (!ultimaDataPorNivel.has(data.aluno.nivel)) ultimaDataPorNivel.set(data.aluno.nivel, "");
+    return [...ultimaDataPorNivel.entries()]
+      .sort(([nivelA, dataA], [nivelB, dataB]) => {
+        if (nivelA === data.aluno.nivel) return -1;
+        if (nivelB === data.aluno.nivel) return 1;
+        return dataB.localeCompare(dataA);
+      })
+      .map(([nivel]) => nivel);
+  }, [data]);
+
+  const nivelAtivo = nivelEscolhido ?? data?.aluno.nivel ?? "";
+
   const revisaoPorNumero = useMemo(() => {
     const mapa = new Map<number, HistoricoItem>();
     if (!data) return mapa;
     // timeline vem do mais recente pro mais antigo — a 1ª ocorrência de cada
     // número é a mais recente, então redos não sobrescrevem por engano.
     for (const item of data.timeline) {
-      if (item.nivel_no_momento !== data.aluno.nivel) continue;
+      if (item.nivel_no_momento !== nivelAtivo) continue;
       const n = numeroRevisao(item.licao);
       if (n !== null && !mapa.has(n)) mapa.set(n, item);
     }
     return mapa;
-  }, [data]);
+  }, [data, nivelAtivo]);
+
+  const aulasNesteLivro = useMemo(() => {
+    if (!data) return 0;
+    return data.timeline.filter(
+      (t) => t.presenca === "presente" && t.nivel_no_momento === nivelAtivo,
+    ).length;
+  }, [data, nivelAtivo]);
 
   if (isLoading) return <p className="text-muted-foreground text-sm">Carregando…</p>;
   if (!data) return <p className="text-muted-foreground text-sm">Aluno não encontrado.</p>;
@@ -194,14 +229,31 @@ export function BoletimAluno({
       </div>
 
       <h1 className="text-2xl font-semibold mb-1">{aluno.nome}</h1>
-      <p className="text-sm text-muted-foreground mb-6">
-        Nível {aluno.nivel}
-        {!aluno.ativo && " · Inativo"}
-      </p>
+      <div className="flex items-center gap-2 mb-6">
+        <p className="text-sm text-muted-foreground">
+          Nível {nivelAtivo}
+          {nivelAtivo === aluno.nivel ? " (atual)" : ""}
+          {!aluno.ativo && " · Inativo"}
+        </p>
+        {niveisComHistorico.length > 1 && (
+          <select
+            value={nivelAtivo}
+            onChange={(e) => setNivelEscolhido(e.target.value)}
+            className="print:hidden text-xs rounded-md border border-input bg-background px-2 py-1"
+          >
+            {niveisComHistorico.map((nivel) => (
+              <option key={nivel} value={nivel}>
+                {nivel}
+                {nivel === aluno.nivel ? " (atual)" : ""}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
 
       <div className="grid grid-cols-2 gap-3 mb-8 max-w-sm">
         <ResumoCard label="Aulas no mês" valor={resumo.aulasNoMes} />
-        <ResumoCard label="Aulas totais" valor={resumo.aulasNoLivroAtual} />
+        <ResumoCard label="Aulas neste livro" valor={aulasNesteLivro} />
       </div>
 
       <h2 className="text-lg font-semibold mb-3">Notas das revisões</h2>
@@ -222,7 +274,7 @@ export function BoletimAluno({
               <LinhaRevisao
                 key={n}
                 alunoId={alunoId}
-                alunoNivel={aluno.nivel}
+                alunoNivel={nivelAtivo}
                 revisao={n}
                 registro={revisaoPorNumero.get(n)}
                 professoraPadraoId={professoras[0]?.id}
