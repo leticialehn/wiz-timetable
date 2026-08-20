@@ -182,6 +182,8 @@ export function BoletimAluno({
 }) {
   const qc = useQueryClient();
   const getFn = useServerFn(getHistoricoAluno);
+  const notaFn = useServerFn(setNota);
+  const [salvandoCelula, setSalvandoCelula] = useState<string | null>(null);
   const { data, isLoading } = useQuery({
     queryKey: ["historico-aluno", alunoId],
     queryFn: () => getFn({ data: { aluno_id: alunoId } }),
@@ -206,6 +208,27 @@ export function BoletimAluno({
   const { aluno, resumo, timeline } = data;
   const hojeBR = formatarDataBR(toISODate(new Date()));
   const onSalvo = () => qc.invalidateQueries({ queryKey: ["historico-aluno", alunoId] });
+
+  async function salvarNotaRevisao(r: HistoricoItem, campo: CampoNota, valor: ConceitoNota | null) {
+    const chaveCelula = `${r.chave}-${campo}`;
+    setSalvandoCelula(chaveCelula);
+    try {
+      await notaFn({
+        data: {
+          data: r.data,
+          professora_id: r.professora_id,
+          aluno_id: alunoId,
+          periodo: r.periodo,
+          parte: r.parte,
+          campo,
+          valor,
+        },
+      });
+      onSalvo();
+    } finally {
+      setSalvandoCelula(null);
+    }
+  }
 
   return (
     <>
@@ -264,7 +287,14 @@ export function BoletimAluno({
                       </td>
                       {CAMPOS_NOTA.map(({ key }) => (
                         <td key={key} className="py-2 pr-3">
-                          {r.notas?.[key] ?? "—"}
+                          <span className="print:inline hidden">{r.notas?.[key] ?? "—"}</span>
+                          <span className="print:hidden">
+                            <NotaEditavel
+                              valor={r.notas?.[key] ?? null}
+                              disabled={salvandoCelula === `${r.chave}-${key}`}
+                              onSelecionar={(v) => salvarNotaRevisao(r, key, v)}
+                            />
+                          </span>
                         </td>
                       ))}
                     </>
