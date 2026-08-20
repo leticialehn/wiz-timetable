@@ -57,6 +57,11 @@ function RelatoriosPage() {
           titulo="Alunos por nível"
           descricao="Quantos alunos ativos em cada nível e em Kids/Teens/Adultos, pra planejar turmas."
         />
+        <RelatorioCard
+          to="/admin/relatorios/avulsos"
+          titulo="Leads"
+          descricao="Nomes marcados numa aula (ex.: experimental) que nunca viraram cadastro de aluno."
+        />
       </div>
     </main>
   );

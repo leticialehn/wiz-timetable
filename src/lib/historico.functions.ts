@@ -19,6 +19,10 @@ export type HistoricoItem = {
   presenca: StatusPresenca | null;
   notas: Record<CampoNota, ConceitoNota | null> | null;
   licao: string | null;
+  // Nível do aluno na época dessa lição — só existe quando há lição lançada
+  // nessa linha (presença/nota sozinhas não carregam nível). Usado pra não
+  // misturar revisões de um livro antigo com as do livro atual no boletim.
+  nivel_no_momento: string | null;
   praticado: boolean | null;
   observacao: string | null;
 };
@@ -127,6 +131,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
         presenca: p.status,
         notas: null,
         licao: null,
+        nivel_no_momento: null,
         praticado: null,
         observacao: p.observacao,
       });
@@ -153,6 +158,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
           presenca: null,
           notas: notasValores,
           licao: null,
+          nivel_no_momento: null,
           praticado: null,
           observacao: null,
         });
@@ -163,6 +169,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
       const existente = porChave.get(chave);
       if (existente) {
         existente.licao = l.licao;
+        existente.nivel_no_momento = l.nivel_no_momento;
         existente.praticado = l.praticado;
       } else {
         porChave.set(chave, {
@@ -175,6 +182,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
           presenca: null,
           notas: null,
           licao: l.licao,
+          nivel_no_momento: l.nivel_no_momento,
           praticado: l.praticado,
           observacao: null,
         });
@@ -202,9 +210,16 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
     const licoesAscendente = [...licoes].sort((a, b) => a.data.localeCompare(b.data));
     const dataInicioNivel =
       aluno.data_inicio_nivel ?? dataInicioInferida(aluno.nivel, licoesAscendente);
-    const aulasNoLivroAtual = presencas.filter(
-      (p) => p.status === "presente" && (!dataInicioNivel || p.data >= dataInicioNivel),
-    ).length;
+    // Presença sozinha não sabe o nível (só a lição carrega isso) — se essa
+    // aula tem lição lançada de outro nível (ex.: livro anterior, antes da
+    // troca), não conta aqui mesmo caindo dentro da faixa de datas.
+    const nivelPorChave = new Map(licoes.map((l) => [chaveDe(l), l.nivel_no_momento]));
+    const aulasNoLivroAtual = presencas.filter((p) => {
+      if (p.status !== "presente") return false;
+      if (dataInicioNivel && p.data < dataInicioNivel) return false;
+      const nivelDaAula = nivelPorChave.get(chaveDe(p));
+      return nivelDaAula === undefined || nivelDaAula === aluno.nivel;
+    }).length;
 
     return {
       aluno,

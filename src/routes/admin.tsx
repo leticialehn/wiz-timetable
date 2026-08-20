@@ -17,7 +17,7 @@ function AdminShell() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card sticky top-0 z-20">
+      <header className="print:hidden border-b border-border bg-card sticky top-0 z-20">
         <div className="max-w-[1400px] mx-auto px-4 py-3 flex items-center gap-4 flex-wrap">
           <Link to="/admin" activeOptions={{ exact: true }} className="font-bold text-lg">
             Wizard Timetable

@@ -7,40 +7,10 @@ import { formatarDataBR } from "@/lib/date-utils";
 import {
   HORARIO_INICIO_PERIODO,
   CAMPOS_NOTA,
-  CONCEITOS,
   type CampoNota,
   type ConceitoNota,
 } from "@/lib/types";
-
-function NotaEditavel({
-  valor,
-  disabled,
-  onSelecionar,
-}: {
-  valor: ConceitoNota | null;
-  disabled: boolean;
-  onSelecionar: (v: ConceitoNota | null) => void;
-}) {
-  return (
-    <div className="flex gap-0.5">
-      {CONCEITOS.map((c) => (
-        <button
-          key={c}
-          type="button"
-          disabled={disabled}
-          onClick={() => onSelecionar(valor === c ? null : c)}
-          className={`w-6 h-6 rounded text-[10px] font-bold border disabled:opacity-50 ${
-            valor === c
-              ? "bg-primary border-primary text-primary-foreground"
-              : "border-border bg-card hover:bg-accent"
-          }`}
-        >
-          {c}
-        </button>
-      ))}
-    </div>
-  );
-}
+import { NotaEditavel } from "./NotaEditavel";
 
 // Histórico completo de aulas do aluno (todas as lições, não só revisões), com
 // as notas editáveis clicando direto na tabela — usado tanto pela professora

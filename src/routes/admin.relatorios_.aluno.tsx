@@ -37,7 +37,7 @@ function RelatorioAlunoPage() {
 
       {alunoSelecionado && (
         <>
-          <BoletimAluno alunoId={alunoSelecionado.id} />
+          <BoletimAluno alunoId={alunoSelecionado.id} professoras={data?.professoras ?? []} />
           <div className="print:hidden mt-10 pt-8 border-t border-border">
             <HistoricoEditavel alunoId={alunoSelecionado.id} />
           </div>

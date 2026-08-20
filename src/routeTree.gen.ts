@@ -25,6 +25,7 @@ import { Route as AdminRelatoriosNiveisRouteImport } from './routes/admin.relato
 import { Route as AdminRelatoriosFaltasRouteImport } from './routes/admin.relatorios_.faltas'
 import { Route as AdminRelatoriosDeclaracaoRouteImport } from './routes/admin.relatorios_.declaracao'
 import { Route as AdminRelatoriosCargaProfessorasRouteImport } from './routes/admin.relatorios_.carga-professoras'
+import { Route as AdminRelatoriosAvulsosRouteImport } from './routes/admin.relatorios_.avulsos'
 import { Route as AdminRelatoriosAniversariantesRouteImport } from './routes/admin.relatorios_.aniversariantes'
 import { Route as AdminRelatoriosAlunoRouteImport } from './routes/admin.relatorios_.aluno'
 import { Route as AdminCalendarioImprimirRouteImport } from './routes/admin.calendario_.imprimir'
@@ -114,6 +115,11 @@ const AdminRelatoriosCargaProfessorasRoute =
     path: '/relatorios/carga-professoras',
     getParentRoute: () => AdminRoute,
   } as any)
+const AdminRelatoriosAvulsosRoute = AdminRelatoriosAvulsosRouteImport.update({
+  id: '/relatorios_/avulsos',
+  path: '/relatorios/avulsos',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminRelatoriosAniversariantesRoute =
   AdminRelatoriosAniversariantesRouteImport.update({
     id: '/relatorios_/aniversariantes',
@@ -163,6 +169,7 @@ export interface FileRoutesByFullPath {
   '/admin/calendario/imprimir': typeof AdminCalendarioImprimirRoute
   '/admin/relatorios/aluno': typeof AdminRelatoriosAlunoRoute
   '/admin/relatorios/aniversariantes': typeof AdminRelatoriosAniversariantesRoute
+  '/admin/relatorios/avulsos': typeof AdminRelatoriosAvulsosRoute
   '/admin/relatorios/carga-professoras': typeof AdminRelatoriosCargaProfessorasRoute
   '/admin/relatorios/declaracao': typeof AdminRelatoriosDeclaracaoRoute
   '/admin/relatorios/faltas': typeof AdminRelatoriosFaltasRoute
@@ -186,6 +193,7 @@ export interface FileRoutesByTo {
   '/admin/calendario/imprimir': typeof AdminCalendarioImprimirRoute
   '/admin/relatorios/aluno': typeof AdminRelatoriosAlunoRoute
   '/admin/relatorios/aniversariantes': typeof AdminRelatoriosAniversariantesRoute
+  '/admin/relatorios/avulsos': typeof AdminRelatoriosAvulsosRoute
   '/admin/relatorios/carga-professoras': typeof AdminRelatoriosCargaProfessorasRoute
   '/admin/relatorios/declaracao': typeof AdminRelatoriosDeclaracaoRoute
   '/admin/relatorios/faltas': typeof AdminRelatoriosFaltasRoute
@@ -211,6 +219,7 @@ export interface FileRoutesById {
   '/admin/calendario_/imprimir': typeof AdminCalendarioImprimirRoute
   '/admin/relatorios_/aluno': typeof AdminRelatoriosAlunoRoute
   '/admin/relatorios_/aniversariantes': typeof AdminRelatoriosAniversariantesRoute
+  '/admin/relatorios_/avulsos': typeof AdminRelatoriosAvulsosRoute
   '/admin/relatorios_/carga-professoras': typeof AdminRelatoriosCargaProfessorasRoute
   '/admin/relatorios_/declaracao': typeof AdminRelatoriosDeclaracaoRoute
   '/admin/relatorios_/faltas': typeof AdminRelatoriosFaltasRoute
@@ -237,6 +246,7 @@ export interface FileRouteTypes {
     | '/admin/calendario/imprimir'
     | '/admin/relatorios/aluno'
     | '/admin/relatorios/aniversariantes'
+    | '/admin/relatorios/avulsos'
     | '/admin/relatorios/carga-professoras'
     | '/admin/relatorios/declaracao'
     | '/admin/relatorios/faltas'
@@ -260,6 +270,7 @@ export interface FileRouteTypes {
     | '/admin/calendario/imprimir'
     | '/admin/relatorios/aluno'
     | '/admin/relatorios/aniversariantes'
+    | '/admin/relatorios/avulsos'
     | '/admin/relatorios/carga-professoras'
     | '/admin/relatorios/declaracao'
     | '/admin/relatorios/faltas'
@@ -284,6 +295,7 @@ export interface FileRouteTypes {
     | '/admin/calendario_/imprimir'
     | '/admin/relatorios_/aluno'
     | '/admin/relatorios_/aniversariantes'
+    | '/admin/relatorios_/avulsos'
     | '/admin/relatorios_/carga-professoras'
     | '/admin/relatorios_/declaracao'
     | '/admin/relatorios_/faltas'
@@ -414,6 +426,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRelatoriosCargaProfessorasRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/relatorios_/avulsos': {
+      id: '/admin/relatorios_/avulsos'
+      path: '/relatorios/avulsos'
+      fullPath: '/admin/relatorios/avulsos'
+      preLoaderRoute: typeof AdminRelatoriosAvulsosRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/relatorios_/aniversariantes': {
       id: '/admin/relatorios_/aniversariantes'
       path: '/relatorios/aniversariantes'
@@ -472,6 +491,7 @@ interface AdminRouteChildren {
   AdminCalendarioImprimirRoute: typeof AdminCalendarioImprimirRoute
   AdminRelatoriosAlunoRoute: typeof AdminRelatoriosAlunoRoute
   AdminRelatoriosAniversariantesRoute: typeof AdminRelatoriosAniversariantesRoute
+  AdminRelatoriosAvulsosRoute: typeof AdminRelatoriosAvulsosRoute
   AdminRelatoriosCargaProfessorasRoute: typeof AdminRelatoriosCargaProfessorasRoute
   AdminRelatoriosDeclaracaoRoute: typeof AdminRelatoriosDeclaracaoRoute
   AdminRelatoriosFaltasRoute: typeof AdminRelatoriosFaltasRoute
@@ -492,6 +512,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminCalendarioImprimirRoute: AdminCalendarioImprimirRoute,
   AdminRelatoriosAlunoRoute: AdminRelatoriosAlunoRoute,
   AdminRelatoriosAniversariantesRoute: AdminRelatoriosAniversariantesRoute,
+  AdminRelatoriosAvulsosRoute: AdminRelatoriosAvulsosRoute,
   AdminRelatoriosCargaProfessorasRoute: AdminRelatoriosCargaProfessorasRoute,
   AdminRelatoriosDeclaracaoRoute: AdminRelatoriosDeclaracaoRoute,
   AdminRelatoriosFaltasRoute: AdminRelatoriosFaltasRoute,

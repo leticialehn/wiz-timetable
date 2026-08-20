@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { Aluno, ExcecaoSemana, GradeBaseRow, Professora, TipoAula } from "./types";
-import { diaSemanaISO, parseISODate, toISODate } from "./date-utils";
+import { DIAS_SEMANA } from "./types";
+import { diaSemanaISO, formatarDataBR, parseISODate, toISODate } from "./date-utils";
+import { normalizarNomeParaComparacao } from "./utils";
 
 async function publicClient() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -219,3 +221,105 @@ export const getAniversariantes = createServerFn({ method: "GET" }).handler(
       .sort((a, b) => a.mes - b.mes || a.dia - b.dia);
   },
 );
+
+export type OcorrenciaLead = {
+  // null = horário fixo recorrente (veio de grade_base, não tem uma data específica).
+  data: string | null;
+  dia_semana: number;
+  tipo: TipoAula;
+  professora_nome: string;
+};
+
+export type Lead = {
+  nome: string;
+  ocorrencias: OcorrenciaLead[];
+  ultimaData: string | null;
+};
+
+// Nomes avulsos (aula marcada só com o nome, sem virar cadastro de aluno) —
+// pra achar quem fez uma aula experimental e nunca chegou a matricular. No
+// relatório isso aparece como "Lead", não como aluno.
+// Agrupa por nome sem acento/maiúsculas ([[normalizarNomeParaComparacao]]),
+// então "Joao" e "João" caem na mesma pessoa — a grafia exibida é a mais usada
+// entre as variações digitadas (empate: a mais recente).
+export const getLeads = createServerFn({ method: "GET" }).handler(async (): Promise<Lead[]> => {
+  const sb = await publicClient();
+  const [baseRes, excRes, profRes] = await Promise.all([
+    sb
+      .from("grade_base")
+      .select("dia_semana,periodo,professora_id,tipo,aluno_nome_avulso")
+      .not("aluno_nome_avulso", "is", null),
+    sb
+      .from("excecoes_semana")
+      .select("data,dia_semana,periodo,professora_id,tipo,tipo_excecao,aluno_nome_avulso")
+      .not("aluno_nome_avulso", "is", null)
+      .neq("tipo_excecao", "remover"),
+    sb.from("professoras").select("id,nome"),
+  ]);
+  const professoras = (profRes.data ?? []) as { id: string; nome: string }[];
+  const nomeProf = new Map(professoras.map((p) => [p.id, p.nome]));
+
+  type Grupo = {
+    ocorrencias: OcorrenciaLead[];
+    variantes: Map<string, { contagem: number; ultimaData: string | null }>;
+  };
+  const porChave = new Map<string, Grupo>();
+  function add(nomeDigitado: string, oc: OcorrenciaLead) {
+    const chave = normalizarNomeParaComparacao(nomeDigitado);
+    if (!porChave.has(chave)) porChave.set(chave, { ocorrencias: [], variantes: new Map() });
+    const grupo = porChave.get(chave)!;
+    grupo.ocorrencias.push(oc);
+    const variante = grupo.variantes.get(nomeDigitado) ?? { contagem: 0, ultimaData: null };
+    variante.contagem++;
+    if (oc.data && (!variante.ultimaData || oc.data > variante.ultimaData)) {
+      variante.ultimaData = oc.data;
+    }
+    grupo.variantes.set(nomeDigitado, variante);
+  }
+
+  for (const row of (baseRes.data ?? []) as GradeBaseRow[]) {
+    if (!row.aluno_nome_avulso) continue;
+    add(row.aluno_nome_avulso, {
+      data: null,
+      dia_semana: row.dia_semana,
+      tipo: row.tipo,
+      professora_nome: nomeProf.get(row.professora_id) ?? "?",
+    });
+  }
+  for (const row of (excRes.data ?? []) as ExcecaoSemana[]) {
+    if (!row.aluno_nome_avulso || row.dia_semana === null) continue;
+    add(row.aluno_nome_avulso, {
+      data: row.data,
+      dia_semana: row.dia_semana,
+      tipo: row.tipo ?? "regular",
+      professora_nome: nomeProf.get(row.professora_id ?? "") ?? "?",
+    });
+  }
+
+  return [...porChave.values()]
+    .map(({ ocorrencias, variantes }) => {
+      // Grafia mais usada vence; empate desfeito pela mais usada recentemente.
+      const nome = [...variantes.entries()].sort(
+        ([, a], [, b]) =>
+          b.contagem - a.contagem || (b.ultimaData ?? "").localeCompare(a.ultimaData ?? ""),
+      )[0][0];
+      const datas = ocorrencias
+        .map((o) => o.data)
+        .filter((d): d is string => d !== null)
+        .sort();
+      return {
+        nome,
+        ocorrencias: [...ocorrencias].sort((a, b) => (b.data ?? "").localeCompare(a.data ?? "")),
+        ultimaData: datas.length > 0 ? datas[datas.length - 1] : null,
+      };
+    })
+    .sort(
+      (a, b) =>
+        (b.ultimaData ?? "").localeCompare(a.ultimaData ?? "") || a.nome.localeCompare(b.nome),
+    );
+});
+
+export function rotuloOcorrenciaLead(o: OcorrenciaLead): string {
+  const dia = DIAS_SEMANA.find((d) => d.n === o.dia_semana)?.nome ?? `dia ${o.dia_semana}`;
+  return o.data ? `${formatarDataBR(o.data)} (${dia})` : `${dia} (horário fixo)`;
+}
