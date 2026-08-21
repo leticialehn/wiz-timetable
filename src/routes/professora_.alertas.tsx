@@ -6,6 +6,7 @@ import { getGradeSemana } from "@/lib/grade.functions";
 import { segundaDaSemana, toISODate } from "@/lib/date-utils";
 import { AlertasLista } from "@/components/AlertasLista";
 import { TIPOS_ALERTA_PROFESSORA } from "@/lib/alertas.functions";
+import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
 
 export const Route = createFileRoute("/professora_/alertas")({
   component: AlertasProfessoraPage,
@@ -15,6 +16,7 @@ export const Route = createFileRoute("/professora_/alertas")({
 const STORAGE_KEY = "escola:professora-id";
 
 function AlertasProfessoraPage() {
+  useRealtimeGrade();
   const [professoraId, setProfessoraId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 

@@ -857,6 +857,10 @@ function AlunoLinha({
       qc.invalidateQueries({ queryKey: ["lancamentos-semana"] });
       qc.invalidateQueries({ queryKey: ["historico-licoes"] });
       qc.invalidateQueries({ queryKey: ["licoes-pendentes"] });
+      // Faltas/presenças mudam o alerta de "faltas seguidas" na hora — sem
+      // isso, quem já estava com a tela de Alertas aberta só via sumir depois
+      // de navegar pra outro lugar e voltar.
+      qc.invalidateQueries({ queryKey: ["alertas-ativos"] });
     } catch (e) {
       setErro((e as Error).message);
     } finally {
