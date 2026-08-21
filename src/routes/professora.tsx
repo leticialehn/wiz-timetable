@@ -782,7 +782,11 @@ function AlunoLinha({
         }),
       );
     }
-    if (mostraNotasELicao) {
+    // Falta (sem aviso prévio) não pode salvar nota nem lição — a lição
+    // sempre vem pré-preenchida com a sugestão só de a linha existir, então
+    // sem essa trava, marcar "Faltou" e clicar Salvar gravava a sugestão como
+    // já praticada e a próxima sugestão pulava a lição que ele nunca fez.
+    if (mostraNotasELicao && estado.presencaLocal !== "falta") {
       for (const { key } of CAMPOS_NOTA) {
         const original = estado.notaOriginal?.[key] ?? null;
         if (estado.notasLocal[key] !== original) {
