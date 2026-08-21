@@ -62,6 +62,11 @@ function RelatoriosPage() {
           titulo="Leads"
           descricao="Nomes marcados numa aula (ex.: experimental) que nunca viraram cadastro de aluno."
         />
+        <RelatorioCard
+          to="/admin/relatorios/matriculas"
+          titulo="Matrículas por período"
+          descricao="Matriculados, novas matrículas, a rematricular e rematriculados — pra passar pra franqueadora."
+        />
       </div>
     </main>
   );

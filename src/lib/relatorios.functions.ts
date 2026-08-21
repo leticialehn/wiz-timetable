@@ -182,7 +182,8 @@ export const getFrequenciaAlunos = createServerFn({ method: "GET" })
     const porAluno = new Map<string, { aulas: number; faltas: number; faltasAvisadas: number }>();
     for (const p of presencas) {
       if (!nomeENivel.has(p.aluno_id)) continue;
-      if (!porAluno.has(p.aluno_id)) porAluno.set(p.aluno_id, { aulas: 0, faltas: 0, faltasAvisadas: 0 });
+      if (!porAluno.has(p.aluno_id))
+        porAluno.set(p.aluno_id, { aulas: 0, faltas: 0, faltasAvisadas: 0 });
       const contagem = porAluno.get(p.aluno_id)!;
       contagem.aulas++;
       if (p.status === "falta") contagem.faltas++;
@@ -198,7 +199,13 @@ export const getFrequenciaAlunos = createServerFn({ method: "GET" })
       .sort((a, b) => b.faltas - a.faltas || a.nome.localeCompare(b.nome));
   });
 
-export type Aniversariante = { aluno_id: string; nome: string; nivel: string; mes: number; dia: number };
+export type Aniversariante = {
+  aluno_id: string;
+  nome: string;
+  nivel: string;
+  mes: number;
+  dia: number;
+};
 
 // Todos os alunos ativos com data de nascimento cadastrada, ordenados por
 // mês e dia (não por nome) — a lista de aniversariantes do ano ou de um mês
@@ -216,7 +223,13 @@ export const getAniversariantes = createServerFn({ method: "GET" }).handler(
       .filter((a) => a.data_nascimento)
       .map((a) => {
         const d = parseISODate(a.data_nascimento!);
-        return { aluno_id: a.id, nome: a.nome, nivel: a.nivel, mes: d.getMonth(), dia: d.getDate() };
+        return {
+          aluno_id: a.id,
+          nome: a.nome,
+          nivel: a.nivel,
+          mes: d.getMonth(),
+          dia: d.getDate(),
+        };
       })
       .sort((a, b) => a.mes - b.mes || a.dia - b.dia);
   },
@@ -323,3 +336,123 @@ export function rotuloOcorrenciaLead(o: OcorrenciaLead): string {
   const dia = DIAS_SEMANA.find((d) => d.n === o.dia_semana)?.nome ?? `dia ${o.dia_semana}`;
   return o.data ? `${formatarDataBR(o.data)} (${dia})` : `${dia} (horário fixo)`;
 }
+
+// "Exp Fulana" — aluno experimental, ainda não é matrícula de verdade. Não
+// existe um campo próprio pra isso hoje, só essa convenção no nome.
+function ehExperimental(nome: string): boolean {
+  return /^exp\s/i.test(nome.trim());
+}
+
+export type SituacaoRematricula =
+  "rematriculado" | "nao_rematriculado" | "contato_feito" | "sem_contato";
+
+export type RegistroRematriculaPeriodo = {
+  aluno_id: string;
+  nome: string;
+  nivel: string;
+  entrouEm: string;
+  situacao: SituacaoRematricula;
+  resolvidoEm: string | null;
+  motivo: string | null;
+};
+
+export type RelatorioMatriculas = {
+  alunosMatriculados: number;
+  novasMatriculas: { aluno_id: string; nome: string; nivel: string; data: string }[];
+  aRematricular: RegistroRematriculaPeriodo[];
+  rematriculados: RegistroRematriculaPeriodo[];
+};
+
+function situacaoRematricula(row: {
+  status: string;
+  motivo: string | null;
+  contactado_em: string | null;
+}): SituacaoRematricula {
+  if (row.status === "resolvido") return row.motivo ? "nao_rematriculado" : "rematriculado";
+  return row.contactado_em ? "contato_feito" : "sem_contato";
+}
+
+export const ROTULO_SITUACAO_REMATRICULA: Record<SituacaoRematricula, string> = {
+  rematriculado: "Rematriculado",
+  nao_rematriculado: "Não rematriculado",
+  contato_feito: "Contato feito, aguardando decisão",
+  sem_contato: "Ainda sem contato",
+};
+
+// Relatório pra franqueadora: matriculados hoje (sem os "Exp", que são só
+// experimentais), novas matrículas cadastradas no período, e o fluxo de
+// rematrícula do período — tanto quem ENTROU na fase de rematrícula quanto
+// quem de fato REMATRICULOU, cada um contado pela sua própria data (entrada
+// vs. resolução), então um aluno pode aparecer nas duas listas ou só numa.
+export const getRelatorioMatriculas = createServerFn({ method: "GET" })
+  .inputValidator((data: { dataInicio: string; dataFim: string }) => data)
+  .handler(async ({ data }): Promise<RelatorioMatriculas> => {
+    const sb = await publicClient();
+    const [alunosRes, rematriculasRes] = await Promise.all([
+      sb.from("alunos").select("id,nome,nivel,ativo,situacao,created_at"),
+      sb.from("alertas_status").select("*").eq("tipo", "rematricula"),
+    ]);
+    const alunos = (alunosRes.data ?? []) as (Aluno & { created_at: string })[];
+    const alunoPorId = new Map(alunos.map((a) => [a.id, a]));
+    const rematriculas = (rematriculasRes.data ?? []) as {
+      id: string;
+      aluno_id: string;
+      nivel: string | null;
+      status: string;
+      created_at: string;
+      resolvido_em: string | null;
+      contactado_em: string | null;
+      motivo: string | null;
+    }[];
+
+    const alunosMatriculados = alunos.filter(
+      (a) => a.ativo && a.situacao === "matriculado" && !ehExperimental(a.nome),
+    ).length;
+
+    const novasMatriculas = alunos
+      .filter((a) => !ehExperimental(a.nome))
+      .map((a) => ({ aluno: a, data: a.created_at.slice(0, 10) }))
+      .filter((x) => x.data >= data.dataInicio && x.data <= data.dataFim)
+      .map((x) => ({
+        aluno_id: x.aluno.id,
+        nome: x.aluno.nome,
+        nivel: x.aluno.nivel,
+        data: x.data,
+      }))
+      .sort((a, b) => a.data.localeCompare(b.data));
+
+    function paraRegistro(r: (typeof rematriculas)[number]): RegistroRematriculaPeriodo | null {
+      const aluno = alunoPorId.get(r.aluno_id);
+      if (!aluno) return null;
+      return {
+        aluno_id: r.aluno_id,
+        nome: aluno.nome,
+        nivel: r.nivel ?? aluno.nivel,
+        entrouEm: r.created_at.slice(0, 10),
+        situacao: situacaoRematricula(r),
+        resolvidoEm: r.resolvido_em ? r.resolvido_em.slice(0, 10) : null,
+        motivo: r.motivo,
+      };
+    }
+
+    const aRematricular = rematriculas
+      .filter((r) => {
+        const d = r.created_at.slice(0, 10);
+        return d >= data.dataInicio && d <= data.dataFim;
+      })
+      .map(paraRegistro)
+      .filter((x): x is RegistroRematriculaPeriodo => x !== null)
+      .sort((a, b) => a.entrouEm.localeCompare(b.entrouEm));
+
+    const rematriculados = rematriculas
+      .filter((r) => {
+        if (r.status !== "resolvido" || r.motivo || !r.resolvido_em) return false;
+        const d = r.resolvido_em.slice(0, 10);
+        return d >= data.dataInicio && d <= data.dataFim;
+      })
+      .map(paraRegistro)
+      .filter((x): x is RegistroRematriculaPeriodo => x !== null)
+      .sort((a, b) => (a.resolvidoEm ?? "").localeCompare(b.resolvidoEm ?? ""));
+
+    return { alunosMatriculados, novasMatriculas, aRematricular, rematriculados };
+  });
