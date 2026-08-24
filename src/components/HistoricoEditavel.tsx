@@ -174,6 +174,32 @@ export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
     }
   }
 
+  // Marca "praticado" sem precisar a professora reabrir a aula do dia — pro
+  // caso de uma lição ter ficado pendente de confirmação (aluno só fez
+  // estudo individual) e a coordenação já saber que foi de fato dada.
+  async function confirmarLicao(item: HistoricoItem) {
+    if (!item.licao || !item.nivel_no_momento) return;
+    const chaveCelula = `${item.chave}-licao`;
+    setSalvandoCelula(chaveCelula);
+    try {
+      await licaoFn({
+        data: {
+          data: item.data,
+          professora_id: item.professora_id,
+          aluno_id: alunoId,
+          periodo: item.periodo,
+          parte: item.parte,
+          licao: item.licao,
+          nivel_no_momento: item.nivel_no_momento,
+          praticado: true,
+        },
+      });
+      qc.invalidateQueries({ queryKey: ["historico-aluno", alunoId] });
+    } finally {
+      setSalvandoCelula(null);
+    }
+  }
+
   if (isLoading) return <p className="text-muted-foreground text-sm">Carregando…</p>;
   if (!data) return <p className="text-muted-foreground text-sm">Aluno não encontrado.</p>;
 
@@ -252,7 +278,16 @@ export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
                         onSalvar={(v) => salvarLicao(item, v, data.aluno.nivel)}
                       />
                       {item.praticado === false && (
-                        <span className="text-amber-600 dark:text-amber-400"> ⏳</span>
+                        <button
+                          type="button"
+                          title="Pendente de confirmação — clique para marcar como praticada"
+                          disabled={salvandoCelula === `${item.chave}-licao`}
+                          onClick={() => confirmarLicao(item)}
+                          className="text-amber-600 dark:text-amber-400 disabled:opacity-50"
+                        >
+                          {" "}
+                          ⏳
+                        </button>
                       )}
                     </td>
                     {CAMPOS_NOTA.map(({ key }) => (
