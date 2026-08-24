@@ -1,9 +1,10 @@
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getHistoricoAluno, type HistoricoItem } from "@/lib/historico.functions";
-import { setNota, setPresenca } from "@/lib/presenca.functions";
+import { setNota, setPresenca, setLicao } from "@/lib/presenca.functions";
 import { formatarDataBR, diaSemanaISO } from "@/lib/date-utils";
+import { normalizarLicao } from "@/lib/licoes";
 import {
   HORARIO_INICIO_PERIODO,
   CAMPOS_NOTA,
@@ -53,16 +54,56 @@ function PresencaEditavel({
   );
 }
 
+// Corrige o número da lição lançado errado — salva ao sair do campo ou
+// apertar Enter, não a cada tecla. Esc desfaz o que ainda não foi salvo.
+function LicaoEditavel({
+  valor,
+  disabled,
+  onSalvar,
+}: {
+  valor: string;
+  disabled: boolean;
+  onSalvar: (v: string) => void;
+}) {
+  const [texto, setTexto] = useState(valor);
+  useEffect(() => {
+    setTexto(valor);
+  }, [valor]);
+
+  function confirmar() {
+    const normalizado = normalizarLicao(texto.trim());
+    if (normalizado && normalizado !== valor) onSalvar(normalizado);
+    else setTexto(valor);
+  }
+
+  return (
+    <input
+      type="text"
+      value={texto}
+      disabled={disabled}
+      onChange={(e) => setTexto(e.target.value)}
+      onBlur={confirmar}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        if (e.key === "Escape") setTexto(valor);
+      }}
+      placeholder="—"
+      className="w-16 rounded border border-input bg-background px-1 py-0.5 text-xs disabled:opacity-50"
+    />
+  );
+}
+
 // Histórico completo de aulas do aluno (todas as lições, não só revisões), com
-// presença e notas editáveis clicando direto na tabela — usado tanto pela
-// professora quanto pelo admin, inclusive pra corrigir uma falta lançada
-// errado ou pra lançar a nota de Escrita de uma tarefa que chegou atrasada,
-// em qualquer aula anterior, não só na de hoje.
+// presença, lição e notas editáveis clicando direto na tabela — usado tanto
+// pela professora quanto pelo admin, inclusive pra corrigir uma falta ou uma
+// lição lançada errado, ou pra lançar a nota de Escrita de uma tarefa que
+// chegou atrasada, em qualquer aula anterior, não só na de hoje.
 export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
   const qc = useQueryClient();
   const getFn = useServerFn(getHistoricoAluno);
   const notaFn = useServerFn(setNota);
   const presencaFn = useServerFn(setPresenca);
+  const licaoFn = useServerFn(setLicao);
   const [salvandoCelula, setSalvandoCelula] = useState<string | null>(null);
   const { data, isLoading } = useQuery({
     queryKey: ["historico-aluno", alunoId],
@@ -103,6 +144,28 @@ export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
           parte: item.parte,
           dia_semana: diaSemanaISO(item.data),
           status,
+        },
+      });
+      qc.invalidateQueries({ queryKey: ["historico-aluno", alunoId] });
+    } finally {
+      setSalvandoCelula(null);
+    }
+  }
+
+  async function salvarLicao(item: HistoricoItem, novaLicao: string, nivelAtualDoAluno: string) {
+    const chaveCelula = `${item.chave}-licao`;
+    setSalvandoCelula(chaveCelula);
+    try {
+      await licaoFn({
+        data: {
+          data: item.data,
+          professora_id: item.professora_id,
+          aluno_id: alunoId,
+          periodo: item.periodo,
+          parte: item.parte,
+          licao: novaLicao,
+          nivel_no_momento: item.nivel_no_momento ?? nivelAtualDoAluno,
+          praticado: item.praticado ?? true,
         },
       });
       qc.invalidateQueries({ queryKey: ["historico-aluno", alunoId] });
@@ -183,7 +246,11 @@ export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
                       />
                     </td>
                     <td className="px-2 py-1.5 whitespace-nowrap">
-                      {item.licao ?? "—"}
+                      <LicaoEditavel
+                        valor={item.licao ?? ""}
+                        disabled={salvandoCelula === `${item.chave}-licao`}
+                        onSalvar={(v) => salvarLicao(item, v, data.aluno.nivel)}
+                      />
                       {item.praticado === false && (
                         <span className="text-amber-600 dark:text-amber-400"> ⏳</span>
                       )}
