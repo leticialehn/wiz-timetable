@@ -13,6 +13,24 @@ async function sb() {
   return supabaseAdmin;
 }
 
+// Desconta/devolve 1 crédito quando a presença de um aluno de crédito
+// (conversação/VIP cobrado por aula, creditos != null) transiciona de/para
+// "presente" — não a cada save, só na transição, senão corrigir uma presença
+// já lançada (algo que agora dá pra fazer direto no histórico do aluno)
+// descontaria de novo ou ficaria sem descontar.
+async function ajustarCreditos(
+  client: Awaited<ReturnType<typeof sb>>,
+  alunoId: string,
+  delta: number,
+) {
+  const { data: aluno } = await client.from("alunos").select("creditos").eq("id", alunoId).single();
+  if (!aluno || aluno.creditos === null) return;
+  await client
+    .from("alunos")
+    .update({ creditos: aluno.creditos + delta })
+    .eq("id", alunoId);
+}
+
 export const setPresenca = createServerFn({ method: "POST" })
   .inputValidator(
     (data: {
@@ -34,6 +52,17 @@ export const setPresenca = createServerFn({ method: "POST" })
       // permitimos alternar entre presente/falta apenas)
       throw new Error("Status inválido");
     }
+    const { data: existente } = await client
+      .from("aulas_presenca")
+      .select("status")
+      .eq("data", data.data)
+      .eq("professora_id", data.professora_id)
+      .eq("aluno_id", data.aluno_id)
+      .eq("periodo", data.periodo)
+      .eq("parte", data.parte)
+      .maybeSingle();
+    const statusAnterior = existente?.status ?? null;
+
     const { error } = await client.from("aulas_presenca").upsert(
       {
         data: data.data,
@@ -48,6 +77,13 @@ export const setPresenca = createServerFn({ method: "POST" })
       { onConflict: "data,professora_id,aluno_id,periodo,parte" },
     );
     if (error) throw new Error(error.message);
+
+    if (statusAnterior !== "presente" && data.status === "presente") {
+      await ajustarCreditos(client, data.aluno_id, -1);
+    } else if (statusAnterior === "presente" && data.status !== "presente") {
+      await ajustarCreditos(client, data.aluno_id, 1);
+    }
+
     return { ok: true };
   });
 

@@ -182,7 +182,21 @@ type CamposAluno = {
   situacao: SituacaoAluno;
   dataInicioNivel: string | null;
   dataNascimento: string | null;
+  // Só a edição de nome/nível manda esses três — as demais telas (nascimento,
+  // situação) não mexem em contrato/créditos, então nem passam.
+  contratoInicio?: string | null;
+  contratoFim?: string | null;
+  creditos?: number | null;
 };
+
+// Converte "2026-08-01" (guardado no banco) <-> "2026-08" (o que o <input
+// type="month"> usa) — contrato só precisa de mês/ano, sempre dia 1.
+function isoParaMes(iso: string | null): string {
+  return iso ? iso.slice(0, 7) : "";
+}
+function mesParaIso(mes: string): string | null {
+  return mes ? `${mes}-01` : null;
+}
 
 function LinhaAluno({
   aluno,
@@ -201,6 +215,9 @@ function LinhaAluno({
   const [nome, setNome] = useState(aluno.nome);
   const [nivel, setNivel] = useState(aluno.nivel);
   const [dataInicioNivel, setDataInicioNivel] = useState(aluno.data_inicio_nivel ?? "");
+  const [contratoInicio, setContratoInicio] = useState(isoParaMes(aluno.contrato_inicio));
+  const [contratoFim, setContratoFim] = useState(isoParaMes(aluno.contrato_fim));
+  const [creditos, setCreditos] = useState(aluno.creditos !== null ? String(aluno.creditos) : "");
   const [nascimentoDigitos, setNascimentoDigitos] = useState(
     aluno.data_nascimento ? dataNascimentoParaDigitos(aluno.data_nascimento) : "",
   );
@@ -211,6 +228,9 @@ function LinhaAluno({
     setNome(aluno.nome);
     setNivel(aluno.nivel);
     setDataInicioNivel(aluno.data_inicio_nivel ?? "");
+    setContratoInicio(isoParaMes(aluno.contrato_inicio));
+    setContratoFim(isoParaMes(aluno.contrato_fim));
+    setCreditos(aluno.creditos !== null ? String(aluno.creditos) : "");
     setEditando(true);
   }
 
@@ -223,6 +243,9 @@ function LinhaAluno({
       situacao: aluno.situacao,
       dataInicioNivel: dataInicioNivel || null,
       dataNascimento: aluno.data_nascimento,
+      contratoInicio: mesParaIso(contratoInicio),
+      contratoFim: mesParaIso(contratoFim),
+      creditos: creditos.trim() === "" ? null : Number(creditos),
     });
     setEditando(false);
   }
@@ -231,6 +254,9 @@ function LinhaAluno({
     setNome(aluno.nome);
     setNivel(aluno.nivel);
     setDataInicioNivel(aluno.data_inicio_nivel ?? "");
+    setContratoInicio(isoParaMes(aluno.contrato_inicio));
+    setContratoFim(isoParaMes(aluno.contrato_fim));
+    setCreditos(aluno.creditos !== null ? String(aluno.creditos) : "");
     setEditando(false);
   }
 
@@ -305,6 +331,40 @@ function LinhaAluno({
               />
             </label>
           )}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+            <label className="flex items-center gap-2">
+              <span>Contrato de</span>
+              <input
+                type="month"
+                value={contratoInicio}
+                onChange={(e) => setContratoInicio(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                className="rounded-md border border-input bg-background px-2 py-1"
+              />
+              <span>até</span>
+              <input
+                type="month"
+                value={contratoFim}
+                onChange={(e) => setContratoFim(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                className="rounded-md border border-input bg-background px-2 py-1"
+              />
+            </label>
+            <label
+              className="flex items-center gap-2"
+              title="Só pra aluno de conversação/VIP cobrado por número de aulas — desconta 1 sozinho a cada presença marcada"
+            >
+              Créditos
+              <input
+                type="number"
+                value={creditos}
+                onChange={(e) => setCreditos(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                placeholder="—"
+                className="w-16 rounded-md border border-input bg-background px-2 py-1"
+              />
+            </label>
+          </div>
         </>
       ) : (
         <>
@@ -312,6 +372,15 @@ function LinhaAluno({
             <span className="font-medium">{aluno.nome}</span>
             <span className="text-muted-foreground text-sm"> — {aluno.nivel}</span>
             {ultimaLicao && <span className="text-muted-foreground text-sm"> · {ultimaLicao}</span>}
+            {aluno.creditos !== null && (
+              <span
+                className={`text-sm ${aluno.creditos <= 0 ? "text-destructive font-medium" : "text-muted-foreground"}`}
+                title="Créditos restantes"
+              >
+                {" "}
+                · {aluno.creditos} créditos
+              </span>
+            )}
             <span
               className="text-muted-foreground text-sm inline-flex items-center gap-1"
               onClick={(e) => e.stopPropagation()}

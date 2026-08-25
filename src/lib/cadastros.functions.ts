@@ -75,6 +75,12 @@ export const atualizarAluno = createServerFn({ method: "POST" })
       situacao?: SituacaoAluno;
       dataInicioNivel: string | null;
       dataNascimento: string | null;
+      // Opcionais: só as telas que de fato editam contrato/créditos mandam
+      // esses campos — as demais (reativar aluno, editar nome/nível pela
+      // grade) não mexem neles.
+      contratoInicio?: string | null;
+      contratoFim?: string | null;
+      creditos?: number | null;
     }) => data,
   )
   .handler(async ({ data }) => {
@@ -99,6 +105,9 @@ export const atualizarAluno = createServerFn({ method: "POST" })
         situacao,
         data_inicio_nivel: mudouNivel ? null : data.dataInicioNivel,
         data_nascimento: data.dataNascimento,
+        ...(data.contratoInicio !== undefined ? { contrato_inicio: data.contratoInicio } : {}),
+        ...(data.contratoFim !== undefined ? { contrato_fim: data.contratoFim } : {}),
+        ...(data.creditos !== undefined ? { creditos: data.creditos } : {}),
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);

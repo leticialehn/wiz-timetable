@@ -15,6 +15,7 @@ export type Database = {
           contactado_por: string | null;
           contagem: number;
           created_at: string;
+          desfecho: string | null;
           id: string;
           motivo: string | null;
           nivel: string | null;
@@ -30,6 +31,7 @@ export type Database = {
           contactado_por?: string | null;
           contagem: number;
           created_at?: string;
+          desfecho?: string | null;
           id?: string;
           motivo?: string | null;
           nivel?: string | null;
@@ -45,6 +47,7 @@ export type Database = {
           contactado_por?: string | null;
           contagem?: number;
           created_at?: string;
+          desfecho?: string | null;
           id?: string;
           motivo?: string | null;
           nivel?: string | null;
@@ -94,7 +97,10 @@ export type Database = {
       alunos: {
         Row: {
           ativo: boolean;
+          contrato_fim: string | null;
+          contrato_inicio: string | null;
           created_at: string;
+          creditos: number | null;
           data_inicio_nivel: string | null;
           data_nascimento: string | null;
           id: string;
@@ -104,7 +110,10 @@ export type Database = {
         };
         Insert: {
           ativo?: boolean;
+          contrato_fim?: string | null;
+          contrato_inicio?: string | null;
           created_at?: string;
+          creditos?: number | null;
           data_inicio_nivel?: string | null;
           data_nascimento?: string | null;
           id?: string;
@@ -114,7 +123,10 @@ export type Database = {
         };
         Update: {
           ativo?: boolean;
+          contrato_fim?: string | null;
+          contrato_inicio?: string | null;
           created_at?: string;
+          creditos?: number | null;
           data_inicio_nivel?: string | null;
           data_nascimento?: string | null;
           id?: string;

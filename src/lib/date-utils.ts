@@ -75,6 +75,13 @@ export function somarMeses(iso: string, n: number): string {
   return toISODate(d);
 }
 
+// Data ISO (dia 1 do mês) formatada como MM/AAAA — usada pros campos de
+// contrato, que só guardam mês e ano.
+export function formatarMesAnoBR(iso: string): string {
+  const d = parseISODate(iso);
+  return `${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+}
+
 // Data de nascimento (ISO) formatada como DD/MM/AA (ano com 2 dígitos, como
 // pedido pra caber compacto na lista de alunos).
 export function formatarDataNascimentoBR(iso: string): string {

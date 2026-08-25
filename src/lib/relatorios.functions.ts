@@ -344,7 +344,7 @@ function ehExperimental(nome: string): boolean {
 }
 
 export type SituacaoRematricula =
-  "rematriculado" | "nao_rematriculado" | "contato_feito" | "sem_contato";
+  "rematriculado" | "nao_rematriculado" | "parcelas_adicionais" | "contato_feito" | "sem_contato";
 
 export type RegistroRematriculaPeriodo = {
   aluno_id: string;
@@ -367,14 +367,25 @@ function situacaoRematricula(row: {
   status: string;
   motivo: string | null;
   contactado_em: string | null;
+  desfecho?: string | null;
 }): SituacaoRematricula {
-  if (row.status === "resolvido") return row.motivo ? "nao_rematriculado" : "rematriculado";
+  if (row.status === "resolvido") {
+    if (row.desfecho === "parcelas_adicionais") return "parcelas_adicionais";
+    // Alertas antigos (de antes do campo "desfecho" existir) não têm esse
+    // campo salvo — cai no critério antigo: motivo preenchido = não
+    // rematriculado, senão rematriculado.
+    if (row.desfecho === "nao_rematriculado" || (!row.desfecho && row.motivo)) {
+      return "nao_rematriculado";
+    }
+    return "rematriculado";
+  }
   return row.contactado_em ? "contato_feito" : "sem_contato";
 }
 
 export const ROTULO_SITUACAO_REMATRICULA: Record<SituacaoRematricula, string> = {
   rematriculado: "Rematriculado",
   nao_rematriculado: "Não rematriculado",
+  parcelas_adicionais: "Parcelas adicionais (sem renovar)",
   contato_feito: "Contato feito, aguardando decisão",
   sem_contato: "Ainda sem contato",
 };
@@ -403,6 +414,7 @@ export const getRelatorioMatriculas = createServerFn({ method: "GET" })
       resolvido_em: string | null;
       contactado_em: string | null;
       motivo: string | null;
+      desfecho: string | null;
     }[];
 
     const alunosMatriculados = alunos.filter(
@@ -446,7 +458,9 @@ export const getRelatorioMatriculas = createServerFn({ method: "GET" })
 
     const rematriculados = rematriculas
       .filter((r) => {
-        if (r.status !== "resolvido" || r.motivo || !r.resolvido_em) return false;
+        if (r.status !== "resolvido" || !r.resolvido_em) return false;
+        const ehRematriculado = r.desfecho === "rematriculado" || (!r.desfecho && !r.motivo);
+        if (!ehRematriculado) return false;
         const d = r.resolvido_em.slice(0, 10);
         return d >= data.dataInicio && d <= data.dataFim;
       })

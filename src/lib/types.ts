@@ -44,6 +44,15 @@ export type Aluno = {
   // Usada pelo alerta de "atrasado no calendário pedagógico".
   data_inicio_nivel: string | null;
   data_nascimento: string | null;
+  // Início/término do contrato (só mês/ano — guardados como dia 1 do mês).
+  // O término também dispara o alerta de rematrícula, mesmo que o aluno
+  // ainda não tenha chegado na R8 do livro atual.
+  contrato_inicio: string | null;
+  contrato_fim: string | null;
+  // Créditos restantes — só usado por aluno de conversação/VIP cobrado por
+  // número de aulas em vez de plano anual. null = não é aluno de crédito.
+  // Desconta 1 sozinho toda vez que uma presença dele é marcada "Presente".
+  creditos: number | null;
 };
 
 // Níveis de aluno pré-cadastrados — não é permitido usar outro valor além destes.

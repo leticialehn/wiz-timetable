@@ -151,6 +151,12 @@ export const TIPOS_ALERTA_PROFESSORA: TipoAlerta[] = [
   "gravacao_r7r8",
 ];
 
+// Desfecho de um alerta de rematrícula resolvido: rematriculado (contrato
+// novo/renovado), não rematriculado (motivo preenchido, aluno sai) ou
+// parcelas adicionais (não renovou, mas continua no livro atual pagando à
+// parte dentro do mesmo contrato).
+export type DesfechoRematricula = "rematriculado" | "nao_rematriculado" | "parcelas_adicionais";
+
 export type AlertaAtivo = {
   id: string;
   aluno_id: string;
@@ -164,6 +170,10 @@ export type AlertaAtivo = {
   contactado_por: string | null;
   contactado_em: string | null;
   motivo: string | null;
+  desfecho: DesfechoRematricula | null;
+  // Só populado pra tipo "rematricula" — informativo, pra mostrar o prazo
+  // do contrato junto do alerta.
+  contrato_fim: string | null;
   created_at: string;
 };
 
@@ -179,6 +189,7 @@ type AlertaStatusRow = {
   contactado_por: string | null;
   contactado_em: string | null;
   motivo: string | null;
+  desfecho: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -259,8 +270,19 @@ function paraAlertaAtivo(row: AlertaStatusRow, aluno: Aluno): AlertaAtivo {
     contactado_por: row.contactado_por,
     contactado_em: row.contactado_em,
     motivo: row.motivo,
+    desfecho: row.desfecho as DesfechoRematricula | null,
+    contrato_fim: aluno.contrato_fim ?? null,
     created_at: row.created_at,
   };
+}
+
+// Contrato termina neste mês ou no mês seguinte (ou já terminou) — dá pelo
+// menos ~1 mês de antecedência pra conversar sobre rematrícula antes do
+// prazo vencer de fato.
+const JANELA_AVISO_CONTRATO_MESES = 1;
+function contratoProximoOuVencido(aluno: Aluno, hojeIso: string): boolean {
+  if (!aluno.contrato_fim) return false;
+  return somarMeses(aluno.contrato_fim, -JANELA_AVISO_CONTRATO_MESES) <= hojeIso;
 }
 
 type RegistroLicaoAlerta = {
@@ -497,32 +519,7 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
       if (!atual || s.created_at > atual.created_at) statusRematriculaPorAluno.set(s.aluno_id, s);
     }
 
-    function sincronizarRematricula(aluno: Aluno, posicoesAlem: number | null) {
-      const existente = statusRematriculaPorAluno.get(aluno.id);
-
-      if (posicoesAlem === null) {
-        if (existente && aindaVisivel(existente)) resultado.push(paraAlertaAtivo(existente, aluno));
-        return;
-      }
-
-      if (existente && existente.nivel === aluno.nivel) {
-        if (existente.status === "pendente") {
-          if (posicoesAlem !== existente.contagem) {
-            atualizacoes.push(
-              sb.from("alertas_status").update({ contagem: posicoesAlem }).eq("id", existente.id),
-            );
-          }
-          resultado.push(paraAlertaAtivo({ ...existente, contagem: posicoesAlem }, aluno));
-        } else if (aindaVisivel(existente)) {
-          // Já rematriculado neste mesmo nível — não reabre mesmo que ele
-          // continue avançando (R9, R10…): a decisão já foi tomada.
-          resultado.push(paraAlertaAtivo(existente, aluno));
-        }
-        return;
-      }
-
-      // Primeira vez chegando na R8 neste nível (ou o episódio salvo é de um
-      // nível anterior já superado) — abre um novo episódio.
+    function abrirEpisodioRematricula(aluno: Aluno, contagem: number) {
       atualizacoes.push(
         sb
           .from("alertas_status")
@@ -530,7 +527,7 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
             aluno_id: aluno.id,
             tipo: "rematricula",
             status: "pendente",
-            contagem: posicoesAlem,
+            contagem,
             nivel: aluno.nivel,
           })
           .select()
@@ -539,6 +536,62 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
             if (data) resultado.push(paraAlertaAtivo(data as AlertaStatusRow, aluno));
           }),
       );
+    }
+
+    // Dispara por dois motivos independentes: chegou na R8 do livro atual, OU
+    // o contrato dele está terminando/terminou — o que vier primeiro. Um
+    // aluno de conversação/VIP (sem trilha de lição) só passa por aqui pelo
+    // motivo do contrato.
+    function sincronizarRematricula(aluno: Aluno, posicoesAlem: number | null, hojeIso: string) {
+      const existente = statusRematriculaPorAluno.get(aluno.id);
+      const contratoAvisar = contratoProximoOuVencido(aluno, hojeIso);
+      const disparado = posicoesAlem !== null || contratoAvisar;
+
+      if (!disparado) {
+        if (existente && aindaVisivel(existente)) resultado.push(paraAlertaAtivo(existente, aluno));
+        return;
+      }
+
+      // -1 = ainda não chegou na R8 deste nível — só está aqui por causa do
+      // contrato. Vira o número de posições além da R8 assim que ele chegar lá.
+      const contagemNova = posicoesAlem ?? -1;
+
+      if (existente && existente.nivel === aluno.nivel) {
+        if (existente.status === "pendente") {
+          if (contagemNova !== existente.contagem) {
+            atualizacoes.push(
+              sb.from("alertas_status").update({ contagem: contagemNova }).eq("id", existente.id),
+            );
+          }
+          resultado.push(paraAlertaAtivo({ ...existente, contagem: contagemNova }, aluno));
+          return;
+        }
+
+        // Já resolvido neste nível: normalmente fica assim pra sempre (decisão
+        // já tomada, não reabre só porque ele avançou mais lições) — mas se o
+        // contrato foi renovado depois dessa resolução (ex.: ela escolheu
+        // "parcelas adicionais" e agora o novo prazo tá vencendo de novo, ou
+        // simplesmente o contrato tem menos de 1 ano e já vence outra vez
+        // dentro do mesmo livro), abre um novo episódio pra essa nova janela.
+        const janelaAvisoIso = aluno.contrato_fim
+          ? somarMeses(aluno.contrato_fim, -JANELA_AVISO_CONTRATO_MESES)
+          : null;
+        const contratoVenceuDeNovo =
+          contratoAvisar &&
+          janelaAvisoIso !== null &&
+          (!existente.resolvido_em || janelaAvisoIso > existente.resolvido_em.slice(0, 10));
+
+        if (contratoVenceuDeNovo) {
+          abrirEpisodioRematricula(aluno, contagemNova);
+        } else if (aindaVisivel(existente)) {
+          resultado.push(paraAlertaAtivo(existente, aluno));
+        }
+        return;
+      }
+
+      // Primeira vez neste nível (ou o episódio salvo é de um nível anterior
+      // já superado) — abre um novo episódio.
+      abrirEpisodioRematricula(aluno, contagemNova);
     }
 
     // Gravação (vídeo pra mandar pros pais): um episódio por NÍVEL e por janela
@@ -611,7 +664,7 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
       );
 
       const historicoLicao = licoesPorAluno.get(aluno.id) ?? [];
-      sincronizarRematricula(aluno, posicoesAlemDaR8(aluno.nivel, historicoLicao));
+      sincronizarRematricula(aluno, posicoesAlemDaR8(aluno.nivel, historicoLicao), hojeIso);
 
       if (elegivelParaGravacao(aluno, hojeIso)) {
         const maiorPos = maiorPosicaoAtingida(aluno.nivel, historicoLicao);
@@ -647,12 +700,25 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
   },
 );
 
-// motivo só é usado pra rematrícula: presente = aluno não vai continuar
-// (fecha como "Não rematriculado" em vez de "Rematriculado"), e nesse caso a
-// situação do aluno já é atualizada junto pra "nao_rematriculado" — evita ter
-// que repetir a mesma decisão em dois lugares (alerta e cadastro do aluno).
+// desfecho só é usado pra rematrícula, e decide o que mais acontece ao
+// resolver: "nao_rematriculado" (motivo obrigatório) desativa o aluno junto,
+// pra não repetir a mesma decisão em dois lugares (alerta e cadastro);
+// "rematriculado" pode vir com as novas datas de contrato (ela digita a
+// certa na hora, não dá pra supor "+12 meses de hoje" porque a renovação às
+// vezes é feita antes do prazo vencer de fato); "parcelas_adicionais" não
+// mexe em nada além de fechar o alerta — o aluno continua no livro atual,
+// pagando à parte, sem contrato novo.
 export const resolverAlerta = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string; resolvido_por: string; motivo?: string }) => data)
+  .inputValidator(
+    (data: {
+      id: string;
+      resolvido_por: string;
+      motivo?: string;
+      desfecho?: DesfechoRematricula;
+      novoContratoInicio?: string | null;
+      novoContratoFim?: string | null;
+    }) => data,
+  )
   .handler(async ({ data }) => {
     const sb = await publicClient();
     const { data: alerta, error: erroAlerta } = await sb
@@ -669,16 +735,31 @@ export const resolverAlerta = createServerFn({ method: "POST" })
         resolvido_por: data.resolvido_por,
         resolvido_em: new Date().toISOString(),
         motivo: data.motivo ?? null,
+        desfecho: data.desfecho ?? null,
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
 
-    if (alerta.tipo === "rematricula" && data.motivo) {
-      const { error: erroAluno } = await sb
-        .from("alunos")
-        .update({ ativo: false, situacao: "nao_rematriculado" })
-        .eq("id", alerta.aluno_id);
-      if (erroAluno) throw new Error(erroAluno.message);
+    if (alerta.tipo === "rematricula") {
+      if (data.desfecho === "nao_rematriculado") {
+        const { error: erroAluno } = await sb
+          .from("alunos")
+          .update({ ativo: false, situacao: "nao_rematriculado" })
+          .eq("id", alerta.aluno_id);
+        if (erroAluno) throw new Error(erroAluno.message);
+      } else if (
+        data.desfecho === "rematriculado" &&
+        (data.novoContratoInicio || data.novoContratoFim)
+      ) {
+        const { error: erroContrato } = await sb
+          .from("alunos")
+          .update({
+            contrato_inicio: data.novoContratoInicio ?? null,
+            contrato_fim: data.novoContratoFim ?? null,
+          })
+          .eq("id", alerta.aluno_id);
+        if (erroContrato) throw new Error(erroContrato.message);
+      }
     }
 
     return { ok: true };
