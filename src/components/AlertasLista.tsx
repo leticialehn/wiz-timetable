@@ -36,6 +36,64 @@ const ROTULO_TIPO_ALERTA: Record<TipoAlerta, string> = {
   gravacao_r7r8: "Gravação pendente (entre R7 e R8)",
 };
 
+// Uma cor por categoria pra dar pra notar a mudança de grupo só de bater o
+// olho, sem precisar parar pra ler o título — pedido depois que passar
+// rápido pela tela ficou difícil perceber onde uma categoria acaba e a
+// próxima começa (antes todo alerta pendente era da mesma cor laranja).
+const COR_TIPO_ALERTA: Record<
+  TipoAlerta,
+  { borda: string; fundo: string; texto: string; ponto: string }
+> = {
+  rematricula: {
+    borda: "border-orange-500/40",
+    fundo: "bg-orange-500/5",
+    texto: "text-orange-600 dark:text-orange-400",
+    ponto: "bg-orange-500",
+  },
+  faltas: {
+    borda: "border-red-500/40",
+    fundo: "bg-red-500/5",
+    texto: "text-red-600 dark:text-red-400",
+    ponto: "bg-red-500",
+  },
+  nota_fala: {
+    borda: "border-purple-500/40",
+    fundo: "bg-purple-500/5",
+    texto: "text-purple-600 dark:text-purple-400",
+    ponto: "bg-purple-500",
+  },
+  atrasado: {
+    borda: "border-yellow-500/40",
+    fundo: "bg-yellow-500/5",
+    texto: "text-yellow-600 dark:text-yellow-400",
+    ponto: "bg-yellow-500",
+  },
+  sem_aula: {
+    borda: "border-sky-500/40",
+    fundo: "bg-sky-500/5",
+    texto: "text-sky-600 dark:text-sky-400",
+    ponto: "bg-sky-500",
+  },
+  escrita_pendente: {
+    borda: "border-pink-500/40",
+    fundo: "bg-pink-500/5",
+    texto: "text-pink-600 dark:text-pink-400",
+    ponto: "bg-pink-500",
+  },
+  gravacao_r3r4: {
+    borda: "border-teal-500/40",
+    fundo: "bg-teal-500/5",
+    texto: "text-teal-600 dark:text-teal-400",
+    ponto: "bg-teal-500",
+  },
+  gravacao_r7r8: {
+    borda: "border-emerald-500/40",
+    fundo: "bg-emerald-500/5",
+    texto: "text-emerald-600 dark:text-emerald-400",
+    ponto: "bg-emerald-500",
+  },
+};
+
 // Mesma janela de aviso usada no servidor (ver JANELA_AVISO_CONTRATO_MESES em
 // alertas.functions.ts) — só pra decidir se vale a pena mostrar o prazo do
 // contrato junto da descrição do alerta.
@@ -211,7 +269,12 @@ export function AlertasLista({
         <div className="mb-8 space-y-4">
           {gruposPendentes.map(({ tipo, itens }) => (
             <div key={tipo}>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+              <h3
+                className={`text-xs font-semibold uppercase tracking-wide mb-1.5 flex items-center gap-1.5 ${COR_TIPO_ALERTA[tipo].texto}`}
+              >
+                <span
+                  className={`inline-block w-2 h-2 rounded-full ${COR_TIPO_ALERTA[tipo].ponto}`}
+                />
                 {ROTULO_TIPO_ALERTA[tipo]} ({itens.length})
               </h3>
               <ul className="space-y-2">
@@ -224,7 +287,7 @@ export function AlertasLista({
                   return (
                     <li
                       key={a.id}
-                      className="rounded-lg border border-orange-500/40 bg-orange-500/5 p-3 flex items-center justify-between gap-3 flex-wrap"
+                      className={`rounded-lg border p-3 flex items-center justify-between gap-3 flex-wrap ${COR_TIPO_ALERTA[a.tipo].borda} ${COR_TIPO_ALERTA[a.tipo].fundo}`}
                     >
                       <div>
                         <div className="font-medium">
@@ -381,14 +444,19 @@ export function AlertasLista({
         <div className="space-y-3">
           {gruposResolvidos.map(({ tipo, itens }) => (
             <div key={tipo}>
-              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+              <h3
+                className={`text-[11px] font-semibold uppercase tracking-wide mb-1 flex items-center gap-1.5 ${COR_TIPO_ALERTA[tipo].texto}`}
+              >
+                <span
+                  className={`inline-block w-1.5 h-1.5 rounded-full ${COR_TIPO_ALERTA[tipo].ponto}`}
+                />
                 {ROTULO_TIPO_ALERTA[tipo]}
               </h3>
               <ul className="space-y-1.5">
                 {itens.map((a) => (
                   <li
                     key={a.id}
-                    className="rounded-lg bg-secondary px-3 py-2 text-sm flex items-center justify-between gap-2 flex-wrap"
+                    className={`rounded-lg bg-secondary px-3 py-2 text-sm flex items-center justify-between gap-2 flex-wrap border-l-4 ${COR_TIPO_ALERTA[a.tipo].borda}`}
                   >
                     <div>
                       <span className="font-medium">{a.nome}</span>
