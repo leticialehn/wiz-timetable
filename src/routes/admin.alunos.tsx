@@ -17,6 +17,7 @@ import {
   dataNascimentoDeDigitos,
   mascaraDataDigitando,
   estaNaSemanaDoAniversario,
+  formatarMesAnoBR,
 } from "@/lib/date-utils";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
 import { NIVEIS, ROTULO_SITUACAO, type Aluno, type SituacaoAluno } from "@/lib/types";
@@ -414,6 +415,18 @@ function LinhaAluno({
             </span>
             {aniversario && <span className="text-sm">🎂</span>}
           </div>
+          {aluno.contrato_fim && (
+            <span
+              className="text-xs text-muted-foreground whitespace-nowrap"
+              title={
+                aluno.contrato_inicio
+                  ? `Contrato de ${formatarMesAnoBR(aluno.contrato_inicio)} até ${formatarMesAnoBR(aluno.contrato_fim)}`
+                  : `Contrato até ${formatarMesAnoBR(aluno.contrato_fim)}`
+              }
+            >
+              até {formatarMesAnoBR(aluno.contrato_fim)}
+            </span>
+          )}
           <select
             value={aluno.situacao}
             onClick={(e) => e.stopPropagation()}
