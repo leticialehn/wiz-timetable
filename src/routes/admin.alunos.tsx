@@ -70,7 +70,7 @@ function AlunosPage() {
     );
 
   return (
-    <main className="max-w-3xl mx-auto px-4 py-6">
+    <main className="max-w-6xl mx-auto px-4 py-6">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-semibold">Alunos</h1>
         <Link
@@ -215,7 +215,7 @@ function LinhaAluno({
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState(aluno.nome);
   const [nivel, setNivel] = useState(aluno.nivel);
-  const [dataInicioNivel, setDataInicioNivel] = useState(aluno.data_inicio_nivel ?? "");
+  const [dataInicioNivel, setDataInicioNivel] = useState(isoParaMes(aluno.data_inicio_nivel));
   const [contratoInicio, setContratoInicio] = useState(isoParaMes(aluno.contrato_inicio));
   const [contratoFim, setContratoFim] = useState(isoParaMes(aluno.contrato_fim));
   const [creditos, setCreditos] = useState(aluno.creditos !== null ? String(aluno.creditos) : "");
@@ -228,7 +228,7 @@ function LinhaAluno({
   function abrirEdicao() {
     setNome(aluno.nome);
     setNivel(aluno.nivel);
-    setDataInicioNivel(aluno.data_inicio_nivel ?? "");
+    setDataInicioNivel(isoParaMes(aluno.data_inicio_nivel));
     setContratoInicio(isoParaMes(aluno.contrato_inicio));
     setContratoFim(isoParaMes(aluno.contrato_fim));
     setCreditos(aluno.creditos !== null ? String(aluno.creditos) : "");
@@ -242,7 +242,7 @@ function LinhaAluno({
       nivel: nivel.trim(),
       ativo: aluno.ativo,
       situacao: aluno.situacao,
-      dataInicioNivel: dataInicioNivel || null,
+      dataInicioNivel: mesParaIso(dataInicioNivel),
       dataNascimento: aluno.data_nascimento,
       contratoInicio: mesParaIso(contratoInicio),
       contratoFim: mesParaIso(contratoFim),
@@ -254,7 +254,7 @@ function LinhaAluno({
   function cancelar() {
     setNome(aluno.nome);
     setNivel(aluno.nivel);
-    setDataInicioNivel(aluno.data_inicio_nivel ?? "");
+    setDataInicioNivel(isoParaMes(aluno.data_inicio_nivel));
     setContratoInicio(isoParaMes(aluno.contrato_inicio));
     setContratoFim(isoParaMes(aluno.contrato_fim));
     setCreditos(aluno.creditos !== null ? String(aluno.creditos) : "");
@@ -320,19 +320,22 @@ function LinhaAluno({
               Cancelar
             </button>
           </div>
-          {temTrackingDeLicao(nivel) && (
-            <label className="text-xs text-muted-foreground flex items-center gap-2">
-              Início deste nível (só preencher se ele já estava no meio do livro antes do site)
-              <input
-                type="date"
-                value={dataInicioNivel}
-                onChange={(e) => setDataInicioNivel(e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-                className="rounded-md border border-input bg-background px-2 py-1 text-xs"
-              />
-            </label>
-          )}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+            {temTrackingDeLicao(nivel) && (
+              <label
+                className="flex items-center gap-2"
+                title="Só preencher se ele já estava no meio do livro antes do site"
+              >
+                Início deste nível
+                <input
+                  type="month"
+                  value={dataInicioNivel}
+                  onChange={(e) => setDataInicioNivel(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="rounded-md border border-input bg-background px-2 py-1"
+                />
+              </label>
+            )}
             <label className="flex items-center gap-2">
               <span>Contrato de</span>
               <input
