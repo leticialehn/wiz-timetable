@@ -249,19 +249,13 @@ export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
             </thead>
             <tbody>
               {data.timeline.map((item) => {
-                // Parte 2 de aula online é um horário seguinte de verdade (mostra a
-                // hora cheia seguinte). Parte 2 sem presença é uma 2ª lição feita na
-                // mesma hora (aluno adiantado) — mesma hora, só uma marcação ao lado.
-                const segundaLicaoMesmaHora = item.parte === 2 && item.presenca === null;
-                const periodoExibido =
-                  item.parte === 2 && !segundaLicaoMesmaHora ? item.periodo + 1 : item.periodo;
                 return (
                   <tr key={item.chave} className="border-t border-border">
                     <td className="px-2 py-1.5 whitespace-nowrap">{formatarDataBR(item.data)}</td>
                     <td className="px-2 py-1.5 whitespace-nowrap">
-                      {HORARIO_INICIO_PERIODO[periodoExibido] ?? periodoExibido}
-                      {segundaLicaoMesmaHora && (
-                        <span className="text-muted-foreground"> (2ª lição)</span>
+                      {HORARIO_INICIO_PERIODO[item.periodo] ?? item.periodo}
+                      {item.parte > 1 && (
+                        <span className="text-muted-foreground"> ({item.parte}ª lição)</span>
                       )}
                     </td>
                     <td className="px-2 py-1.5">
