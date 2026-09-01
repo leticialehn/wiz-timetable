@@ -197,6 +197,27 @@ export const setLicao = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// Corrige o nível do aluno de uma vez, quando esqueceram de trocar o livro
+// antes de lançar aulas — atualiza o nível atual dele e relabela todo o
+// histórico de lições já gravado, pra não ficar um pedaço marcado no livro
+// antigo por engano.
+export const corrigirNivelHistorico = createServerFn({ method: "POST" })
+  .inputValidator((data: { aluno_id: string; nivel: string }) => data)
+  .handler(async ({ data }) => {
+    const client = await sb();
+    const { error: erroAluno } = await client
+      .from("alunos")
+      .update({ nivel: data.nivel })
+      .eq("id", data.aluno_id);
+    if (erroAluno) throw new Error(erroAluno.message);
+    const { error: erroLicoes } = await client
+      .from("aulas_licoes")
+      .update({ nivel_no_momento: data.nivel })
+      .eq("aluno_id", data.aluno_id);
+    if (erroLicoes) throw new Error(erroLicoes.message);
+    return { ok: true };
+  });
+
 // Histórico de lições de cada aluno (de qualquer data anterior a hoje), do
 // mais recente pro mais antigo — usado pra sugerir automaticamente a próxima
 // lição a partir da maior posição já atingida (não só a mais recente).

@@ -2,7 +2,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { getHistoricoAluno, type HistoricoItem } from "@/lib/historico.functions";
-import { setNota, setPresenca, setLicao } from "@/lib/presenca.functions";
+import { setNota, setPresenca, setLicao, corrigirNivelHistorico } from "@/lib/presenca.functions";
 import { formatarDataBR, diaSemanaISO } from "@/lib/date-utils";
 import { normalizarLicao } from "@/lib/licoes";
 import {
@@ -107,11 +107,34 @@ export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
   const notaFn = useServerFn(setNota);
   const presencaFn = useServerFn(setPresenca);
   const licaoFn = useServerFn(setLicao);
+  const nivelFn = useServerFn(corrigirNivelHistorico);
   const [salvandoCelula, setSalvandoCelula] = useState<string | null>(null);
+  const [corrigindoNivel, setCorrigindoNivel] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: ["historico-aluno", alunoId],
     queryFn: () => getFn({ data: { aluno_id: alunoId } }),
   });
+
+  // Corrige o nível de uma vez só, quando esqueceram de trocar o livro do
+  // aluno antes de lançar aulas — muda o nível atual dele e relabela todo o
+  // histórico de lições já gravado (não só a de hoje).
+  async function corrigirNivel(novoNivel: string) {
+    if (!data || novoNivel === data.aluno.nivel) return;
+    if (
+      !confirm(
+        `Mudar o nível de ${data.aluno.nome} pra ${novoNivel}? Isso também atualiza o nível gravado em TODAS as lições já lançadas dele(a) no histórico abaixo.`,
+      )
+    ) {
+      return;
+    }
+    setCorrigindoNivel(true);
+    try {
+      await nivelFn({ data: { aluno_id: alunoId, nivel: novoNivel } });
+      qc.invalidateQueries({ queryKey: ["historico-aluno", alunoId] });
+    } finally {
+      setCorrigindoNivel(false);
+    }
+  }
 
   async function salvarNota(item: HistoricoItem, campo: CampoNota, valor: ConceitoNota | null) {
     const chaveCelula = `${item.chave}-${campo}`;
@@ -177,32 +200,6 @@ export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
     }
   }
 
-  // Corrige o nível gravado numa lição já lançada — pro caso de terem
-  // esquecido de trocar o livro do aluno na aba Alunos antes de dar aula, e o
-  // sistema ter gravado a lição no nível antigo por engano.
-  async function salvarNivel(item: HistoricoItem, novoNivel: string) {
-    if (!item.licao) return;
-    const chaveCelula = `${item.chave}-nivel`;
-    setSalvandoCelula(chaveCelula);
-    try {
-      await licaoFn({
-        data: {
-          data: item.data,
-          professora_id: item.professora_id,
-          aluno_id: alunoId,
-          periodo: item.periodo,
-          parte: item.parte,
-          licao: item.licao,
-          nivel_no_momento: novoNivel,
-          praticado: item.praticado ?? true,
-        },
-      });
-      qc.invalidateQueries({ queryKey: ["historico-aluno", alunoId] });
-    } finally {
-      setSalvandoCelula(null);
-    }
-  }
-
   // Marca "praticado" sem precisar a professora reabrir a aula do dia — pro
   // caso de uma lição ter ficado pendente de confirmação (aluno só fez
   // estudo individual) e a coordenação já saber que foi de fato dada.
@@ -234,9 +231,26 @@ export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
 
   return (
     <>
-      <h1 className="text-xl font-bold mb-1">
-        {data.aluno.nome} - {data.aluno.nivel}
+      <h1 className="text-xl font-bold mb-1 flex items-center gap-2 flex-wrap">
+        {data.aluno.nome} -{" "}
+        <select
+          value={data.aluno.nivel}
+          disabled={corrigindoNivel}
+          onChange={(e) => corrigirNivel(e.target.value)}
+          title="Corrigir um lançamento errado — reescreve o nível de TODAS as lições já gravadas abaixo. Não é pra avançar de nível normalmente (isso continua sendo feito na aba Alunos, sem mexer no histórico)."
+          className="rounded border border-input bg-background px-1.5 py-0.5 text-base font-bold disabled:opacity-50"
+        >
+          {NIVEIS.map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
       </h1>
+      <p className="text-[10px] text-amber-600 dark:text-amber-400 mb-2">
+        Isso é só pra corrigir um lançamento errado (reescreve TODAS as lições abaixo). Pra avançar de
+        nível de verdade, edite na aba Alunos — o livro antigo fica intacto no boletim.
+      </p>
       <p className="text-[10px] text-muted-foreground mb-4">
         O - Ótimo &nbsp; MB - Muito Bom &nbsp; B - Bom &nbsp; R - Regular &nbsp;&nbsp; P - Presente
         &nbsp; F - Faltou &nbsp; FA - Faltou (avisou)
@@ -269,7 +283,6 @@ export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
                 <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">Hora</th>
                 <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">Presença</th>
                 <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">Lição</th>
-                <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">Nível</th>
                 {CAMPOS_NOTA.map(({ key, label }) => (
                   <th key={key} className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">
                     {label}
@@ -312,25 +325,6 @@ export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
                           {" "}
                           ⏳
                         </button>
-                      )}
-                    </td>
-                    <td className="px-2 py-1.5 whitespace-nowrap">
-                      {item.nivel_no_momento ? (
-                        <select
-                          value={item.nivel_no_momento}
-                          disabled={salvandoCelula === `${item.chave}-nivel`}
-                          onChange={(e) => salvarNivel(item, e.target.value)}
-                          title="Corrigir o nível gravado nesta lição (ex.: esqueceram de trocar o livro do aluno antes de lançar)"
-                          className="rounded border border-input bg-background px-1 py-0.5 text-xs disabled:opacity-50"
-                        >
-                          {NIVEIS.map((n) => (
-                            <option key={n} value={n}>
-                              {n}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
                       )}
                     </td>
                     {CAMPOS_NOTA.map(({ key }) => (
