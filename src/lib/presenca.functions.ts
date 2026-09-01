@@ -46,12 +46,6 @@ export const setPresenca = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const client = await sb();
-    if (data.status === null) {
-      // "não lançado" -> apagar (sem policy delete pública, então fazemos um update
-      // apagando via service? Não temos service aqui; então: não deletamos, mas
-      // permitimos alternar entre presente/falta apenas)
-      throw new Error("Status inválido");
-    }
     const { data: existente } = await client
       .from("aulas_presenca")
       .select("status")
@@ -62,6 +56,24 @@ export const setPresenca = createServerFn({ method: "POST" })
       .eq("parte", data.parte)
       .maybeSingle();
     const statusAnterior = existente?.status ?? null;
+
+    if (data.status === null) {
+      // Desclicar/limpar um lançamento errado (ex.: presença marcada por
+      // engano num livro/dia que não devia) — apaga a linha de vez.
+      const { error } = await client
+        .from("aulas_presenca")
+        .delete()
+        .eq("data", data.data)
+        .eq("professora_id", data.professora_id)
+        .eq("aluno_id", data.aluno_id)
+        .eq("periodo", data.periodo)
+        .eq("parte", data.parte);
+      if (error) throw new Error(error.message);
+      if (statusAnterior === "presente") {
+        await ajustarCreditos(client, data.aluno_id, 1);
+      }
+      return { ok: true };
+    }
 
     const { error } = await client.from("aulas_presenca").upsert(
       {

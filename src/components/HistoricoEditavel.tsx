@@ -8,6 +8,7 @@ import { normalizarLicao } from "@/lib/licoes";
 import {
   HORARIO_INICIO_PERIODO,
   CAMPOS_NOTA,
+  NIVEIS,
   type CampoNota,
   type ConceitoNota,
   type StatusPresenca,
@@ -21,8 +22,10 @@ const OPCOES_PRESENCA: { valor: StatusPresenca; rotulo: string; curto: string }[
 ];
 
 // Corrige um erro de lançamento (ex.: professora marcou falta sem querer num
-// aluno que veio de verdade) direto na tabela, igual já dá pra fazer com as
-// notas — sem precisar refazer o lançamento do zero.
+// aluno que veio de verdade, ou uma presença/nota foi lançada no livro
+// errado) direto na tabela, igual já dá pra fazer com as notas — sem
+// precisar refazer o lançamento do zero. Clicar na opção já marcada desclica
+// e apaga o lançamento de presença dessa aula.
 function PresencaEditavel({
   valor,
   disabled,
@@ -30,7 +33,7 @@ function PresencaEditavel({
 }: {
   valor: StatusPresenca | null;
   disabled: boolean;
-  onSelecionar: (v: StatusPresenca) => void;
+  onSelecionar: (v: StatusPresenca | null) => void;
 }) {
   return (
     <div className="flex gap-0.5">
@@ -38,9 +41,9 @@ function PresencaEditavel({
         <button
           key={o.valor}
           type="button"
-          title={o.rotulo}
+          title={valor === o.valor ? `${o.rotulo} (clique de novo pra desmarcar)` : o.rotulo}
           disabled={disabled}
-          onClick={() => onSelecionar(o.valor)}
+          onClick={() => onSelecionar(valor === o.valor ? null : o.valor)}
           className={`px-1.5 h-6 rounded text-[10px] font-bold border disabled:opacity-50 ${
             valor === o.valor
               ? "bg-primary border-primary text-primary-foreground"
@@ -131,7 +134,7 @@ export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
     }
   }
 
-  async function salvarPresenca(item: HistoricoItem, status: StatusPresenca) {
+  async function salvarPresenca(item: HistoricoItem, status: StatusPresenca | null) {
     const chaveCelula = `${item.chave}-presenca`;
     setSalvandoCelula(chaveCelula);
     try {
@@ -165,6 +168,32 @@ export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
           parte: item.parte,
           licao: novaLicao,
           nivel_no_momento: item.nivel_no_momento ?? nivelAtualDoAluno,
+          praticado: item.praticado ?? true,
+        },
+      });
+      qc.invalidateQueries({ queryKey: ["historico-aluno", alunoId] });
+    } finally {
+      setSalvandoCelula(null);
+    }
+  }
+
+  // Corrige o nível gravado numa lição já lançada — pro caso de terem
+  // esquecido de trocar o livro do aluno na aba Alunos antes de dar aula, e o
+  // sistema ter gravado a lição no nível antigo por engano.
+  async function salvarNivel(item: HistoricoItem, novoNivel: string) {
+    if (!item.licao) return;
+    const chaveCelula = `${item.chave}-nivel`;
+    setSalvandoCelula(chaveCelula);
+    try {
+      await licaoFn({
+        data: {
+          data: item.data,
+          professora_id: item.professora_id,
+          aluno_id: alunoId,
+          periodo: item.periodo,
+          parte: item.parte,
+          licao: item.licao,
+          nivel_no_momento: novoNivel,
           praticado: item.praticado ?? true,
         },
       });
@@ -240,6 +269,7 @@ export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
                 <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">Hora</th>
                 <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">Presença</th>
                 <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">Lição</th>
+                <th className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">Nível</th>
                 {CAMPOS_NOTA.map(({ key, label }) => (
                   <th key={key} className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">
                     {label}
@@ -282,6 +312,25 @@ export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
                           {" "}
                           ⏳
                         </button>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5 whitespace-nowrap">
+                      {item.nivel_no_momento ? (
+                        <select
+                          value={item.nivel_no_momento}
+                          disabled={salvandoCelula === `${item.chave}-nivel`}
+                          onChange={(e) => salvarNivel(item, e.target.value)}
+                          title="Corrigir o nível gravado nesta lição (ex.: esqueceram de trocar o livro do aluno antes de lançar)"
+                          className="rounded border border-input bg-background px-1 py-0.5 text-xs disabled:opacity-50"
+                        >
+                          {NIVEIS.map((n) => (
+                            <option key={n} value={n}>
+                              {n}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </td>
                     {CAMPOS_NOTA.map(({ key }) => (

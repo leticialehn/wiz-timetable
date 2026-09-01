@@ -656,8 +656,9 @@ function AlunoLinha({
   // Raro: aluno adiantado faz lição a mais na mesma hora de aula — a
   // professora aciona manualmente, sem duplicar presença (é a mesma visita).
   // Na aula regular isso abre a 2ª lição; na online (que já tem 1ª e 2ª por
-  // padrão), abre a 3ª.
-  const [licaoExtraAtiva, setLicaoExtraAtiva] = useState(false);
+  // padrão), o 1º clique abre a 3ª e o 2º clique abre a 4ª — pra quem varia
+  // de semana pra semana quantas lições dá tempo de fazer.
+  const [nivelExtra, setNivelExtra] = useState(0);
   // Aluno avisou com antecedência que não vem — não é falta (não conta pro
   // alerta de faltas seguidas) e não há presença/notas/lição pra lançar.
   const avisadoOriginal =
@@ -681,8 +682,9 @@ function AlunoLinha({
   }
 
   const ehOnline = c.tipo === "online";
-  const mostraParte2 = ehOnline || licaoExtraAtiva;
-  const mostraParte3 = ehOnline && licaoExtraAtiva;
+  const mostraParte2 = ehOnline || nivelExtra >= 1;
+  const mostraParte3 = ehOnline && nivelExtra >= 1;
+  const mostraParte4 = ehOnline && nivelExtra >= 2;
   const temLicao = temTrackingDeLicao(c.aluno_nivel);
 
   const licaoSugestao1 = temLicao ? licaoSugerida(c.aluno_nivel, historicoLicao) : "";
@@ -749,10 +751,41 @@ function AlunoLinha({
     licaoSugestao: licaoSugestao3,
   });
 
+  // A 4ª lição (só na aula online, quando dá tempo) encadeia a partir da 3ª.
+  const licaoSugestao4 = temLicao
+    ? licaoSugerida(c.aluno_nivel, [
+        {
+          licao: parte3.licaoLocal || licaoSugestao3,
+          nivel_no_momento: c.aluno_nivel,
+          praticado: parte3.praticadoLocal,
+        },
+        {
+          licao: parte2.licaoLocal || licaoSugestao2,
+          nivel_no_momento: c.aluno_nivel,
+          praticado: parte2.praticadoLocal,
+        },
+        {
+          licao: parte1.licaoLocal || licaoSugestao1,
+          nivel_no_momento: c.aluno_nivel,
+          praticado: parte1.praticadoLocal,
+        },
+        ...historicoLicao,
+      ])
+    : "";
+  const parte4 = useParte(4, {
+    presenca: presencas.find((p) => p.parte === 4) ?? null,
+    nota: notas.find((n) => n.parte === 4) ?? null,
+    licao: licoes.find((l) => l.parte === 4) ?? null,
+    licaoSugestao: licaoSugestao4,
+  });
+
   const alterado =
     avisado !== avisadoOriginal ||
     (!avisado &&
-      (parte1.alterado || (mostraParte2 && parte2.alterado) || (mostraParte3 && parte3.alterado)));
+      (parte1.alterado ||
+        (mostraParte2 && parte2.alterado) ||
+        (mostraParte3 && parte3.alterado) ||
+        (mostraParte4 && parte4.alterado)));
 
   // Sem nada novo pra salvar, mas já tinha sido lançado antes — mostra o
   // botão verde em vez de cinza, pra dar pra ver de longe (depois de um
@@ -763,7 +796,8 @@ function AlunoLinha({
       ? avisadoOriginal
       : temDadosSalvos(parte1) ||
         (mostraParte2 && temDadosSalvos(parte2)) ||
-        (mostraParte3 && temDadosSalvos(parte3)));
+        (mostraParte3 && temDadosSalvos(parte3)) ||
+        (mostraParte4 && temDadosSalvos(parte4)));
 
   async function salvarParte(estado: EstadoParte) {
     const chamadas: Promise<unknown>[] = [];
@@ -835,7 +869,12 @@ function AlunoLinha({
     setSalvando(true);
     try {
       const chamadas = avisado
-        ? [1, ...(mostraParte2 ? [2] : []), ...(mostraParte3 ? [3] : [])].map((parte) =>
+        ? [
+            1,
+            ...(mostraParte2 ? [2] : []),
+            ...(mostraParte3 ? [3] : []),
+            ...(mostraParte4 ? [4] : []),
+          ].map((parte) =>
             presencaFn({
               data: {
                 data: dataDoDia,
@@ -852,6 +891,7 @@ function AlunoLinha({
             ...(await salvarParte(parte1)),
             ...(mostraParte2 ? await salvarParte(parte2) : []),
             ...(mostraParte3 ? await salvarParte(parte3) : []),
+            ...(mostraParte4 ? await salvarParte(parte4) : []),
           ];
       await Promise.all(chamadas);
       qc.invalidateQueries({ queryKey: ["lancamentos-semana"] });
@@ -992,8 +1032,8 @@ function AlunoLinha({
             mostraPresenca
             estado={parte1}
             onAdicionarExtra={
-              !ehOnline && !licaoExtraAtiva && mostraNotasELicao && temLicao
-                ? () => setLicaoExtraAtiva(true)
+              !ehOnline && nivelExtra === 0 && mostraNotasELicao && temLicao
+                ? () => setNivelExtra(1)
                 : undefined
             }
             salvarSlot={!mostraParte2 ? botaoSalvar : undefined}
@@ -1007,8 +1047,8 @@ function AlunoLinha({
               mostraPresenca={ehOnline}
               estado={parte2}
               onAdicionarExtra={
-                ehOnline && !licaoExtraAtiva && mostraNotasELicao && temLicao
-                  ? () => setLicaoExtraAtiva(true)
+                ehOnline && nivelExtra === 0 && mostraNotasELicao && temLicao
+                  ? () => setNivelExtra(1)
                   : undefined
               }
               salvarSlot={!mostraParte3 ? botaoSalvar : undefined}
@@ -1022,6 +1062,22 @@ function AlunoLinha({
               mostraLicao={mostraNotasELicao && temLicao}
               mostraPresenca
               estado={parte3}
+              onAdicionarExtra={
+                nivelExtra === 1 && mostraNotasELicao && temLicao
+                  ? () => setNivelExtra(2)
+                  : undefined
+              }
+              salvarSlot={!mostraParte4 ? botaoSalvar : undefined}
+            />
+          )}
+          {mostraParte4 && (
+            <BlocoLancamento
+              rotulo="4ª lição"
+              salvando={salvando}
+              mostraNotasELicao={mostraNotasELicao}
+              mostraLicao={mostraNotasELicao && temLicao}
+              mostraPresenca
+              estado={parte4}
               salvarSlot={botaoSalvar}
             />
           )}
