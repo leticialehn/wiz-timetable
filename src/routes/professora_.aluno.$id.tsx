@@ -12,7 +12,7 @@ function HistoricoAlunoProfessoraPage() {
   const { id } = Route.useParams();
 
   return (
-    <main className="min-h-screen bg-background max-w-2xl mx-auto px-4 py-4">
+    <main className="min-h-screen bg-background max-w-5xl mx-auto px-4 py-4">
       <Link to="/professora" className="text-sm text-muted-foreground underline mb-4 inline-block">
         ← Voltar
       </Link>

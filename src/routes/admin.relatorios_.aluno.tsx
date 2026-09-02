@@ -24,7 +24,7 @@ function RelatorioAlunoPage() {
   const alunoSelecionado = alunos.find((a) => a.id === alunoId);
 
   return (
-    <main className="max-w-3xl mx-auto px-4 py-6 print:max-w-full print:px-8">
+    <main className="max-w-5xl mx-auto px-4 py-6 print:max-w-full print:px-8">
       <Link
         to="/admin/relatorios"
         className="print:hidden text-sm text-muted-foreground underline mb-4 inline-block"
