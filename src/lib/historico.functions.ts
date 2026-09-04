@@ -14,6 +14,9 @@ export type HistoricoItem = {
   data: string;
   periodo: number;
   parte: number;
+  // Distingue os 2-3 horários dentro do mesmo período numa aula online
+  // (ex.: "19:00" e "19:20") — "" pra qualquer outro tipo de aula.
+  horario_especifico: string;
   professora_id: string;
   professora_nome: string;
   presenca: StatusPresenca | null;
@@ -42,8 +45,14 @@ export type HistoricoAluno = {
   resumo: ResumoAluno;
 };
 
-function chaveDe(r: { data: string; periodo: number; professora_id: string; parte: number }) {
-  return `${r.data}-${r.periodo}-${r.professora_id}-${r.parte}`;
+function chaveDe(r: {
+  data: string;
+  periodo: number;
+  professora_id: string;
+  parte: number;
+  horario_especifico: string;
+}) {
+  return `${r.data}-${r.periodo}-${r.professora_id}-${r.parte}-${r.horario_especifico}`;
 }
 
 // Ordena mais recente primeiro: data desc, depois período desc.
@@ -60,6 +69,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
       data: string;
       periodo: number;
       parte: number;
+      horario_especifico: string;
       professora_id: string;
       status: StatusPresenca;
       observacao: string | null;
@@ -68,6 +78,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
       data: string;
       periodo: number;
       parte: number;
+      horario_especifico: string;
       professora_id: string;
       fala: ConceitoNota | null;
       audicao: ConceitoNota | null;
@@ -78,6 +89,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
       data: string;
       periodo: number;
       parte: number;
+      horario_especifico: string;
       professora_id: string;
       licao: string;
       nivel_no_momento: string;
@@ -88,7 +100,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
       buscarTodasAsLinhas<RegistroPresencaHist>(async (inicio, fim) => {
         const { data: rows, error } = await sb
           .from("aulas_presenca")
-          .select("data,periodo,parte,professora_id,status,observacao")
+          .select("data,periodo,parte,horario_especifico,professora_id,status,observacao")
           .eq("aluno_id", data.aluno_id)
           .range(inicio, fim);
         return { data: rows as RegistroPresencaHist[] | null, error };
@@ -96,7 +108,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
       buscarTodasAsLinhas<RegistroNotaHist>(async (inicio, fim) => {
         const { data: rows, error } = await sb
           .from("aulas_notas")
-          .select("data,periodo,parte,professora_id,fala,audicao,leitura,escrita")
+          .select("data,periodo,parte,horario_especifico,professora_id,fala,audicao,leitura,escrita")
           .eq("aluno_id", data.aluno_id)
           .range(inicio, fim);
         return { data: rows as RegistroNotaHist[] | null, error };
@@ -104,7 +116,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
       buscarTodasAsLinhas<RegistroLicaoHist>(async (inicio, fim) => {
         const { data: rows, error } = await sb
           .from("aulas_licoes")
-          .select("data,periodo,parte,professora_id,licao,nivel_no_momento,praticado")
+          .select("data,periodo,parte,horario_especifico,professora_id,licao,nivel_no_momento,praticado")
           .eq("aluno_id", data.aluno_id)
           .range(inicio, fim);
         return { data: rows as RegistroLicaoHist[] | null, error };
@@ -126,6 +138,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
         data: p.data,
         periodo: p.periodo,
         parte: p.parte,
+        horario_especifico: p.horario_especifico,
         professora_id: p.professora_id,
         professora_nome: nomeProf.get(p.professora_id) ?? "?",
         presenca: p.status,
@@ -153,6 +166,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
           data: n.data,
           periodo: n.periodo,
           parte: n.parte,
+          horario_especifico: n.horario_especifico,
           professora_id: n.professora_id,
           professora_nome: nomeProf.get(n.professora_id) ?? "?",
           presenca: null,
@@ -177,6 +191,7 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
           data: l.data,
           periodo: l.periodo,
           parte: l.parte,
+          horario_especifico: l.horario_especifico,
           professora_id: l.professora_id,
           professora_nome: nomeProf.get(l.professora_id) ?? "?",
           presenca: null,

@@ -402,7 +402,10 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
     // Dias desde a última aula de fato (presença registrada) — ou, se nunca teve
     // nenhuma, desde o cadastro. Zero se o aluno tem aula marcada hoje ou no futuro.
     // Feriados/recessos/férias que caem no meio não contam (a escola tava fechada).
+    // "Exp Fulano" é aluno experimental (nome marcado assim de propósito) — não
+    // tem horário fixo mesmo, então não faz sentido cobrar aula agendada dele.
     function diasSemAula(aluno: Aluno & { created_at: string }): number {
+      if (/^exp\s/i.test(aluno.nome.trim())) return 0;
       if (alunoIdsComAulaAgendada.has(aluno.id)) return 0;
       const ultimaAula = presPorAluno.get(aluno.id)?.[0]?.data ?? aluno.created_at.slice(0, 10);
       const diasCorridos = Math.round(

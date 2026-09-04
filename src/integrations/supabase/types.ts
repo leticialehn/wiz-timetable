@@ -144,6 +144,7 @@ export type Database = {
           data: string;
           escrita: string | null;
           fala: string | null;
+          horario_especifico: string;
           id: string;
           leitura: string | null;
           parte: number;
@@ -158,6 +159,7 @@ export type Database = {
           data: string;
           escrita?: string | null;
           fala?: string | null;
+          horario_especifico?: string;
           id?: string;
           leitura?: string | null;
           parte?: number;
@@ -172,6 +174,7 @@ export type Database = {
           data?: string;
           escrita?: string | null;
           fala?: string | null;
+          horario_especifico?: string;
           id?: string;
           leitura?: string | null;
           parte?: number;
@@ -202,6 +205,7 @@ export type Database = {
           created_at: string;
           data: string;
           dia_semana: number;
+          horario_especifico: string;
           id: string;
           observacao: string | null;
           parte: number;
@@ -215,6 +219,7 @@ export type Database = {
           created_at?: string;
           data: string;
           dia_semana: number;
+          horario_especifico?: string;
           id?: string;
           observacao?: string | null;
           parte?: number;
@@ -228,6 +233,7 @@ export type Database = {
           created_at?: string;
           data?: string;
           dia_semana?: number;
+          horario_especifico?: string;
           id?: string;
           observacao?: string | null;
           parte?: number;
@@ -258,6 +264,7 @@ export type Database = {
           aluno_id: string;
           created_at: string;
           data: string;
+          horario_especifico: string;
           id: string;
           licao: string;
           nivel_no_momento: string;
@@ -271,6 +278,7 @@ export type Database = {
           aluno_id: string;
           created_at?: string;
           data: string;
+          horario_especifico?: string;
           id?: string;
           licao: string;
           nivel_no_momento: string;
@@ -284,6 +292,7 @@ export type Database = {
           aluno_id?: string;
           created_at?: string;
           data?: string;
+          horario_especifico?: string;
           id?: string;
           licao?: string;
           nivel_no_momento?: string;

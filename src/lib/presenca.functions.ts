@@ -39,6 +39,7 @@ export const setPresenca = createServerFn({ method: "POST" })
       aluno_id: string;
       periodo: number;
       parte: number;
+      horario_especifico?: string | null;
       dia_semana: number;
       status: StatusPresenca | null;
       observacao?: string | null;
@@ -46,6 +47,7 @@ export const setPresenca = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const client = await sb();
+    const horario = data.horario_especifico ?? "";
     const { data: existente } = await client
       .from("aulas_presenca")
       .select("status")
@@ -54,6 +56,7 @@ export const setPresenca = createServerFn({ method: "POST" })
       .eq("aluno_id", data.aluno_id)
       .eq("periodo", data.periodo)
       .eq("parte", data.parte)
+      .eq("horario_especifico", horario)
       .maybeSingle();
     const statusAnterior = existente?.status ?? null;
 
@@ -67,7 +70,8 @@ export const setPresenca = createServerFn({ method: "POST" })
         .eq("professora_id", data.professora_id)
         .eq("aluno_id", data.aluno_id)
         .eq("periodo", data.periodo)
-        .eq("parte", data.parte);
+        .eq("parte", data.parte)
+        .eq("horario_especifico", horario);
       if (error) throw new Error(error.message);
       if (statusAnterior === "presente") {
         await ajustarCreditos(client, data.aluno_id, 1);
@@ -82,11 +86,12 @@ export const setPresenca = createServerFn({ method: "POST" })
         aluno_id: data.aluno_id,
         periodo: data.periodo,
         parte: data.parte,
+        horario_especifico: horario,
         dia_semana: data.dia_semana,
         status: data.status,
         observacao: data.observacao ?? null,
       },
-      { onConflict: "data,professora_id,aluno_id,periodo,parte" },
+      { onConflict: "data,professora_id,aluno_id,periodo,parte,horario_especifico" },
     );
     if (error) throw new Error(error.message);
 
@@ -107,6 +112,7 @@ export const setNota = createServerFn({ method: "POST" })
       aluno_id: string;
       periodo: number;
       parte: number;
+      horario_especifico?: string | null;
       campo: CampoNota;
       valor: ConceitoNota | null;
     }) => data,
@@ -120,12 +126,13 @@ export const setNota = createServerFn({ method: "POST" })
       aluno_id: data.aluno_id,
       periodo: data.periodo,
       parte: data.parte,
+      horario_especifico: data.horario_especifico ?? "",
     };
     row[data.campo] = data.valor;
     const { error } = await client
       .from("aulas_notas")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .upsert(row as any, { onConflict: "data,professora_id,aluno_id,periodo,parte" });
+      .upsert(row as any, { onConflict: "data,professora_id,aluno_id,periodo,parte,horario_especifico" });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -173,6 +180,7 @@ export const setLicao = createServerFn({ method: "POST" })
       aluno_id: string;
       periodo: number;
       parte: number;
+      horario_especifico?: string | null;
       licao: string;
       nivel_no_momento: string;
       praticado: boolean;
@@ -187,11 +195,12 @@ export const setLicao = createServerFn({ method: "POST" })
         aluno_id: data.aluno_id,
         periodo: data.periodo,
         parte: data.parte,
+        horario_especifico: data.horario_especifico ?? "",
         licao: data.licao,
         nivel_no_momento: data.nivel_no_momento,
         praticado: data.praticado,
       },
-      { onConflict: "data,professora_id,aluno_id,periodo,parte" },
+      { onConflict: "data,professora_id,aluno_id,periodo,parte,horario_especifico" },
     );
     if (error) throw new Error(error.message);
     return { ok: true };

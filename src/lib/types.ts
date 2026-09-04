@@ -485,6 +485,10 @@ export type PresencaRow = {
   aluno_id: string;
   periodo: number;
   parte: number;
+  // Distingue os 2-3 horários dentro do mesmo período numa aula online (ex.:
+  // "19:00" e "19:20") — "" pra qualquer outro tipo, que só tem 1 aluno por
+  // período+parte de qualquer forma.
+  horario_especifico: string;
   dia_semana: number;
   status: StatusPresenca;
   observacao: string | null;
@@ -497,6 +501,7 @@ export type NotaRow = {
   aluno_id: string;
   periodo: number;
   parte: number;
+  horario_especifico: string;
   fala: ConceitoNota | null;
   audicao: ConceitoNota | null;
   leitura: ConceitoNota | null;
@@ -510,6 +515,7 @@ export type LicaoRow = {
   aluno_id: string;
   periodo: number;
   parte: number;
+  horario_especifico: string;
   licao: string;
   nivel_no_momento: string;
   // false = aluno só fez o estudo individual, ainda não praticou com a

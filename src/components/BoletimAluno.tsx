@@ -76,6 +76,7 @@ function LinhaRevisao({
             aluno_id: alunoId,
             periodo: registro.periodo,
             parte: registro.parte,
+            horario_especifico: registro.horario_especifico,
             campo,
             valor,
           },

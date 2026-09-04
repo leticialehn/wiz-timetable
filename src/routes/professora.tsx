@@ -472,17 +472,32 @@ function AulaCard({
                 mostraNotasELicao={mostraNotasELicao}
                 presencas={
                   c.aluno_id
-                    ? presencas.filter((p) => p.aluno_id === c.aluno_id && p.periodo === periodo)
+                    ? presencas.filter(
+                        (p) =>
+                          p.aluno_id === c.aluno_id &&
+                          p.periodo === periodo &&
+                          p.horario_especifico === (c.horario_especifico ?? ""),
+                      )
                     : []
                 }
                 notas={
                   c.aluno_id
-                    ? notas.filter((n) => n.aluno_id === c.aluno_id && n.periodo === periodo)
+                    ? notas.filter(
+                        (n) =>
+                          n.aluno_id === c.aluno_id &&
+                          n.periodo === periodo &&
+                          n.horario_especifico === (c.horario_especifico ?? ""),
+                      )
                     : []
                 }
                 licoes={
                   c.aluno_id
-                    ? licoes.filter((l) => l.aluno_id === c.aluno_id && l.periodo === periodo)
+                    ? licoes.filter(
+                        (l) =>
+                          l.aluno_id === c.aluno_id &&
+                          l.periodo === periodo &&
+                          l.horario_especifico === (c.horario_especifico ?? ""),
+                      )
                     : []
                 }
                 historicoLicao={
@@ -810,6 +825,7 @@ function AlunoLinha({
             aluno_id: c.aluno_id!,
             periodo: c.periodo,
             parte: estado.parte,
+            horario_especifico: c.horario_especifico,
             dia_semana: diaSemana,
             status: estado.presencaLocal,
           },
@@ -832,6 +848,7 @@ function AlunoLinha({
                 aluno_id: c.aluno_id!,
                 periodo: c.periodo,
                 parte: estado.parte,
+                horario_especifico: c.horario_especifico,
                 campo: key,
                 valor: estado.notasLocal[key],
               },
@@ -852,6 +869,7 @@ function AlunoLinha({
               aluno_id: c.aluno_id!,
               periodo: c.periodo,
               parte: estado.parte,
+              horario_especifico: c.horario_especifico,
               licao: estado.licaoLocal,
               nivel_no_momento: c.aluno_nivel,
               praticado: estado.praticadoLocal,
@@ -882,6 +900,7 @@ function AlunoLinha({
                 aluno_id: c.aluno_id!,
                 periodo: c.periodo,
                 parte,
+                horario_especifico: c.horario_especifico,
                 dia_semana: diaSemana,
                 status: "falta_avisada" as const,
               },

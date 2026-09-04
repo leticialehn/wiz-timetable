@@ -147,6 +147,7 @@ export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
           aluno_id: alunoId,
           periodo: item.periodo,
           parte: item.parte,
+          horario_especifico: item.horario_especifico,
           campo,
           valor,
         },
@@ -168,6 +169,7 @@ export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
           aluno_id: alunoId,
           periodo: item.periodo,
           parte: item.parte,
+          horario_especifico: item.horario_especifico,
           dia_semana: diaSemanaISO(item.data),
           status,
         },
@@ -189,6 +191,7 @@ export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
           aluno_id: alunoId,
           periodo: item.periodo,
           parte: item.parte,
+          horario_especifico: item.horario_especifico,
           licao: novaLicao,
           nivel_no_momento: item.nivel_no_momento ?? nivelAtualDoAluno,
           praticado: item.praticado ?? true,
@@ -215,6 +218,7 @@ export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
           aluno_id: alunoId,
           periodo: item.periodo,
           parte: item.parte,
+          horario_especifico: item.horario_especifico,
           licao: item.licao,
           nivel_no_momento: item.nivel_no_momento,
           praticado: true,
@@ -296,7 +300,7 @@ export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
                   <tr key={item.chave} className="border-t border-border">
                     <td className="px-2 py-1.5 whitespace-nowrap">{formatarDataBR(item.data)}</td>
                     <td className="px-2 py-1.5 whitespace-nowrap">
-                      {HORARIO_INICIO_PERIODO[item.periodo] ?? item.periodo}
+                      {item.horario_especifico || HORARIO_INICIO_PERIODO[item.periodo] || item.periodo}
                       {item.parte > 1 && (
                         <span className="text-muted-foreground"> ({item.parte}ª lição)</span>
                       )}
