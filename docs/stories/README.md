@@ -5,13 +5,13 @@ Status legend: **Draft** → **Approved** (@po) → **InProgress** (@dev) → **
 
 ## EPIC-001 — Wire Authentication & Authorization (P0)
 
-| Story | Title                                                                     | Status        | Executor |
-| ----- | ------------------------------------------------------------------------- | ------------- | -------- |
-| 1.1   | [Mount login and route guards](1.1.mount-login-and-route-guards.md)       | **Ready**     | @dev     |
-| 1.2   | [Guard all data server functions](1.2.guard-server-functions.md)          | Draft         | @dev     |
-| 1.3   | [Role checks on admin-only endpoints](1.3.role-checks-admin-endpoints.md) | Draft         | @dev     |
-| 1.4   | Remove/repurpose `attachSupabaseAuth`; session hygiene                    | _not drafted_ | @dev     |
-| 1.5   | Verify `SESSION_SECRET` in Vercel; ops doc                                | _not drafted_ | @devops  |
+| Story | Title                                                                     | Status              | Executor |
+| ----- | ------------------------------------------------------------------------- | ------------------- | -------- |
+| 1.1   | [Mount login and route guards](1.1.mount-login-and-route-guards.md)       | **Done** (CONCERNS) | @dev     |
+| 1.2   | [Guard all data server functions](1.2.guard-server-functions.md)          | Draft               | @dev     |
+| 1.3   | [Role checks on admin-only endpoints](1.3.role-checks-admin-endpoints.md) | Draft               | @dev     |
+| 1.4   | Remove/repurpose `attachSupabaseAuth`; session hygiene                    | _not drafted_       | @dev     |
+| 1.5   | Verify `SESSION_SECRET` in Vercel; ops doc                                | _not drafted_       | @devops  |
 
 ## EPIC-002 — Reconcile Database with Production (P1)
 

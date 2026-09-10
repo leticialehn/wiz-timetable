@@ -1,0 +1,145 @@
+storyId: "1.1"
+storyTitle: "Mount login and route guards"
+epic: "EPIC-001"
+gateType: blocking
+verdict: CONCERNS
+reviewer: "Quinn (@qa)"
+reviewed_revision: "commit:c9f113f"
+reviewed_at: "2026-09-10"
+
+summary: >
+  Implementation is correct, minimal, and correctly scoped. The SSR gate works: an
+  unauthenticated request to /, /professora, /admin renders the login/bootstrap
+  screen, not the app. Code quality is good and the authenticated render path is
+  unchanged (no regression). Gate is CONCERNS — not FAIL — because 3 acceptance
+  criteria could not be runtime-verified (blocked by "must not create a real user in
+  prod"), the change introduces a new total-outage failure mode if the session check
+  throws, and the project still has no automated tests. None of these block handoff;
+  they are tracked as recommendations.
+
+seven_checks:
+  code_review: PASS
+  unit_tests: CONCERNS # no test infra project-wide (EPIC-003)
+  acceptance_criteria: CONCERNS # 4/7 verified, 3 unverified (low risk)
+  no_regressions: PASS
+  performance: CONCERNS # +1 session round-trip per navigation
+  security: CONCERNS # gate is SSR-enforced (good); RPCs still open until 1.2
+  documentation: PASS
+
+acceptance_criteria_status:
+  AC1_unauth_shows_gate: VERIFIED # SSR HTML for /, /professora, /admin
+  AC2_loginform_wrong_password: NOT_VERIFIED # DB has 0 users; LoginForm reused unchanged
+  AC3_redirect_to_requested_route: NOT_VERIFIED # design sound (URL preserved + invalidate)
+  AC4_zero_users_bootstrap: VERIFIED # BootstrapForm rendered
+  AC5_logout_control: PARTIAL # code present in both headers; round-trip not run
+  AC6_single_beforeLoad: VERIFIED
+  AC7_typecheck_lint_build: VERIFIED
+
+issues:
+  - id: QA-1.1-01
+    severity: medium
+    category: code
+    description: >
+      __root beforeLoad calls getSessaoAtual() with no error handling. If it throws
+      (SESSION_SECRET missing/invalid, or Supabase unreachable) the router rejects and
+      server.ts renders an HTML 500 for EVERY route — the user cannot even reach the
+      login screen. This is a new failure mode: before this change the shell rendered
+      even when data calls failed.
+    location: "src/routes/__root.tsx (beforeLoad)"
+    recommendation: >
+      Wrap the call in try/catch and on error return
+      { sessao: { autenticado: false, usuario: null, precisaBootstrap: false } } so the
+      app fails closed to the login screen instead of 500-ing. Safer AND more resilient.
+      Apply as a quick follow-up before the EPIC-001 PR, or fold into Story 1.5.
+
+  - id: QA-1.1-02
+    severity: medium
+    category: requirements
+    description: >
+      AC2 (wrong-password path), AC3 (land on originally-requested route after login)
+      and AC5 (logout round-trip) are not runtime-verified. The connected Supabase has
+      0 usuarios so only the bootstrap path could be exercised, and the story correctly
+      forbids creating a real secretaria in production to test.
+    location: "story 1.1 — Testing / Completion Notes"
+    recommendation: >
+      Run the full walkthrough (bootstrap → logout → login wrong pw → login ok on a
+      deep link like /admin/relatorios → logout) against a Supabase branch or local DB,
+      or with a throwaway user that is then deleted. Record the result in QA Results.
+      Risk is low (LoginForm/logout logic is small and mostly reused) but EPIC-001
+      should not deploy without this walkthrough passing once.
+
+  - id: QA-1.1-03
+    severity: high
+    category: security
+    description: >
+      Story 1.1 only stops the UI from rendering. Every server function
+      (setPresenca, cadastros, relatórios, usuários, …) is still a public
+      unauthenticated RPC with service-role DB access until Story 1.2 lands. The app is
+      NOT secured by this story alone.
+    location: "src/lib/*.functions.ts"
+    recommendation: >
+      Do not treat EPIC-001 as complete or deploy it as a security fix until 1.2
+      (requireAuthenticated on every data endpoint) and ideally 1.3 (role checks) also
+      land. Consider shipping 1.1+1.2 in a single PR.
+
+  - id: QA-1.1-04
+    severity: low
+    category: performance
+    description: >
+      beforeLoad on the root runs on every navigation → at least one Supabase round
+      trip per nav (usuarios + usuario_papeis lookup, or the count query). Negligible
+      for ~5 users; will not scale linearly with traffic.
+    location: "src/routes/__root.tsx"
+    recommendation: >
+      Acceptable as-is. If nav latency becomes noticeable, cache the session in the
+      QueryClient with a short staleTime and invalidate on login/logout.
+
+  - id: QA-1.1-05
+    severity: low
+    category: security
+    description: >
+      The full `sessao.usuario` object ({id, username, professora_id, papeis, ativo,
+      nome}) is serialized into the SSR payload / router context, slightly more than
+      the CodeRabbit focus note ("nome + papeis only") intended.
+    location: "src/routes/__root.tsx beforeLoad return"
+    recommendation: >
+      Acceptable — it is the viewer's own record and Story 1.3 needs papeis +
+      professora_id client-side for role-aware UI. Revisit only if a narrower DTO is
+      cheap.
+
+  - id: QA-1.1-06
+    severity: low
+    category: code
+    description: >
+      The SelecaoProfessora sub-view of /professora (shown before a professora is
+      picked) has no logout control — only the main header does.
+    location: "src/routes/professora.tsx (SelecaoProfessora early return)"
+    recommendation: "Add a Sair control there too, or accept as-is (a picked professora is one click away)."
+
+  - id: QA-1.1-07
+    severity: low
+    category: tests
+    description: "No automated tests. Project-wide gap, tracked as EPIC-003."
+    location: "repo"
+    recommendation: >
+      When vitest lands, cover: AuthGate branch selection (precisaBootstrap),
+      the beforeLoad error-handling path (QA-1.1-01), and a pure helper if
+      redirect-target logic is ever added.
+
+regression_check:
+  authenticated_render_path: "unchanged — `sessao.autenticado ? <Outlet/> : <AuthGate/>`"
+  index_redirect: "untouched"
+  root_reformatting: "cosmetic only — verified via `git diff -w src/routes/__root.tsx`"
+
+decision:
+  verdict: CONCERNS
+  rationale: >
+    All CONCERNS items are either low severity, project-wide pre-existing gaps, or
+    tracked in later stories. QA-1.1-01 (fail-open-to-500) and QA-1.1-02 (unverified
+    ACs) are the two that matter and both have clear, cheap remediations that fit
+    before the EPIC-001 deploy rather than blocking this story now.
+  next_status: "InReview → Done"
+  follow_ups:
+    - "Apply QA-1.1-01 try/catch (small — @dev, before EPIC-001 PR or in Story 1.5)"
+    - "Run the authenticated walkthrough once against a non-prod DB (QA-1.1-02)"
+    - "Ship 1.1 + 1.2 together; do not call the app secured until 1.2 (QA-1.1-03)"
