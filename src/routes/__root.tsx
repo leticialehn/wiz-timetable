@@ -10,6 +10,10 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { getSessaoAtual } from "../lib/auth.functions";
+import { AuthGate } from "../components/AuthGate";
+
+type Sessao = Awaited<ReturnType<typeof getSessaoAtual>>;
 
 function NotFoundComponent() {
   return (
@@ -17,7 +21,9 @@ function NotFoundComponent() {
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
         <p className="mt-4 text-lg text-muted-foreground">Página não encontrada.</p>
-        <a href="/" className="mt-6 inline-block text-primary underline">Voltar ao início</a>
+        <a href="/" className="mt-6 inline-block text-primary underline">
+          Voltar ao início
+        </a>
       </div>
     </div>
   );
@@ -35,7 +41,10 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <h1 className="text-xl font-semibold">Algo deu errado</h1>
         <p className="mt-2 text-sm text-muted-foreground">Tente novamente.</p>
         <button
-          onClick={() => { router.invalidate(); reset(); }}
+          onClick={() => {
+            router.invalidate();
+            reset();
+          }}
           className="mt-4 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
         >
           Tentar de novo
@@ -46,6 +55,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  // Uma única checagem de sessão por navegação (roda no SSR e no client).
+  // A rota pedida não é redirecionada — se não houver sessão, o RootComponent
+  // renderiza o AuthGate no lugar do <Outlet/> e a URL é preservada.
+  beforeLoad: async (): Promise<{ sessao: Sessao }> => {
+    const sessao = await getSessaoAtual();
+    return { sessao };
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -58,8 +74,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "Wiz Timetable" },
       { name: "twitter:description", content: "Wizard Brusque Horário Semanal" },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b35fa7f8-9dcb-42e1-9d63-1ffec2df7772/id-preview-69a37519--116da152-aa4c-4702-94d9-5a447a3a7350.lovable.app-1783726909169.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b35fa7f8-9dcb-42e1-9d63-1ffec2df7772/id-preview-69a37519--116da152-aa4c-4702-94d9-5a447a3a7350.lovable.app-1783726909169.png" },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b35fa7f8-9dcb-42e1-9d63-1ffec2df7772/id-preview-69a37519--116da152-aa4c-4702-94d9-5a447a3a7350.lovable.app-1783726909169.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b35fa7f8-9dcb-42e1-9d63-1ffec2df7772/id-preview-69a37519--116da152-aa4c-4702-94d9-5a447a3a7350.lovable.app-1783726909169.png",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -75,17 +99,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR">
-      <head><HeadContent /></head>
-      <body>{children}<Scripts /></body>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
     </html>
   );
 }
 
 function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
+  const { queryClient, sessao } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      {sessao.autenticado ? <Outlet /> : <AuthGate precisaBootstrap={sessao.precisaBootstrap} />}
     </QueryClientProvider>
   );
 }

@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { getAlertasAtivos } from "@/lib/alertas.functions";
+import { LogoutButton } from "@/components/LogoutButton";
 
 export const Route = createFileRoute("/admin")({
   component: AdminShell,
@@ -71,6 +72,7 @@ function AdminShell() {
             >
               Ver tela da professora
             </Link>
+            <LogoutButton />
           </div>
         </div>
       </header>

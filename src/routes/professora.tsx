@@ -19,6 +19,7 @@ import {
 import { temTrackingDeLicao, licaoSugerida, normalizarLicao } from "@/lib/licoes";
 import { getCalendarioExcecoes } from "@/lib/calendario.functions";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
+import { LogoutButton } from "@/components/LogoutButton";
 import {
   DIAS_SEMANA,
   ROTULO_TIPO,
@@ -249,6 +250,7 @@ function ProfessoraPage() {
             >
               Trocar
             </button>
+            <LogoutButton className="text-xs px-3 py-1.5 rounded bg-black/10 hover:bg-black/20 disabled:opacity-50" />
           </div>
         </div>
       </header>
