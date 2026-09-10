@@ -10,6 +10,9 @@ function validarNivel(nivel: string): string {
 }
 
 async function admin() {
+  // Story 1.2: exige sessão antes de qualquer acesso ao banco.
+  const { requireAuthenticated } = await import("./auth.server");
+  await requireAuthenticated();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
 }

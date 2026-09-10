@@ -5,6 +5,9 @@ import { diaSemanaISO, formatarDataBR, parseISODate, toISODate } from "./date-ut
 import { normalizarNomeParaComparacao } from "./utils";
 
 async function publicClient() {
+  // Story 1.2: exige sessão antes de qualquer acesso ao banco.
+  const { requireAuthenticated } = await import("./auth.server");
+  await requireAuthenticated();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
 }

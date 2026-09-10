@@ -9,6 +9,9 @@ import type {
 } from "./types";
 
 async function sb() {
+  // Story 1.2: exige sessão antes de qualquer acesso ao banco.
+  const { requireAuthenticated } = await import("./auth.server");
+  await requireAuthenticated();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
 }
@@ -132,7 +135,9 @@ export const setNota = createServerFn({ method: "POST" })
     const { error } = await client
       .from("aulas_notas")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .upsert(row as any, { onConflict: "data,professora_id,aluno_id,periodo,parte,horario_especifico" });
+      .upsert(row as any, {
+        onConflict: "data,professora_id,aluno_id,periodo,parte,horario_especifico",
+      });
     if (error) throw new Error(error.message);
     return { ok: true };
   });

@@ -2,6 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import type { Papel } from "./types";
 
 async function admin() {
+  // Story 1.2 (AC7): gestão de usuários é exclusiva da secretaria — puxamos o
+  // requireRole pra cá agora (em vez de esperar a Story 1.3) pra um professor
+  // logado não conseguir criar/remover contas entre 1.2 e 1.3.
+  const { requireRole } = await import("./auth.server");
+  await requireRole(["secretaria"]);
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
 }

@@ -1,6 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { Papel, UsuarioAutenticado } from "./types";
 
+// Story 1.2: este é o ÚNICO arquivo *.functions.ts sem guard de sessão no
+// helper de banco — de propósito. `login`, `logout` e `getSessaoAtual`
+// precisam responder a quem ainda não está logado; `criarPrimeiroUsuario` se
+// protege sozinho (recusa quando já existe qualquer usuário). Não adicione
+// requireAuthenticated aqui.
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;

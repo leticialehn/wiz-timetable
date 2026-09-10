@@ -5,6 +5,10 @@ import { buscarTodasAsLinhas } from "./supabase-paginacao.server";
 import { dataInicioInferida } from "./licoes";
 
 async function publicClient() {
+  // Story 1.2: exige sessão antes de qualquer acesso ao banco. Todo handler
+  // deste arquivo passa por aqui, então nenhuma rota RPC responde sem login.
+  const { requireAuthenticated } = await import("./auth.server");
+  await requireAuthenticated();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
 }
@@ -108,7 +112,9 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
       buscarTodasAsLinhas<RegistroNotaHist>(async (inicio, fim) => {
         const { data: rows, error } = await sb
           .from("aulas_notas")
-          .select("data,periodo,parte,horario_especifico,professora_id,fala,audicao,leitura,escrita")
+          .select(
+            "data,periodo,parte,horario_especifico,professora_id,fala,audicao,leitura,escrita",
+          )
           .eq("aluno_id", data.aluno_id)
           .range(inicio, fim);
         return { data: rows as RegistroNotaHist[] | null, error };
@@ -116,7 +122,9 @@ export const getHistoricoAluno = createServerFn({ method: "GET" })
       buscarTodasAsLinhas<RegistroLicaoHist>(async (inicio, fim) => {
         const { data: rows, error } = await sb
           .from("aulas_licoes")
-          .select("data,periodo,parte,horario_especifico,professora_id,licao,nivel_no_momento,praticado")
+          .select(
+            "data,periodo,parte,horario_especifico,professora_id,licao,nivel_no_momento,praticado",
+          )
           .eq("aluno_id", data.aluno_id)
           .range(inicio, fim);
         return { data: rows as RegistroLicaoHist[] | null, error };

@@ -20,12 +20,18 @@ import {
 } from "./date-utils";
 
 async function admin() {
+  // Story 1.2: exige sessão antes de qualquer acesso ao banco.
+  const { requireAuthenticated } = await import("./auth.server");
+  await requireAuthenticated();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
 }
 
 async function publicClient() {
-  // Uses service role to bypass RLS; all callers are gated by auth server-side.
+  // Uses service role to bypass RLS; all callers are gated by auth server-side
+  // (Story 1.2 — requireAuthenticated is enforced here, so this is now true).
+  const { requireAuthenticated } = await import("./auth.server");
+  await requireAuthenticated();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
 }
