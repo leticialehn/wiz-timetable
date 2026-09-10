@@ -59,8 +59,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   // A rota pedida não é redirecionada — se não houver sessão, o RootComponent
   // renderiza o AuthGate no lugar do <Outlet/> e a URL é preservada.
   beforeLoad: async (): Promise<{ sessao: Sessao }> => {
-    const sessao = await getSessaoAtual();
-    return { sessao };
+    try {
+      const sessao = await getSessaoAtual();
+      return { sessao };
+    } catch (error) {
+      // SESSION_SECRET ausente/errado, Supabase fora do ar, etc. — falha
+      // FECHADA: mostra a tela de login em vez de derrubar o app inteiro
+      // com um 500 (que esconderia até o próprio login).
+      console.error("getSessaoAtual falhou no beforeLoad do root:", error);
+      return { sessao: { autenticado: false, usuario: null, precisaBootstrap: false } };
+    }
   },
   head: () => ({
     meta: [
