@@ -6,3 +6,16 @@ pnpm-lock.yaml
 package-lock.json
 bun.lock
 routeTree.gen.ts
+src/routeTree.gen.ts
+
+# Vendored / generated tooling — not application code
+.aiox-core/
+.claude/
+.codex/
+.cursor/
+.gemini/
+.github/
+.kimi/
+.antigravity/
+.husky/
+.aiox/
