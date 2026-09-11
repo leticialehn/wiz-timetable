@@ -64,6 +64,12 @@ const STORAGE_KEY = "escola:professora-id";
 
 function ProfessoraPage() {
   useRealtimeGrade();
+  // Story 1.3 (AC5): defense in depth — esconde a entrada pro painel admin
+  // (botão "Wizard" na tela "Quem está usando?") pra quem não é secretaria.
+  // O gate de verdade é no servidor (requireRole em cada mutation); isso é
+  // só pra não convidar quem não devia clicar.
+  const { sessao } = Route.useRouteContext();
+  const podeAcessarAdmin = sessao.usuario?.papeis.includes("secretaria") ?? false;
   const [professoraId, setProfessoraId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -202,6 +208,7 @@ function ProfessoraPage() {
     return (
       <SelecaoProfessora
         professoras={grade?.professoras ?? []}
+        podeAcessarAdmin={podeAcessarAdmin}
         onEscolher={(id) => {
           localStorage.setItem(STORAGE_KEY, id);
           setProfessoraId(id);
@@ -1259,9 +1266,11 @@ function tipoCardBg(tipo: TipoHorario) {
 
 function SelecaoProfessora({
   professoras,
+  podeAcessarAdmin,
   onEscolher,
 }: {
   professoras: Professora[];
+  podeAcessarAdmin: boolean;
   onEscolher: (id: string) => void;
 }) {
   return (
@@ -1272,15 +1281,17 @@ function SelecaoProfessora({
           Escolha o seu nome para ver a grade.
         </p>
         <ul className="space-y-2">
-          <li>
-            <Link
-              to="/admin"
-              className="block w-full rounded-xl px-5 py-4 text-left text-lg font-semibold border-2 hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: "#0F1B6C", color: "#fff", borderColor: "#E4002B" }}
-            >
-              Wizard
-            </Link>
-          </li>
+          {podeAcessarAdmin && (
+            <li>
+              <Link
+                to="/admin"
+                className="block w-full rounded-xl px-5 py-4 text-left text-lg font-semibold border-2 hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: "#0F1B6C", color: "#fff", borderColor: "#E4002B" }}
+              >
+                Wizard
+              </Link>
+            </li>
+          )}
           {professoras.length === 0 && (
             <li className="text-muted-foreground text-center">Carregando…</li>
           )}

@@ -299,6 +299,14 @@ type RegistroLicaoAlerta = {
 export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
   async (): Promise<AlertaAtivo[]> => {
     const sb = await publicClient();
+    // Story 1.3 (AC3): só coordenação/secretaria vê os alertas de todo mundo.
+    // Uma professora comum só vê os alertas dos alunos que ela mesma dá aula
+    // — não é o mesmo controle que `professoras.coordenadora` (esse aqui é o
+    // papel de login, em usuario_papeis).
+    const { usuarioDaSessao } = await import("./auth.server");
+    const usuario = await usuarioDaSessao();
+    if (!usuario) throw new Error("Não autorizado. Faça login.");
+    const veTudo = usuario.papeis.includes("coordenador") || usuario.papeis.includes("secretaria");
     const hojeIso = toISODate(new Date());
     // Resolvidos somem da lista depois de 2 meses — senão "Resolvidos
     // recentemente" só cresce pra sempre.
@@ -338,10 +346,10 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
         return { data: data as RegistroNota[] | null, error };
       }),
       sb.from("alertas_status").select("*"),
-      sb.from("grade_base").select("id,aluno_id"),
+      sb.from("grade_base").select("id,aluno_id,professora_id"),
       sb
         .from("excecoes_semana")
-        .select("id,data,tipo_excecao,aluno_id,grade_base_id")
+        .select("id,data,tipo_excecao,aluno_id,grade_base_id,professora_id")
         .gte("data", hojeIso)
         .in("tipo_excecao", ["adicionar", "mover"]),
       buscarTodasAsLinhas<RegistroLicaoAlerta>(async (inicio, fim) => {
@@ -364,13 +372,18 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
     // de alguém que já ficou inativo mas ainda tem alerta resolvido no histórico.
     const alunos = todosAlunos.filter((a) => a.ativo);
     const statusExistente = (statusRes.data ?? []) as AlertaStatusRow[];
-    const baseRows = (baseRes.data ?? []) as { id: string; aluno_id: string | null }[];
+    const baseRows = (baseRes.data ?? []) as {
+      id: string;
+      aluno_id: string | null;
+      professora_id: string;
+    }[];
     const calendarioExcecoes = (calendarioRes.data ?? []) as CalendarioExcecao[];
     const excFuturas = (excFuturasRes.data ?? []) as {
       data: string;
       tipo_excecao: string;
       aluno_id: string | null;
       grade_base_id: string | null;
+      professora_id: string;
     }[];
     const licoesPorAluno = new Map<string, RegistroLicaoAlerta[]>();
     for (const l of licoesTodas) {
@@ -387,6 +400,24 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
     for (const n of notas) {
       if (!notasPorAluno.has(n.aluno_id)) notasPorAluno.set(n.aluno_id, []);
       notasPorAluno.get(n.aluno_id)!.push(n);
+    }
+
+    // Story 1.3 (AC3): alunos que esta professora dá aula, pra filtrar o
+    // resultado no fim (`veTudo` pula esse filtro). Mesma fonte usada logo
+    // abaixo pra "tem aula agendada": grade_base (fixo) + exceções futuras
+    // que adicionam/movem aluno (temporário).
+    const alunoIdsDaProfessora = new Set<string>();
+    if (!veTudo && usuario.professora_id) {
+      for (const r of baseRows) {
+        if (r.aluno_id && r.professora_id === usuario.professora_id) {
+          alunoIdsDaProfessora.add(r.aluno_id);
+        }
+      }
+      for (const e of excFuturas) {
+        if (e.aluno_id && e.professora_id === usuario.professora_id) {
+          alunoIdsDaProfessora.add(e.aluno_id);
+        }
+      }
     }
 
     // Aluno "tem aula agendada" se aparece hoje/no futuro num horário fixo (grade_base)
@@ -697,12 +728,19 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
 
     await Promise.all(atualizacoes);
 
-    resultado.sort((a, b) => {
+    // Story 1.3 (AC3): aplica o filtro por professora depois de tudo calculado
+    // — os `atualizacoes` (sincronizar status no banco) já rodaram acima e
+    // continuam valendo pra escola inteira, só a resposta é que é recortada.
+    const visivel = veTudo
+      ? resultado
+      : resultado.filter((a) => alunoIdsDaProfessora.has(a.aluno_id));
+
+    visivel.sort((a, b) => {
       if (a.status !== b.status) return a.status === "pendente" ? -1 : 1;
       if (a.status === "pendente") return b.contagem - a.contagem;
       return (b.resolvido_em ?? "").localeCompare(a.resolvido_em ?? "");
     });
-    return resultado;
+    return visivel;
   },
 );
 

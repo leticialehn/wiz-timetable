@@ -22,6 +22,9 @@ async function admin() {
 export const criarProfessora = createServerFn({ method: "POST" })
   .inputValidator((data: { nome: string; cor: string }) => data)
   .handler(async ({ data }) => {
+    // Story 1.3: cadastro é config da escola — só secretaria.
+    const { requireRole } = await import("./auth.server");
+    await requireRole(["secretaria"]);
     const sb = await admin();
     const { error } = await sb.from("professoras").insert({ nome: data.nome, cor: data.cor });
     if (error) throw new Error(error.message);
@@ -31,6 +34,9 @@ export const criarProfessora = createServerFn({ method: "POST" })
 export const atualizarProfessora = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string; nome: string; cor: string; coordenadora: boolean }) => data)
   .handler(async ({ data }) => {
+    // Story 1.3: secretaria-only.
+    const { requireRole } = await import("./auth.server");
+    await requireRole(["secretaria"]);
     const sb = await admin();
     const { error } = await sb
       .from("professoras")
@@ -47,6 +53,9 @@ export const atualizarProfessora = createServerFn({ method: "POST" })
 export const removerProfessora = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
+    // Story 1.3: secretaria-only.
+    const { requireRole } = await import("./auth.server");
+    await requireRole(["secretaria"]);
     const sb = await admin();
     const { error } = await sb.from("professoras").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
@@ -58,6 +67,9 @@ export const removerProfessora = createServerFn({ method: "POST" })
 export const criarAluno = createServerFn({ method: "POST" })
   .inputValidator((data: { nome: string; nivel: string }) => data)
   .handler(async ({ data }) => {
+    // Story 1.3: secretaria-only.
+    const { requireRole } = await import("./auth.server");
+    await requireRole(["secretaria"]);
     const sb = await admin();
     const { data: novoAluno, error } = await sb
       .from("alunos")
@@ -87,6 +99,9 @@ export const atualizarAluno = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data }) => {
+    // Story 1.3: secretaria-only.
+    const { requireRole } = await import("./auth.server");
+    await requireRole(["secretaria"]);
     const sb = await admin();
     const { data: atual } = await sb.from("alunos").select("nivel").eq("id", data.id).single();
     // Trocou de nível: a data de início manual era do livro anterior, não vale
@@ -147,6 +162,9 @@ export const getUltimasLicoesPorAluno = createServerFn({ method: "GET" }).handle
 export const removerAluno = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
+    // Story 1.3: secretaria-only.
+    const { requireRole } = await import("./auth.server");
+    await requireRole(["secretaria"]);
     const sb = await admin();
     const { error } = await sb.from("alunos").delete().eq("id", data.id);
     if (error) throw new Error(error.message);

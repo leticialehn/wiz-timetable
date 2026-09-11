@@ -206,6 +206,9 @@ export const setHorarioConfig = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data }) => {
+    // Story 1.3: config de horário — secretaria-only.
+    const { requireRole } = await import("./auth.server");
+    await requireRole(["secretaria"]);
     const sb = await admin();
     const { error } = await sb.from("horarios_config").upsert(
       {
@@ -225,6 +228,9 @@ export const setHorarioConfig = createServerFn({ method: "POST" })
 export const removerHorarioConfig = createServerFn({ method: "POST" })
   .inputValidator((data: { dia_semana: number; periodo: number; professora_id: string }) => data)
   .handler(async ({ data }) => {
+    // Story 1.3: config de horário — secretaria-only.
+    const { requireRole } = await import("./auth.server");
+    await requireRole(["secretaria"]);
     const sb = await admin();
     const { error } = await sb
       .from("horarios_config")
@@ -256,6 +262,9 @@ export const adicionarAluno = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data }) => {
+    // Story 1.3: edição de grade — secretaria-only.
+    const { requireRole } = await import("./auth.server");
+    await requireRole(["secretaria"]);
     const sb = await admin();
 
     if (!data.aluno_id && !data.aluno_nome_avulso) {
@@ -339,6 +348,9 @@ export const removerCelula = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data }) => {
+    // Story 1.3: edição de grade — secretaria-only.
+    const { requireRole } = await import("./auth.server");
+    await requireRole(["secretaria"]);
     const sb = await admin();
     if (data.origem === "excecao" && data.excecao_id) {
       const { error } = await sb.from("excecoes_semana").delete().eq("id", data.excecao_id);
@@ -366,6 +378,9 @@ export const removerCelula = createServerFn({ method: "POST" })
 export const alternarAusenciaAvisada = createServerFn({ method: "POST" })
   .inputValidator((data: { data: string; grade_base_id: string; avisou: boolean }) => data)
   .handler(async ({ data }) => {
+    // Story 1.3: edição de grade — secretaria-only.
+    const { requireRole } = await import("./auth.server");
+    await requireRole(["secretaria"]);
     const sb = await admin();
     if (data.avisou) {
       const { error } = await sb.from("excecoes_semana").insert({
@@ -397,6 +412,9 @@ export const alternarVagaFechada = createServerFn({ method: "POST" })
     (data: { dia_semana: number; periodo: number; professora_id: string; fechar: boolean }) => data,
   )
   .handler(async ({ data }) => {
+    // Story 1.3: config de horário — secretaria-only.
+    const { requireRole } = await import("./auth.server");
+    await requireRole(["secretaria"]);
     const sb = await admin();
     const { data: cfgRow } = await sb
       .from("horarios_config")

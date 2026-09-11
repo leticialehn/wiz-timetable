@@ -26,6 +26,9 @@ export const criarCalendarioExcecoes = createServerFn({ method: "POST" })
     (data: { datas: string[]; tipo: TipoCalendarioExcecao; grupos: GrupoCalendario[] }) => data,
   )
   .handler(async ({ data }) => {
+    // Story 1.3: secretaria-only.
+    const { requireRole } = await import("./auth.server");
+    await requireRole(["secretaria"]);
     const sb = await admin();
     const linhas = data.datas.flatMap((dataIso) =>
       data.grupos.map((grupo) => ({
@@ -43,6 +46,9 @@ export const criarCalendarioExcecoes = createServerFn({ method: "POST" })
 export const removerCalendarioExcecoes = createServerFn({ method: "POST" })
   .inputValidator((data: { ids: string[] }) => data)
   .handler(async ({ data }) => {
+    // Story 1.3: secretaria-only.
+    const { requireRole } = await import("./auth.server");
+    await requireRole(["secretaria"]);
     const sb = await admin();
     const { error } = await sb.from("calendario_excecoes").delete().in("id", data.ids);
     if (error) throw new Error(error.message);
