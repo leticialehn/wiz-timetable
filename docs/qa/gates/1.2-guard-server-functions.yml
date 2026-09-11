@@ -1,0 +1,112 @@
+storyId: "1.2"
+storyTitle: "Guard all data server functions with requireAuthenticated"
+epic: "EPIC-001"
+gateType: blocking
+verdict: CONCERNS
+reviewer: "Quinn (@qa)"
+reviewed_revision: "commit:0411ff8"
+reviewed_at: "2026-09-11"
+
+summary: >
+  Verified by direct code inspection (not by trusting the dev's claim): all 8
+  *.functions.ts DB-client helpers (admin/sb/publicClient, incl. both of
+  grade.functions.ts's) call requireAuthenticated() — or requireRole(["secretaria"])
+  for usuarios — before returning the Supabase client. Confirmed no handler bypasses
+  the helper to reach client.server directly (grep found zero bypass paths), and the
+  re-counted endpoint total is exactly 39/39, matching the checklist. auth.functions.ts
+  is correctly untouched apart from a comment. Design choice to guard at the helper
+  rather than per-handler is sound and stronger than the literal AC1 wording. CONCERNS
+  — not FAIL — because of one new performance finding and the still-open runtime
+  walkthrough (now spanning two stories).
+
+seven_checks:
+  code_review: PASS
+  unit_tests: CONCERNS # no test infra project-wide (EPIC-003) — inherited
+  acceptance_criteria: CONCERNS # AC1-4,6,7 verified; AC5 (regression) not run-verified
+  no_regressions: CONCERNS # sound by inspection; not exercised at runtime
+  performance: CONCERNS # new finding — see QA-1.2-01
+  security: PASS # design correct; e2e proof pending (see QA-1.1-02, still open)
+  documentation: PASS
+
+acceptance_criteria_status:
+  AC1_guard_present: VERIFIED_BY_DESIGN # helper-level, not literal "first line of handler" — stronger guarantee, documented deviation accepted
+  AC2_auth_functions_exempt: VERIFIED # diff shows only a comment added
+  AC3_no_db_access_unauthed: VERIFIED_BY_INSPECTION # zero bypass paths found via grep
+  AC4_checklist_accurate: VERIFIED # re-grepped: 39/39, matches
+  AC5_no_regression_logged_in: NOT_VERIFIED # needs runtime walkthrough
+  AC6_typecheck_lint_build: VERIFIED
+  AC7_usuarios_role_coordination: VERIFIED # requireRole(["secretaria"]) confirmed in code
+
+issues:
+  - id: QA-1.2-01
+    severity: medium
+    category: performance
+    description: >
+      requireAuthenticated() -> usuarioDaSessao() runs 2 Supabase queries (usuarios +
+      usuario_papeis) with no caching. Every one of the 39 guarded endpoints now pays
+      this cost on every call, and a single page (e.g. /professora) fires several of
+      these endpoints per render — each doing its own independent session lookup, on
+      top of the one already done in __root's beforeLoad (Story 1.1). This is
+      redundant work, not a correctness bug.
+    location: "src/lib/auth.server.ts usuarioDaSessao(); every *.functions.ts helper"
+    recommendation: >
+      Not blocking at current scale (~5 users). If it becomes noticeable, memoize
+      usuarioDaSessao per-request (e.g. an AsyncLocalStorage-backed cache keyed by the
+      request, cleared per request) so N calls in one page load cost one DB round
+      trip instead of N.
+
+  - id: QA-1.2-02
+    severity: medium
+    category: requirements
+    description: >
+      Same class as QA-1.1-02, now compounding: the logged-in walkthrough (AC5) and
+      the logged-out-RPC-rejected proof (AC3) have not been exercised at runtime for
+      EITHER story 1.1 or 1.2. Attempts this session to test via raw curl against the
+      dev server's server-fn endpoint failed with "Invalid server function ID" (dev
+      hashes differ from build hashes) — not a security signal, just an unusable test
+      method. Code-level verification (this gate) is strong, but no live proof exists
+      yet that a real logged-in secretaria/professor session can still use the app.
+    location: "whole app — needs an actual authenticated session to test"
+    recommendation: >
+      Needs a decision from the project owner (see message to user): either point a
+      non-prod Supabase project/branch at this app temporarily, or explicitly approve
+      creating + deleting one throwaway user in the connected (production) database.
+      One walkthrough now covers 1.1 + 1.2 + will cover 1.3.
+
+  - id: QA-1.2-03
+    severity: low
+    category: code
+    description: >
+      /admin/usuarios is reachable by any logged-in user today (no role-based nav
+      hiding yet — that's Story 1.3 AC5). A professor visiting it sees the page shell
+      render, then listarUsuarios (GET) fails with "Não autorizado..." because it now
+      requires the secretaria role too. Not a security hole (the guard does its job),
+      just a rough error state instead of the page being hidden.
+    location: "src/routes/admin.usuarios.tsx"
+    recommendation: "Resolved once Story 1.3 hides admin-only nav for non-secretaria users."
+
+  - id: QA-1.2-04
+    severity: low
+    category: tests
+    description: "No automated tests. Project-wide gap, tracked as EPIC-003."
+    location: "repo"
+    recommendation: "Same as QA-1.1-07 — cover the guard rejection path when vitest lands."
+
+regression_check:
+  bypass_scan: "grep for client.server usage outside the 3 known helper patterns — zero hits"
+  endpoint_count: "39/39 — re-grepped independently of the dev's own count"
+  auth_functions_untouched: "diff confirms only a comment was added"
+
+decision:
+  verdict: CONCERNS
+  rationale: >
+    Design and code are correct and thoroughly verified by inspection (stronger
+    verification than a normal code review, since no test suite exists). Nothing here
+    warrants sending the story back to @dev. The real gap — an actual runtime
+    walkthrough — is a project-level blocker that both this story and 1.1 share, and
+    needs the project owner's input on how to get a safe non-prod session to test with.
+  next_status: "InReview → Done"
+  follow_ups:
+    - "QA-1.2-01: memoize usuarioDaSessao per-request if latency becomes noticeable"
+    - "QA-1.2-02: get a non-prod DB or explicit approval for a throwaway prod user, then run ONE walkthrough covering 1.1+1.2(+1.3)"
+    - "QA-1.2-03: resolved by Story 1.3"
