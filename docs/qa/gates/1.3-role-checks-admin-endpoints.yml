@@ -1,0 +1,137 @@
+storyId: "1.3"
+storyTitle: "Role checks on admin-only endpoints"
+epic: "EPIC-001"
+gateType: blocking
+verdict: CONCERNS
+reviewer: "Quinn (@qa)"
+reviewed_revision: "commit:bf5a899"
+reviewed_at: "2026-09-11"
+
+summary: >
+  Verified by direct code inspection (diff read in full, not the dev's self-report):
+  all 14 newly-gated endpoints across cadastros/calendario/grade.functions.ts call
+  requireRole(["secretaria"]) as the literal first statement of the handler, before
+  any Supabase client call — matches the pattern already proven in
+  usuarios.functions.ts (Story 1.2 AC7). alertas.functions.ts's professora-scoping
+  (AC3) reads usuario.professora_id only from the session (usuarioDaSessao()), never
+  from request input — getAlertasAtivos takes no input at all, so there is no
+  professora_id spoofing surface. Fails closed when professora_id is null. CONCERNS
+  — not FAIL — for the same class of gap as 1.1 and 1.2: the runtime walkthrough
+  (AC4) was attempted this session but blocked by a Chrome automation tool failure
+  unrelated to the app (confirmed independently: localhost, LAN IP, and even
+  google.com/example.com all failed to render after a Chrome restart), plus two new
+  findings below (performance, and a narrower AC5 scope than QA-1.2-03 predicted).
+
+seven_checks:
+  code_review: PASS
+  unit_tests: CONCERNS # no test infra project-wide (EPIC-003) — inherited
+  acceptance_criteria: CONCERNS # AC1,2,3,6,7 verified by inspection; AC4,5 partial (see below)
+  no_regressions: PASS # presenca.functions.ts untouched; existing 39-endpoint checklist rows all still auth-only or secretaria as before
+  performance: CONCERNS # QA-1.3-01 — compounds the already-open QA-1.2-01
+  security: PASS # design correct; source-of-truth for AC3 is the session, never request input
+  documentation: PASS # checklist + completion notes are thorough and accurate
+
+acceptance_criteria_status:
+  AC1_admin_mutations_requireRole: VERIFIED # 14/14 confirmed in diff, first line of handler, before any DB call
+  AC2_presenca_stays_auth_only: VERIFIED # presenca.functions.ts absent from the diff entirely
+  AC3_alertas_professora_scope: VERIFIED # session-sourced, correctly decoupled from professoras.coordenadora as the story mandates
+  AC4_wrong_papel_403_no_db_change: VERIFIED_BY_INSPECTION # requireRole throws before any DB call in all 14 spots; exact error string matches auth.server.ts:129. Runtime walkthrough NOT run (tool failure) — same open gap as 1.1/1.2
+  AC5_admin_nav_hidden: PARTIAL # "Wizard" entry point hidden in SelecaoProfessora (verified in diff); QA-1.2-03 predicted this story would also resolve /admin/usuarios' rough error state for direct-URL visits — it does not (see QA-1.3-02), scope was deliberately narrowed to the entry point only
+  AC6_checklist_in_dev_agent_record: VERIFIED # full 39-row table present, extends 1.2's correctly, all counts cross-checked by grep (cadastros 6, calendario 2, usuarios 1-helper, grade 6)
+  AC7_typecheck_lint_precommit: VERIFIED_PARTIAL # typecheck: independently re-run clean. Full-repo `npm run lint` hangs/times out in this session (2 independent attempts by @dev, 1 by @qa) — pre-existing environment issue (also killed several other background tasks for low memory earlier in the session), not caused by this diff. Scoped eslint on all 5 touched source files: clean, exit 0. Pre-commit hook (lint-staged + tsc --noEmit) ran and completed successfully at commit time.
+
+issues:
+  - id: QA-1.3-01
+    severity: medium
+    category: performance
+    description: >
+      getAlertasAtivos now calls usuarioDaSessao() explicitly in addition to the
+      requireAuthenticated() already triggered inside publicClient() a few lines
+      above — two independent session lookups (4 Supabase queries total: 2+2) in a
+      single request, where 1.2's baseline (QA-1.2-01) already flagged 2 queries per
+      guarded call as redundant. This endpoint is called from both /admin and
+      /professora on every load, so it's one of the hotter paths in the app.
+    location: "src/lib/alertas.functions.ts getAlertasAtivos"
+    recommendation: >
+      Same fix as QA-1.2-01 resolves both at once: memoize usuarioDaSessao() per
+      request (e.g. AsyncLocalStorage-backed, cleared per request). Not blocking at
+      current scale; flagging so it isn't missed when QA-1.2-01 is picked up.
+
+  - id: QA-1.3-02
+    severity: low
+    category: requirements
+    description: >
+      QA-1.2-03 predicted Story 1.3 would resolve /admin/usuarios' rough error state
+      for a non-secretaria user who navigates there directly (page shell renders,
+      then listarUsuarios fails with "Não autorizado..."). The actual AC5 scope
+      landed narrower, by design (checkpoint decision logged in the story's
+      Completion Notes): only the "Wizard" entry-point button in SelecaoProfessora is
+      hidden. A professor/coordenador who still has /admin/usuarios bookmarked or in
+      history gets the same rough error state as before — not a security issue (the
+      server guard still rejects it correctly), just not the UX QA-1.2-03 expected.
+    location: "src/routes/admin.usuarios.tsx (and other /admin/* sub-routes reachable by direct URL)"
+    recommendation: >
+      Correct the record: QA-1.2-03 is NOT fully resolved, only its main path (nav
+      discoverability) is. Low priority — accept as-is, or open a follow-up if a
+      cleaner "not authorized" screen for direct-URL admin visits is wanted later.
+
+  - id: QA-1.3-03
+    severity: low
+    category: security
+    description: >
+      Three test users (teste/secretaria, teste_professor/professor,
+      teste_coordenador/coordenador — all password teste123) were created directly in
+      the connected Supabase project via the service-role key during this session, at
+      the user's explicit request, to support Task 5's walkthrough. This is the same
+      (only) Supabase project referenced in .env — there is no separate non-prod
+      project. Unlike 1.1/1.2, which explicitly avoided creating prod users for this
+      exact reason, this story did create them.
+    location: "usuarios table, this project's Supabase instance"
+    recommendation: >
+      Now that these accounts exist, either keep them intentionally as a permanent
+      QA fixture (documented, weak/shared password accepted as a known tradeoff) or
+      remove them (redefinirSenha/removerUsuario, or direct DB delete) once the
+      walkthrough is actually completed. Don't leave teste123 accounts around
+      unacknowledged.
+
+  - id: QA-1.3-04
+    severity: medium
+    category: tests
+    description: >
+      Same open gap as QA-1.1-02 / QA-1.2-02, now spanning all three EPIC-001
+      stories: no runtime walkthrough has ever been completed end-to-end (logged-in
+      session actually exercising the guarded endpoints and observing the 403).
+      1.2 predicted "one walkthrough now covers 1.1 + 1.2 + will cover 1.3" — this
+      session had the test users and a running dev server ready, but the Chrome
+      automation tool itself failed independent of the app (confirmed against
+      google.com/example.com too, after a Chrome restart and a memory check).
+    location: "whole app — needs a working browser automation session or manual click-through"
+    recommendation: >
+      Not a reason to hold this story — the code-level verification is strong and
+      consistent across all three stories. Whenever the browser tool is healthy (or
+      the user does it manually with the 3 credentials left in place), one
+      walkthrough closes QA-1.1-02, QA-1.2-02, and this AC4 gap at once. Consider a
+      SendFeedback report on the repeated Chrome automation tool failure if it
+      recurs outside this session too.
+
+regression_check:
+  guard_placement: "14/14 new requireRole calls confirmed as the first statement of their handler, before any admin()/sb() call — grep count per file matches expected (cadastros 6, calendario 2, grade 6)"
+  presenca_untouched: "diff confirms presenca.functions.ts has zero changes"
+  usuarios_untouched: "diff confirms usuarios.functions.ts has zero changes (already gated since 1.2 AC7)"
+  error_message_match: "requireRole's thrown string (auth.server.ts:129) matches AC4's required text exactly"
+  no_input_on_filtered_endpoint: "getAlertasAtivos has no .inputValidator / no request data — professora_id can only come from the session, zero spoofing surface"
+
+decision:
+  verdict: CONCERNS
+  rationale: >
+    Design and code are correct and thoroughly verified by inspection (diff read in
+    full, guard placement and error strings cross-checked, filtering logic traced
+    end-to-end). Nothing here warrants returning the story to @dev. The recurring gap
+    — an actual runtime walkthrough — is now open across three consecutive stories in
+    this epic and is a tooling/process blocker, not a code defect in this story.
+  next_status: "InReview → Done"
+  follow_ups:
+    - "QA-1.3-01: fold into the QA-1.2-01 memoization fix when picked up"
+    - "QA-1.3-02: corrects QA-1.2-03's prediction — still open if a cleaner direct-URL admin UX is wanted"
+    - "QA-1.3-03: decide keep-as-fixture vs. remove the 3 teste_* accounts from the prod Supabase project"
+    - "QA-1.3-04 / QA-1.1-02 / QA-1.2-02: one working browser walkthrough closes all three at once"
