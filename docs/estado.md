@@ -15,17 +15,18 @@
 
 `docs/stories/epics/EPIC-001-auth-wiring.md`
 
-| Story | Título                                                                                     | Status                                                         | Gate                                                |
-| ----- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------- | --------------------------------------------------- |
-| 1.1   | Mount login + route guards                                                                 | ✅ Done                                                        | CONCERNS (7, não bloqueantes) + fix pós-QA aplicado |
-| 1.2   | Guard all data server functions (`requireAuthenticated`)                                   | ✅ Done                                                        | CONCERNS (4, não bloqueantes)                       |
-| 1.3   | Role checks on admin-only endpoints (`requireRole`)                                        | ✅ Done                                                        | ver `docs/qa/gates/`                                |
-| 1.4   | [Remove `attachSupabaseAuth`; session hygiene](stories/1.4.remove-attach-supabase-auth.md) | ✅ Ready (@dev)                                                | @po GO 9/10                                         |
-| 1.5   | [Verify `SESSION_SECRET` in Vercel; ops doc](stories/1.5.verify-session-secret-vercel.md)  | 🔶 InReview (@devops) — AC3/AC4/AC6 feitos; AC1/AC2 bloqueados | aguardando @architect                               |
+| Story | Título                                                                                     | Status                                                         | Gate                                                    |
+| ----- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------- | ------------------------------------------------------- |
+| 1.1   | Mount login + route guards                                                                 | ✅ Done                                                        | CONCERNS (7, não bloqueantes) + fix pós-QA aplicado     |
+| 1.2   | Guard all data server functions (`requireAuthenticated`)                                   | ✅ Done                                                        | CONCERNS (4, não bloqueantes)                           |
+| 1.3   | Role checks on admin-only endpoints (`requireRole`)                                        | ✅ Done                                                        | ver `docs/qa/gates/`                                    |
+| 1.4   | [Remove `attachSupabaseAuth`; session hygiene](stories/1.4.remove-attach-supabase-auth.md) | 🔍 InReview (@architect)                                       | @dev: 2 arquivos mortos removidos; typecheck + build ✅ |
+| 1.5   | [Verify `SESSION_SECRET` in Vercel; ops doc](stories/1.5.verify-session-secret-vercel.md)  | 🔶 InReview (@devops) — AC3/AC4/AC6 feitos; AC1/AC2 bloqueados | aguardando @architect                                   |
 
 **Bloqueia fechamento do epic:** AC7 (remover middleware no-op) e AC8
 (`SESSION_SECRET` confirmado) dependem de 1.4/1.5, ambas validadas em 2026-09-14 e
-agora em **Ready** — 1.4 aguardando `@dev`, 1.5 aguardando `@devops`. AC9
+ambas agora em **InReview** — 1.4 implementada por `@dev` (AC7 satisfeito no código),
+1.5 por `@devops`. AC9
 (typecheck/lint + walkthrough manual em nível de epic) ainda não consolidado.
 
 **Escopo adicional aprovado em 1.4:** além de `attachSupabaseAuth` (nomeado no AC7 do
@@ -72,9 +73,10 @@ Sem stories criadas ainda.
 
 ## Log de progresso
 
-| Data       | Mudança                                                                                                                                                                                                          |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-09-14 | Criação deste documento; snapshot do estado real (1.1/1.2/1.3 Done)                                                                                                                                              |
-| 2026-09-14 | @sm drafted 1.4 (`1.4.remove-attach-supabase-auth.md`) e 1.5 (`1.5.verify-session-secret-vercel.md`); README.md sincronizado                                                                                     |
-| 2026-09-14 | @po `*validate-story-draft`: 1.4 GO 9/10 e 1.5 GO 8/10 → ambas Draft → Ready. `[AUTO-DECISION]`s de 1.4 verificados contra o código-fonte; 1 claim incorreto em 1.5 corrigido                                    |
-| 2026-09-14 | @devops implementou 1.5 parcialmente → InReview. `.env.example` + `docs/framework/tech-stack.md` (§ Secrets) atualizados; AC1/AC2 (verificação na Vercel) bloqueados por falta de CLI/link — instruções na story |
+| Data       | Mudança                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-14 | Criação deste documento; snapshot do estado real (1.1/1.2/1.3 Done)                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| 2026-09-14 | @sm drafted 1.4 (`1.4.remove-attach-supabase-auth.md`) e 1.5 (`1.5.verify-session-secret-vercel.md`); README.md sincronizado                                                                                                                                                                                                                                                                                                                                                                 |
+| 2026-09-14 | @po `*validate-story-draft`: 1.4 GO 9/10 e 1.5 GO 8/10 → ambas Draft → Ready. `[AUTO-DECISION]`s de 1.4 verificados contra o código-fonte; 1 claim incorreto em 1.5 corrigido                                                                                                                                                                                                                                                                                                                |
+| 2026-09-14 | @devops implementou 1.5 parcialmente → InReview. `.env.example` + `docs/framework/tech-stack.md` (§ Secrets) atualizados; AC1/AC2 (verificação na Vercel) bloqueados por falta de CLI/link — instruções na story                                                                                                                                                                                                                                                                             |
+| 2026-09-14 | @dev implementou 1.4 → InReview. Removidos `src/integrations/supabase/auth-attacher.ts` (`attachSupabaseAuth`) e `auth-middleware.ts` (`requireSupabaseAuth`); `src/start.ts` agora com `functionMiddleware: []`. Grep pós-mudança = 0 referências; typecheck e build verdes (exit 0), lint limpo em `start.ts` (falhas de `eslint .` são CRLF pré-existentes em todo o repo: `core.autocrlf=true` vs `.gitattributes eol=lf`). AC5 por verificação estática (blocker de browser-automation) |
