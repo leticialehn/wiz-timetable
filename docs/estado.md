@@ -15,33 +15,42 @@
 
 `docs/stories/epics/EPIC-001-auth-wiring.md`
 
-| Story | Título                                                                                     | Status                                                        | Gate                                                                                          |
-| ----- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| 1.1   | Mount login + route guards                                                                 | ✅ Done                                                       | CONCERNS (7, não bloqueantes) + fix pós-QA aplicado                                           |
-| 1.2   | Guard all data server functions (`requireAuthenticated`)                                   | ✅ Done                                                       | CONCERNS (4, não bloqueantes)                                                                 |
-| 1.3   | Role checks on admin-only endpoints (`requireRole`)                                        | ✅ Done                                                       | ver `docs/qa/gates/`                                                                          |
-| 1.4   | [Remove `attachSupabaseAuth`; session hygiene](stories/1.4.remove-attach-supabase-auth.md) | ✅ Done                                                       | CONCERNS (4, nenhum é defeito da story) — `docs/qa/gates/1.4-remove-attach-supabase-auth.yml` |
-| 1.5   | [Verify `SESSION_SECRET` in Vercel; ops doc](stories/1.5.verify-session-secret-vercel.md)  | ✅ Done — AC3/AC4/AC5/AC6; **AC1/AC2 continuam com o humano** | CONCERNS (1 alto: QA-1.5-01) — `docs/qa/gates/1.5-verify-session-secret-vercel.yml`           |
-| 1.6   | [Fix repo-wide `npm run lint`](stories/1.6.fix-repo-wide-lint.md)                          | ✅ Done                                                       | PASS — `docs/qa/gates/1.6-fix-repo-wide-lint.yml`                                             |
+| Story | Título                                                                                     | Status                 | Gate                                                                                          |
+| ----- | ------------------------------------------------------------------------------------------ | ---------------------- | --------------------------------------------------------------------------------------------- |
+| 1.1   | Mount login + route guards                                                                 | ✅ Done                | CONCERNS (7, não bloqueantes) + fix pós-QA aplicado                                           |
+| 1.2   | Guard all data server functions (`requireAuthenticated`)                                   | ✅ Done                | CONCERNS (4, não bloqueantes)                                                                 |
+| 1.3   | Role checks on admin-only endpoints (`requireRole`)                                        | ✅ Done                | ver `docs/qa/gates/`                                                                          |
+| 1.4   | [Remove `attachSupabaseAuth`; session hygiene](stories/1.4.remove-attach-supabase-auth.md) | ✅ Done                | CONCERNS (4, nenhum é defeito da story) — `docs/qa/gates/1.4-remove-attach-supabase-auth.yml` |
+| 1.5   | [Verify `SESSION_SECRET` in Vercel; ops doc](stories/1.5.verify-session-secret-vercel.md)  | ✅ Done — todas as ACs | CONCERNS (histórico) → **AC1/AC2 resolvidas 2026-09-14**, ver `docs/qa/gates/1.5-*.yml`       |
+| 1.6   | [Fix repo-wide `npm run lint`](stories/1.6.fix-repo-wide-lint.md)                          | ✅ Done                | PASS — `docs/qa/gates/1.6-fix-repo-wide-lint.yml`                                             |
 
-**Status do fechamento do epic (2026-09-14):** as 6 stories estão **Done**.
-**AC1–AC7 e AC9 do epic estão satisfeitos**. **Só AC8 continua aberto** e impede
-declarar EPIC-001 completo:
+**Status do fechamento do epic (2026-09-14): TODAS as 9 ACs do epic estão
+satisfeitas.** As 6 stories estão **Done**, sem itens abertos:
 
-- **AC8 — NÃO fechado.** A story 1.5 está Done só na parte documental; a verificação
-  de presença/força do `SESSION_SECRET` na Vercel (AC1/AC2 da story) exige ação
-  humana. Ver QA-1.5-01 (severidade **alta**).
-- **AC9 — FECHADO (2026-09-14).** As duas partes concluídas: (a) `npm run lint`
-  repo-wide agora passa em ~4.9s exit 0 (era hang >180s / 460+ MB RSS) — story 1.6
-  Done, gate PASS (`docs/qa/gates/1.6-fix-repo-wide-lint.yml`), primeiro PASS sem
-  ressalvas do épico; (b) o walkthrough manual de auth (QA-1.1-02 / QA-1.2-02 /
-  QA-1.3-04 / QA-1.4-01) foi executado e resolvido no mesmo dia — ver log abaixo.
+- **AC8 — FECHADO (2026-09-14, com permissão do usuário em tempo real).**
+  `SESSION_SECRET` não existia em **nenhum** ambiente na Vercel (Production,
+  Preview, Development — todos vazios, não só fraco). Instalei o CLI, o usuário
+  completou o `vercel login` interativo (device flow), rodei `vercel link`
+  (projeto `leticia-lehn/wiz-timetable`). Gerei um valor novo com
+  `openssl rand -base64 32` (nunca exibido, passado via stdin) e adicionei em
+  Production e Preview via `vercel env add`, armazenado como tipo `Secret` da
+  Vercel (oculto até de `vercel env pull`). Confirmado presente em ambos via
+  `vercel env ls`. **Não foi rotação** — como não existia valor prévio, nenhuma
+  sessão de usuário foi invalidada. Detalhes: `docs/stories/1.5.verify-session-secret-vercel.md` (Change Log 0.5) e `docs/qa/gates/1.5-*.yml` (resolução de
+  QA-1.5-01/02).
+- **AC9 — FECHADO (2026-09-14).** `npm run lint` repo-wide passa em ~4.9s exit 0
+  (era hang >180s / 460+ MB RSS) — story 1.6 Done, gate PASS, primeiro PASS sem
+  ressalvas do épico. Walkthrough manual de auth (QA-1.1-02/1.2-02/1.3-04/1.4-01)
+  executado e resolvido no mesmo dia.
 - **AC7 — texto corrigido (2026-09-14, @po).** `EPIC-001-auth-wiring.md` AC7 agora
-  cita explicitamente os dois middlewares removidos (`attachSupabaseAuth` e
-  `requireSupabaseAuth`/`auth-middleware.ts`), conforme QA-1.4-03.
+  cita explicitamente os dois middlewares removidos.
 
-@architect **propõe**, mas não declara, o fechamento do EPIC-001 — falta só AC8
-(ação humana na Vercel). Decisão de fechamento é do @po/@pm.
+@architect **propõe** o fechamento formal do EPIC-001 — todas as ACs satisfeitas,
+nenhum item aberto. Decisão de fechamento (mudar `Status` do epic para Done) é do
+@po/@pm. **Nota separada:** o repo tem commits locais não pushados para
+`origin/main` — isso não bloqueia o épico (é um passo de deploy, não de escopo),
+mas é `@devops`-exclusivo e precisa acontecer antes que qualquer coisa disso valha
+em produção de verdade.
 
 **Escopo adicional aprovado em 1.4:** além de `attachSupabaseAuth` (nomeado no AC7 do
 epic), a story também remove `src/integrations/supabase/auth-middleware.ts`
@@ -53,15 +62,13 @@ grounding e verificado pelo @po (zero importadores no repo). Texto do AC7 em
 `docs/framework/tech-stack.md` já citava `SESSION_SECRET`; não cita (0 ocorrências).
 A linha existente está em `docs/architecture.md:53`. AC4 corrigido pelo @po.
 
-**Bloqueio aberto em 1.5 (2026-09-14, @devops):** AC3 (`.env.example`), AC4
-(`tech-stack.md` § Secrets) e AC6 concluídos e commitados. **AC1 e AC2 continuam
-bloqueados por ação humana** — o CLI `vercel` não está instalado e o repo não está
-linkado (`.vercel/` só tem `output/`, sem `project.json`); o login é interativo.
-Comandos exatos para rodar em uma passada estão nas Completion Notes da story.
-⚠️ Sinal relevante: o `SESSION_SECRET` do `.env.local` tem 52 caracteres mas só 17
-distintos, todos minúsculos — formato de passphrase, não de 32 bytes aleatórios. Se
-o valor na Vercel veio da mesma origem, **AC2 deve falhar e exigir rotação**, o que
-desloga todos os usuários ativos.
+**Story 1.5 concluída em duas etapas:** AC3 (`.env.example`), AC4 (`tech-stack.md`
+§ Secrets) e AC6 em 2026-09-14 (@devops); AC1/AC2 em 2026-09-14 depois, quando o
+usuário autorizou e completou o login na Vercel. ⚠️ Sinal que motivou cautela:
+o `SESSION_SECRET` do `.env.local` (dev local) tem 52 caracteres mas só 17
+distintos — formato de passphrase, não de 32 bytes aleatórios. Na prática isso não
+se aplicava à Vercel: o valor lá não era fraco, **não existia**. O `.env.local`
+fraco continua como está (fora do escopo da story, uso local apenas).
 
 **Nota:** `docs/stories/README.md` está sincronizado com este arquivo.
 
@@ -101,3 +108,4 @@ Sem stories criadas ainda.
 | 2026-09-14 | @dev implementou 1.6 — **Ready → InProgress → InReview**. `.vercel` adicionado ao `ignores` do eslint, `"endOfLine": "auto"` no `.prettierrc`. Descoberto durante a implementação: destravar o hang expôs 38 erros pré-existentes em 10 arquivos nunca alcançados antes (37 `prettier/prettier` formatting, corrigidos via `eslint --fix`, diffs revisados a mão = só espaçamento/aspas; 1 falso positivo `react-hooks/rules-of-hooks` em `auth.server.ts` — `useSession` é o helper de sessão server-side do TanStack Start, não um React hook — suprimido com `eslint-disable-next-line` + comentário, sinalizado para escrutínio extra no QA gate por tocar arquivo de auth). `npm run lint` 4.45s exit 0 (era hang >180s / 460+ MB RSS); typecheck, build e simulação do pre-push todos exit 0                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | 2026-09-14 | @architect `*qa-gate` em 1.6 → **PASS** — **InReview → Done**. Gate: `docs/qa/gates/1.6-fix-repo-wide-lint.yml`. Re-verificado de forma independente: diffs de config re-lidos (1 linha cada, exatamente como reportado); mudança em `auth.server.ts` confirmada como somente comentário/disable (import de `useSession` re-confirmado como `@tanstack/react-start/server`); os outros 9 arquivos re-escaneados linha a linha, só formatação; `typecheck`/`lint`/`build` e a simulação do pre-push todos re-executados pelo gate, todos exit 0 (lint: 4.939s, era hang >180s). Primeiro **PASS** sem ressalvas do EPIC-001 (todos os anteriores foram CONCERNS). **AC9 do epic agora totalmente satisfeito.** Fechamento do epic segue pendente apenas de AC8 (humano, Vercel) e do texto do AC7                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | 2026-09-14 | @po amendou o texto do AC7 em `EPIC-001-auth-wiring.md` (QA-1.4-03): agora cita explicitamente os dois middlewares removidos na story 1.4 (`attachSupabaseAuth` e `requireSupabaseAuth`/`auth-middleware.ts`), não só o primeiro. Único item restante para o fechamento do EPIC-001 é AC8 (ação humana na Vercel)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| 2026-09-14 | **AC8 RESOLVIDO** com permissão do usuário em tempo real. `SESSION_SECRET` estava ausente de TODOS os ambientes na Vercel (não fraco — inexistente). Instalado `vercel` CLI; usuário completou `vercel login` (device flow); `vercel link` rodado (projeto `leticia-lehn/wiz-timetable`). Gerado `openssl rand -base64 32` localmente, adicionado via `vercel env add` em Production e Preview (stdin, nunca impresso), tipo `Secret` (oculto até de `vercel env pull`). Confirmado presente em ambos via `vercel env ls`. Sem rotação — sem valor prévio, ninguém foi deslogado. **Todas as 9 ACs do EPIC-001 estão agora satisfeitas; nenhum item aberto.** Fechamento formal do epic (mudar Status para Done) é decisão do @po/@pm                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
