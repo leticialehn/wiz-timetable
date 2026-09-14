@@ -72,6 +72,17 @@ issues:
       non-prod Supabase project/branch at this app temporarily, or explicitly approve
       creating + deleting one throwaway user in the connected (production) database.
       One walkthrough now covers 1.1 + 1.2 + will cover 1.3.
+    resolution: >
+      RESOLVED 2026-09-14. The earlier "Invalid server function ID" failure was a
+      stale-hash problem, not a fundamental blocker: server-fn ids are re-generated
+      per dev-server boot, so they must be scraped fresh from the running server's
+      transformed module (`GET /src/lib/<file>.ts`), not hardcoded. With fresh ids and
+      the existing `teste` test user, both AC3 and AC5 are now runtime-verified: a
+      protected mutation (`criarProfessora`) called with no session cookie returns
+      `"Não autorizado. Faça login."` before any DB access (AC3, logged-out RPC
+      rejected); logging in as `teste` and calling `getSessaoAtual` returns
+      `autenticado:true` with the correct session-derived `papeis` (AC5, logged-in
+      session works). Full sequence and evidence in `docs/estado.md` 2026-09-14.
 
   - id: QA-1.2-03
     severity: low

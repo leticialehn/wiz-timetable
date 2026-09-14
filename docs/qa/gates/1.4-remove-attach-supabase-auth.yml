@@ -78,6 +78,21 @@ issues:
       QA-1.2-02 and QA-1.3-04. One pass covers this story's AC5 too. This is also
       epic AC9's "manual auth walkthrough recorded" — it is the last
       code-side item blocking EPIC-001 closure.
+    resolution: >
+      RESOLVED 2026-09-14. Same session that closed QA-1.1-02 / QA-1.2-02 / QA-1.3-04
+      via direct HTTP calls to the dev server's server-fn RPC endpoints (Chrome
+      automation itself is blocked at the extension level on plain-HTTP navigation,
+      confirmed independent of this app). `requireAuthenticated` was observed firing
+      correctly post-removal of `attachSupabaseAuth`/`auth-middleware.ts`: an
+      unauthenticated call to `criarProfessora` returned
+      `"Não autorizado. Faça login."`, and a valid `teste` (secretaria) session both
+      passed the guard (confirmed via `getSessaoAtual`) and, after logout, was
+      correctly rejected again by the same check. This closes the runtime side of
+      AC5 — the static argument in this gate already covered the behavioural-change
+      question; this adds the live proof that the guard chain the story didn't touch
+      still works. Full run in `docs/estado.md` 2026-09-14. Epic AC9's walkthrough
+      requirement is now satisfied; QA-1.4-02 (lint tech debt) remains the only open
+      item under AC9.
 
   - id: QA-1.4-02
     severity: medium

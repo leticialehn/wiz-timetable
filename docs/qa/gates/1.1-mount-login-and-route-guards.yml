@@ -67,6 +67,21 @@ issues:
       or with a throwaway user that is then deleted. Record the result in QA Results.
       Risk is low (LoginForm/logout logic is small and mostly reused) but EPIC-001
       should not deploy without this walkthrough passing once.
+    resolution: >
+      RESOLVED 2026-09-14. Chrome browser automation remains blocked in this
+      environment — confirmed this session to be an extension-level restriction on
+      plain-HTTP navigation (neverssl.com, HTTP-only, also failed; example.com only
+      worked because Chrome auto-upgrades it to HTTPS), not an app defect and not
+      fixable from within a session. Ran the walkthrough instead as real HTTP calls
+      against the running dev server's TanStack Start server-fn RPC endpoints
+      (`/_serverFn/...`), using the existing `teste`/`teste123` (secretaria) test user:
+      wrong password → `{ok:false, erro:"Usuário ou senha incorretos"}`; correct login →
+      session cookie issued, `getSessaoAtual` reflects `autenticado:true` with the right
+      `papeis`; logout → `{ok:true}`, and the same now-cleared cookie is rejected by
+      both `getSessaoAtual` (`autenticado:false`) and a protected server function
+      (`"Não autorizado. Faça login."`). This is genuine runtime verification (live
+      server, real cookies, real Supabase-backed responses), not static inspection.
+      See `docs/estado.md` 2026-09-14 log entry for the full run.
 
   - id: QA-1.1-03
     severity: high

@@ -113,6 +113,21 @@ issues:
       walkthrough closes QA-1.1-02, QA-1.2-02, and this AC4 gap at once. Consider a
       SendFeedback report on the repeated Chrome automation tool failure if it
       recurs outside this session too.
+    resolution: >
+      RESOLVED 2026-09-14. The Chrome automation failure was root-caused this session:
+      it is an extension-level block on plain-HTTP navigation (reproduced against
+      neverssl.com, an HTTP-only site, independent of this app or of localhost), not
+      something fixable in-session. Ran the AC4 role-guard walkthrough via direct HTTP
+      calls to the dev server's server-fn RPC endpoints instead, using the 3 existing
+      test users: logged in as `teste_professor` (role "professor") and called
+      `criarProfessora` (secretaria-only) — rejected with
+      `"Não autorizado. Você não tem permissão para esta ação."`, the exact string
+      `requireRole` throws, with no DB row created (the guard fires before `admin()`
+      is even called, matching the code-level finding above). Also confirmed
+      `teste_coordenador` logs in correctly with `papeis:["coordenador"]`. All 3 test
+      users logged out again at the end of the session; none were created or deleted,
+      so QA-1.3-03's keep/remove decision is unaffected. Full run in `docs/estado.md`
+      2026-09-14.
 
 regression_check:
   guard_placement: "14/14 new requireRole calls confirmed as the first statement of their handler, before any admin()/sb() call — grep count per file matches expected (cadastros 6, calendario 2, grade 6)"
