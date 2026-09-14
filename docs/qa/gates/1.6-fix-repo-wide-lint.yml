@@ -1,0 +1,98 @@
+storyId: "1.6"
+storyTitle: "Fix repo-wide npm run lint (CRLF + .vercel eslint ignore)"
+epic: "EPIC-001"
+gateType: blocking
+verdict: PASS
+reviewer: "Aria (@architect)"
+reviewed_revision: "commit:ded3686"
+reviewed_at: "2026-09-14"
+
+summary: >
+  Verified independently, not from the dev report (Article IV): `git show ded3686`
+  read in full; the two config edits (`.vercel` in `eslint.config.js` ignores,
+  `"endOfLine": "auto"` in `.prettierrc`) are each exactly one line, matching the
+  story's claims precisely. `src/lib/auth.server.ts`'s diff is a comment +
+  `eslint-disable-next-line` only — no change to `getAuthSession()`'s behavior,
+  confirmed by reading the function and its single call site. `useSession`'s import
+  re-confirmed as `@tanstack/react-start/server`, not React — the
+  `react-hooks/rules-of-hooks` finding was correctly diagnosed as a naming-convention
+  false positive, not a real hook-usage bug. All 9 other touched files' diffs
+  independently re-scanned line-by-line: every change is quote-style, trailing-comma,
+  or line-wrap only — zero identifiers, operators, or logic tokens differ. Re-ran all
+  four verification commands myself rather than trusting the dev's numbers:
+  `npm run typecheck` exit 0, `npm run lint` (repo-wide, timed) 4.9s exit 0 (was a
+  180s+ hang with the eslint process observed at 460+ MB RSS and climbing),
+  `npm run build` exit 0, and `npx eslint .vercel` confirms the directory is excluded.
+  `core.autocrlf` confirmed still `true` (untouched) and no renormalize commit exists
+  in the story's range — AC4's scope boundary held.
+
+seven_checks:
+  code_review: PASS # two-line config fix at the story's core; the one non-config code change (auth.server.ts) is a comment + disable directive, independently confirmed behavior-neutral
+  unit_tests: CONCERNS # no test harness project-wide (EPIC-003) — inherited, identical to every prior EPIC-001 story
+  acceptance_criteria: PASS # all 6 ACs independently re-verified against the running repo, not just the dev's report
+  no_regressions: PASS # typecheck/build/lint all re-run clean; every non-config diff hand-scanned as formatting-only
+  performance: PASS # npm run lint went from a 180s+ hang / 460+ MB RSS climb to 4.9s — this is the finding, not a side effect
+  security: PASS # no security-relevant code touched; the auth.server.ts change is a lint suppression comment, zero behavioral surface
+  documentation: PASS # story's Dev Agent Record, Completion Notes, and File List are accurate against the actual commit; the mid-implementation scope discovery (38 pre-existing lint errors) is disclosed transparently rather than hidden, exactly per Article IV
+
+acceptance_criteria_status:
+  AC1_vercel_in_eslint_ignores: VERIFIED # eslint.config.js line 14, `.vercel` present; npx eslint .vercel confirms exclusion re-run by the gate
+  AC2_lint_completes_no_hang: VERIFIED # gate's own timed run: 4.939s, exit 0 (baseline was >180s, 460+ MB RSS and climbing)
+  AC3_zero_prettier_lineending_errors: VERIFIED # gate's own lint run: 0 errors of any kind, not just line-ending — the broader "zero prettier/prettier errors" reading of AC3 is satisfied
+  AC4_no_renormalize_or_autocrlf_change: VERIFIED # git config core.autocrlf still `true`; no `git add --renormalize` commit in the story's range; diff touches only eslint.config.js, .prettierrc, and 10 source files via eslint --fix (all consistent with an eslint/prettier-driven fix, not a git-level renormalize)
+  AC5_lint_typecheck_prepush_pass: VERIFIED # gate independently re-ran typecheck (exit 0), lint (exit 0), and the exact pre-push sequence `npm run typecheck && npm run lint` (exit 0)
+  AC6_build_still_succeeds: VERIFIED # gate independently re-ran npm run build — exit 0, Nitro/Vercel bundle generated
+
+scope_discovery_review: >
+  The story's AC list (as validated by @po) named only two config edits. Implementation
+  found that unblocking the .vercel hang exposed 38 previously-unreachable lint errors
+  across 10 files, which AC5's exit-0 requirement then obligated fixing. This gate's
+  independent read agrees this was the correct call, not scope creep: AC5 already
+  committed the story to "lint passes with exit 0" before any of these files were
+  touched, so satisfying it was not optional. The dev's choice to fix 37 of the 38
+  with an automated, reviewable tool (`eslint --fix`, prettier formatting only) and
+  hand-treat the one substantive finding (the auth.server.ts false positive) with the
+  most conservative fix available (a suppression comment, not a code or rule-scope
+  change) is the right level of intervention for a story whose own AC4 explicitly
+  warns against overreach. Nothing here needed @po's sign-off since no AC, title, or
+  scope statement changed — only the Dev Notes/Completion Notes/Tasks sections, which
+  are @dev's to write.
+
+regression_check:
+  config_diff_size: "eslint.config.js +1 line, .prettierrc +1 line — matches story claim exactly"
+  auth_server_diff: "comment + eslint-disable-next-line only; getAuthSession() body byte-identical apart from the directive; single call site (line 118) unchanged"
+  useSession_import_source: "@tanstack/react-start/server, re-confirmed by direct read — not react/react-dom"
+  formatting_only_diffs: "9 files (client.ts, client.server.ts, DeclaracaoAluno.tsx, HistoricoEditavel.tsx, 5× admin.relatorios_*.tsx) re-scanned line-by-line by the gate — no identifier, operator, or literal value differs, only whitespace/quotes/trailing commas"
+  typecheck: "npm run typecheck re-run by the gate — exit 0"
+  lint_timed: "npm run lint re-run by the gate — 4.939s, exit 0, 0 errors, 6 pre-existing unrelated warnings"
+  build: "npm run build re-run by the gate — exit 0"
+  prepush_simulation: "npm run typecheck && npm run lint re-run by the gate in sequence — exit 0"
+  autocrlf_untouched: "git config --get core.autocrlf still `true`"
+
+positive_findings:
+  epic_impact: >
+    This closes the last open item under EPIC-001 AC9 (repo-wide lint). Combined with
+    the auth walkthrough resolution already recorded in the 1.1-1.4 gates, epic AC9 is
+    now fully satisfied. EPIC-001 closure now depends only on AC8 (human action on
+    Vercel SESSION_SECRET) and the AC7 text amendment already queued for @po.
+  quality_gate_health: >
+    Every EPIC-001 story's QA gate from 1.3 onward was disrupted by this same lint
+    hang, forcing scoped/partial lint checks instead of the real repo-wide signal.
+    Future gates on this repo get their intended tool back.
+
+decision:
+  verdict: PASS
+  rationale: >
+    Both config edits are exactly as claimed and correctly targeted. The one
+    non-config code change is behavior-neutral and independently confirmed as such.
+    The 38 lint errors discovered mid-implementation were a direct, unavoidable
+    consequence of AC5 as already approved by @po — not invented scope — and were
+    resolved at the appropriate level of intervention (automated formatting fix for
+    the bulk, minimal targeted suppression for the one real finding). All 6 ACs
+    independently re-verified against a live re-run of every relevant command, not
+    trusted from the dev's report. PASS, not CONCERNS: this story has no open issues,
+    unlike every other EPIC-001 gate to date — the only inherited gap (no test
+    harness) is a project-wide EPIC-003 item that no individual story can close.
+  next_status: "InReview → Done"
+  follow_ups:
+    - "None blocking. EPIC-001 AC9 is now fully satisfied — @po/@pm to reassess epic closure alongside AC8 (still open, human action on Vercel) and the AC7 text amendment (QA-1.4-03)."
