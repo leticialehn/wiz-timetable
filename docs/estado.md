@@ -15,19 +15,32 @@
 
 `docs/stories/epics/EPIC-001-auth-wiring.md`
 
-| Story | Título                                                                                     | Status                                                         | Gate                                                    |
-| ----- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------- | ------------------------------------------------------- |
-| 1.1   | Mount login + route guards                                                                 | ✅ Done                                                        | CONCERNS (7, não bloqueantes) + fix pós-QA aplicado     |
-| 1.2   | Guard all data server functions (`requireAuthenticated`)                                   | ✅ Done                                                        | CONCERNS (4, não bloqueantes)                           |
-| 1.3   | Role checks on admin-only endpoints (`requireRole`)                                        | ✅ Done                                                        | ver `docs/qa/gates/`                                    |
-| 1.4   | [Remove `attachSupabaseAuth`; session hygiene](stories/1.4.remove-attach-supabase-auth.md) | 🔍 InReview (@architect)                                       | @dev: 2 arquivos mortos removidos; typecheck + build ✅ |
-| 1.5   | [Verify `SESSION_SECRET` in Vercel; ops doc](stories/1.5.verify-session-secret-vercel.md)  | 🔶 InReview (@devops) — AC3/AC4/AC6 feitos; AC1/AC2 bloqueados | aguardando @architect                                   |
+| Story | Título                                                                                     | Status                                                        | Gate                                                                                          |
+| ----- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| 1.1   | Mount login + route guards                                                                 | ✅ Done                                                       | CONCERNS (7, não bloqueantes) + fix pós-QA aplicado                                           |
+| 1.2   | Guard all data server functions (`requireAuthenticated`)                                   | ✅ Done                                                       | CONCERNS (4, não bloqueantes)                                                                 |
+| 1.3   | Role checks on admin-only endpoints (`requireRole`)                                        | ✅ Done                                                       | ver `docs/qa/gates/`                                                                          |
+| 1.4   | [Remove `attachSupabaseAuth`; session hygiene](stories/1.4.remove-attach-supabase-auth.md) | ✅ Done                                                       | CONCERNS (4, nenhum é defeito da story) — `docs/qa/gates/1.4-remove-attach-supabase-auth.yml` |
+| 1.5   | [Verify `SESSION_SECRET` in Vercel; ops doc](stories/1.5.verify-session-secret-vercel.md)  | ✅ Done — AC3/AC4/AC5/AC6; **AC1/AC2 continuam com o humano** | CONCERNS (1 alto: QA-1.5-01) — `docs/qa/gates/1.5-verify-session-secret-vercel.yml`           |
 
-**Bloqueia fechamento do epic:** AC7 (remover middleware no-op) e AC8
-(`SESSION_SECRET` confirmado) dependem de 1.4/1.5, ambas validadas em 2026-09-14 e
-ambas agora em **InReview** — 1.4 implementada por `@dev` (AC7 satisfeito no código),
-1.5 por `@devops`. AC9
-(typecheck/lint + walkthrough manual em nível de epic) ainda não consolidado.
+**Status do fechamento do epic (gate @architect, 2026-09-14):** as 5 stories estão
+**Done**. AC1–AC7 do epic estão satisfeitos. **AC8 e AC9 continuam abertos** e
+impedem declarar EPIC-001 completo:
+
+- **AC8 — NÃO fechado.** A story 1.5 está Done só na parte documental; a verificação
+  de presença/força do `SESSION_SECRET` na Vercel (AC1/AC2 da story) exige ação
+  humana. Ver QA-1.5-01 (severidade **alta**).
+- **AC9 — NÃO fechado.** Duas partes: (a) `npm run lint` repo-wide não passa por
+  dívida técnica pré-existente (QA-1.4-02: `.vercel` fora do `ignores` do eslint +
+  conflito `core.autocrlf` × `.gitattributes`) — precisa de story própria; (b) o
+  walkthrough manual de auth nunca foi executado (QA-1.1-02 / QA-1.2-02 / QA-1.3-04 /
+  QA-1.4-01) por falha do tooling de browser, não do app. Uma única passada fecha
+  todos.
+- **Texto do AC7 a corrigir** antes do fechamento (QA-1.4-03, já sinalizado pelo @po):
+  citar também `auth-middleware.ts`. Edição de AC pertence ao @po.
+
+@architect **propõe**, mas não declara, o fechamento do EPIC-001 condicionado a esses
+três itens. Decisão de fechamento é do @po/@pm.
 
 **Escopo adicional aprovado em 1.4:** além de `attachSupabaseAuth` (nomeado no AC7 do
 epic), a story também remove `src/integrations/supabase/auth-middleware.ts`
@@ -79,4 +92,5 @@ Sem stories criadas ainda.
 | 2026-09-14 | @sm drafted 1.4 (`1.4.remove-attach-supabase-auth.md`) e 1.5 (`1.5.verify-session-secret-vercel.md`); README.md sincronizado                                                                                                                                                                                                                                                                                                                                                                 |
 | 2026-09-14 | @po `*validate-story-draft`: 1.4 GO 9/10 e 1.5 GO 8/10 → ambas Draft → Ready. `[AUTO-DECISION]`s de 1.4 verificados contra o código-fonte; 1 claim incorreto em 1.5 corrigido                                                                                                                                                                                                                                                                                                                |
 | 2026-09-14 | @devops implementou 1.5 parcialmente → InReview. `.env.example` + `docs/framework/tech-stack.md` (§ Secrets) atualizados; AC1/AC2 (verificação na Vercel) bloqueados por falta de CLI/link — instruções na story                                                                                                                                                                                                                                                                             |
+| 2026-09-14 | @architect executou `*qa-gate` em 1.4 e 1.5 → ambas **CONCERNS**, ambas **InReview → Done**. Gates em `docs/qa/gates/1.4-*.yml` e `1.5-*.yml`. Claims de @dev/@devops re-verificados de forma independente (diffs lidos, arquivos conferidos em disco, grep repo-wide e `typecheck`/`eslint src/start.ts` re-executados, exit 0). EPIC-001 **não** declarado completo: AC8 (Vercel) e AC9 (lint repo-wide + walkthrough) seguem abertos                                                      |
 | 2026-09-14 | @dev implementou 1.4 → InReview. Removidos `src/integrations/supabase/auth-attacher.ts` (`attachSupabaseAuth`) e `auth-middleware.ts` (`requireSupabaseAuth`); `src/start.ts` agora com `functionMiddleware: []`. Grep pós-mudança = 0 referências; typecheck e build verdes (exit 0), lint limpo em `start.ts` (falhas de `eslint .` são CRLF pré-existentes em todo o repo: `core.autocrlf=true` vs `.gitattributes eol=lf`). AC5 por verificação estática (blocker de browser-automation) |

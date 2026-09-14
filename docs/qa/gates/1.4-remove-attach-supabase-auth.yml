@@ -1,0 +1,172 @@
+storyId: "1.4"
+storyTitle: "Remove attachSupabaseAuth; session hygiene"
+epic: "EPIC-001"
+gateType: blocking
+verdict: CONCERNS
+reviewer: "Aria (@architect)"
+reviewed_revision: "commit:b35d490"
+reviewed_at: "2026-09-14"
+
+summary: >
+  Verified independently, not from the dev report (Article IV): `git show b35d490`
+  read in full; both deleted files inspected in the diff before accepting the
+  "dead code" claim; `src/integrations/supabase/` listed on disk (only client.ts,
+  client.server.ts, types.ts remain); `src/start.ts` read on disk (functionMiddleware:
+  [], errorMiddleware intact, no stale import); repo-wide grep for
+  attachSupabaseAuth|requireSupabaseAuth|auth-attacher|auth-middleware re-run — zero
+  matches in src/ and zero anywhere outside docs/ except an unrelated AIOX framework
+  template; `npm run typecheck` re-run by the gate, exit 0; `npx eslint src/start.ts`
+  re-run by the gate, exit 0. The deletion is architecturally correct and the
+  "removed, not repurposed" reading of epic AC7 is sound: attachSupabaseAuth was a
+  *client* middleware attaching a Supabase-Auth bearer token that no server code has
+  ever read, and the escola-auth cookie it was imagined to help is httpOnly +
+  same-origin, i.e. attached by the browser with no middleware involved.
+  CONCERNS rather than PASS only for gaps inherited from the epic, not introduced
+  here: no test harness exists project-wide (EPIC-003), AC6's literal "npm run lint
+  passes" is satisfiable only file-scoped because a pre-existing CRLF/.gitattributes
+  conflict breaks repo-wide eslint, and AC5's runtime walkthrough is still blocked by
+  the same browser-automation failure open since 1.1. Nothing in this diff warrants
+  returning the story.
+
+seven_checks:
+  code_review: PASS # 2-line src diff, minimal and surgical; errorMiddleware correctly untouched; no stub left behind
+  unit_tests: CONCERNS # no test infra project-wide (EPIC-003) — inherited, identical to 1.1/1.2/1.3
+  acceptance_criteria: CONCERNS # AC1,2,3,4 fully verified by the gate; AC5 static-only; AC6 partial (repo-wide lint)
+  no_regressions: PASS # deleted symbols had zero importers after the one registration removed in the same commit; typecheck + eslint re-run clean by the gate
+  performance: PASS # net improvement — see note below
+  security: PASS # attack surface strictly reduced; no guard weakened
+  documentation: PASS # Dev Notes, IDS record and Completion Notes are accurate against source; the epic-AC7-text gap is correctly flagged rather than hidden
+
+acceptance_criteria_status:
+  AC1_attachSupabaseAuth_deleted: VERIFIED # file absent on disk; start.ts import line and functionMiddleware entry both gone in the diff; not stubbed
+  AC2_auth_middleware_deleted: VERIFIED # file absent on disk; 109-line deletion read in full in the diff — it validated a Supabase JWT from an Authorization header that no client ever sent
+  AC3_client_ts_untouched: VERIFIED # commit --stat shows only auth-attacher.ts, auth-middleware.ts, start.ts under src/; client.ts and client.server.ts absent from the diff entirely
+  AC4_grep_zero_matches: VERIFIED # re-run by the gate, not trusted from the report: zero matches in src/; outside src/ the only non-docs hit is .aiox-core/product/templates/fullstack-architecture-tmpl.yaml (unrelated generic wording)
+  AC5_no_behavioural_change: VERIFIED_BY_INSPECTION # static verification is unusually strong here (pure deletion of provably unreachable code, reasoning below), but no runtime walkthrough was performed — same open gap as QA-1.1-02 / QA-1.2-02 / QA-1.3-04
+  AC6_typecheck_lint_build: VERIFIED_PARTIAL # typecheck re-run by the gate exit 0; eslint src/start.ts re-run by the gate exit 0; build exit 0 per @dev (not re-run by the gate — no dangling-import risk remains once typecheck is clean); repo-wide `eslint .` does not pass for pre-existing reasons — see QA-1.4-02
+
+static_verification_rationale: >
+  AC5 was accepted without a runtime walkthrough because this change is a deletion of
+  code with no reachable call path, which static analysis can fully cover:
+  (a) requireSupabaseAuth had zero importers before the commit — it could never have
+  run, so deleting it cannot change behaviour by construction;
+  (b) attachSupabaseAuth had exactly one registration (start.ts functionMiddleware),
+  removed in the same commit, so no partially-unwired state exists;
+  (c) it was a `.client()` middleware whose only effect was
+  `next({ headers: token ? { Authorization: ... } : {} })`, and `token` came from
+  `supabase.auth.getSession()`, which is never populated because the app never calls
+  `supabase.auth.signIn*` — confirmed by the gate: `supabase.auth` now has zero
+  occurrences anywhere in src/;
+  (d) no server-side auth path reads an Authorization header — auth.server.ts reads
+  only the escola-auth cookie via useSession.
+  Therefore the removed middleware always sent an empty header bag, and its removal is
+  observationally identical to leaving it in place. This reasoning does not generalise
+  to 1.1–1.3, whose walkthrough gap remains genuinely open.
+
+issues:
+  - id: QA-1.4-01
+    severity: low
+    category: tests
+    description: >
+      No runtime walkthrough was performed (browser automation still failing in this
+      environment, unchanged since Story 1.1). For this story specifically the static
+      argument above is close to airtight, so this is recorded for epic-level
+      bookkeeping rather than as a real doubt about the diff.
+    location: "whole app — needs a working browser session or a manual click-through"
+    recommendation: >
+      Fold into the single outstanding walkthrough that already closes QA-1.1-02,
+      QA-1.2-02 and QA-1.3-04. One pass covers this story's AC5 too. This is also
+      epic AC9's "manual auth walkthrough recorded" — it is the last
+      code-side item blocking EPIC-001 closure.
+
+  - id: QA-1.4-02
+    severity: medium
+    category: code
+    description: >
+      Epic AC9 and this story's AC6 both require `npm run lint` to pass, and it does
+      not — repo-wide. Two independent pre-existing causes, neither introduced here:
+      (a) `core.autocrlf=true` locally vs `* text=auto eol=lf` in `.gitattributes`,
+      so prettier/prettier reports `Delete ␍` on every line of every file;
+      (b) `.vercel/` is gitignored but not in eslint's `ignores`, so `eslint .` walks
+      the generated Vercel bundle — this is what makes the run hang / get OOM-killed,
+      an issue that has now disrupted three consecutive gates (1.3, 1.4).
+      Zero non-`prettier/prettier` errors were reported anywhere, so this is formatting
+      noise masking a real quality gate, not latent bugs.
+    location: "eslint.config.js (ignores), .gitattributes vs local core.autocrlf"
+    recommendation: >
+      Raise as an explicit tech-debt story (suggest 1.6 or fold into EPIC-003's CI
+      work, which needs a working `eslint .` anyway): add `.vercel` to
+      eslint.config.js `ignores`, then normalise line endings once
+      (`git add --renormalize .`) or set `core.autocrlf=false` for this repo.
+      Until then, epic AC9 cannot be honestly claimed, and no story should be asked
+      to carry this debt individually. Explicitly waived for this story's gate at the
+      lead's direction — tracked separately, not a 1.4 defect.
+
+  - id: QA-1.4-03
+    severity: low
+    category: requirements
+    description: >
+      Epic AC7 still names only `attachSupabaseAuth`; this story also deleted
+      `auth-middleware.ts` (`requireSupabaseAuth`). The epic text understates what
+      was delivered. Already flagged by @po (−1 on validation) and by @dev in
+      Completion Notes — repeated here so it is not lost at epic closure.
+    location: "docs/stories/epics/EPIC-001-auth-wiring.md AC7"
+    recommendation: >
+      Amend AC7 to "The no-op `attachSupabaseAuth` middleware and the unused
+      `requireSupabaseAuth` middleware are removed" at epic closure. @po owns epic
+      AC text; @architect does not edit it unilaterally.
+
+  - id: QA-1.4-04
+    severity: low
+    category: code
+    description: >
+      `functionMiddleware: []` is now an empty array. Deliberate and correct (the
+      createStart type accepts it, typecheck confirms), and it usefully preserves the
+      hook for a future global server-side middleware. Noted only so a later reader
+      does not mistake it for leftover debris and delete the key.
+    location: "src/start.ts"
+    recommendation: >
+      Leave as-is. If a request-scoped session memoization lands (the fix for
+      QA-1.2-01 / QA-1.3-01), this empty array is the natural registration point.
+
+positive_findings:
+  performance: >
+    Net improvement, not merely neutral: attachSupabaseAuth ran
+    `await supabase.auth.getSession()` on the client before *every* server-function
+    RPC. That is an await on the Supabase Auth SDK (storage read, and potentially a
+    token-refresh attempt) on every mutation and query in the app, to produce an
+    empty header bag. Removing it takes one async hop off every RPC.
+  security: >
+    Attack surface strictly reduced. requireSupabaseAuth accepted a caller-supplied
+    `Bearer` token and built a Supabase client around it; it was unreachable, but it
+    was a live-looking, generated-file-labelled auth primitive sitting in the tree
+    next to the real one. Deleting it removes the risk that a future contributor
+    wires up the wrong auth model by accident. It also eliminates the last
+    `supabase.auth.*` call site in the codebase — the app now has exactly one auth
+    story, which was the stated goal.
+
+regression_check:
+  files_on_disk: "src/integrations/supabase/ contains only client.server.ts, client.ts, types.ts — both targets confirmed absent"
+  start_ts_clean: "read on disk by the gate: no auth-attacher import, functionMiddleware: [], errorMiddleware present and unmodified in requestMiddleware"
+  grep_sweep: "re-run by the gate over the whole repo, not just src/ — zero matches outside docs/ and one unrelated AIOX template"
+  typecheck: "npm run typecheck re-run by the gate — exit 0"
+  lint_scoped: "npx eslint src/start.ts re-run by the gate — exit 0"
+  live_clients_intact: "client.ts still imported by src/hooks/use-realtime-grade.ts:3 (verified by grep); client.server.ts absent from the diff"
+  supabase_auth_surface: "grep for `supabase.auth` across src/ now returns zero matches — no orphaned reference to the removed auth model"
+
+decision:
+  verdict: CONCERNS
+  rationale: >
+    The diff is correct, minimal, well-reasoned and independently re-verified end to
+    end by this gate. It is the cleanest change in EPIC-001 so far. CONCERNS rather
+    than PASS is a statement about the project's inherited gaps — no test harness, a
+    broken repo-wide lint, and a never-completed runtime walkthrough — not about this
+    story's work, which has no defects. PASS would misrepresent the evidence base
+    (`unit_tests` cannot be "OK" where no test runner exists); FAIL would be absurd
+    for a two-line deletion that removes provably unreachable code.
+  next_status: "InReview → Done"
+  follow_ups:
+    - "QA-1.4-01: one walkthrough closes AC5 here plus QA-1.1-02 / QA-1.2-02 / QA-1.3-04 and epic AC9"
+    - "QA-1.4-02: lint tech-debt (eslint ignores .vercel + line-ending normalisation) needs its own story — blocks epic AC9 independently"
+    - "QA-1.4-03: @po to amend epic AC7 text to name auth-middleware.ts at closure"
+    - "QA-1.4-04: keep functionMiddleware: [] as the hook for future request-scoped session memoization"

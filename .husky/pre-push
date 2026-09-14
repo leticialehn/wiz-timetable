@@ -1,1 +1,1 @@
-npx tsc --noEmit && npm run lint
+npm run typecheck && npm run lint
