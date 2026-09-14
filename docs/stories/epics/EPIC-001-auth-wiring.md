@@ -53,6 +53,7 @@ usuarios.functions.ts` calls `requireAuthenticated()` before touching data.
 | 1.3 | Role checks on admin-only endpoints (`requireRole`)      | @dev     | @architect |
 | 1.4 | Remove/repurpose `attachSupabaseAuth`; session hygiene   | @dev     | @architect |
 | 1.5 | Verify `SESSION_SECRET` in Vercel; ops doc               | @devops  | @architect |
+| 1.6 | Fix repo-wide `npm run lint` (CRLF + `.vercel` ignore)   | @dev     | @architect |
 
 ## Risks
 
