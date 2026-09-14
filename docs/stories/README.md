@@ -40,8 +40,8 @@ epic's first **PASS** (no CONCERNS), see `docs/qa/gates/1.6-fix-repo-wide-lint.y
 The manual auth walkthrough (QA-1.1-02/1.2-02/1.3-04/1.4-01) was **resolved**
 2026-09-14 via direct HTTP calls to the dev server's server-fn RPC endpoints (Chrome
 automation is blocked at the extension level on plain-HTTP navigation — not fixable
-in-session; see `docs/estado.md`). **Epic AC9 is now fully satisfied.** The epic is
+in-session; see `docs/estado.md`). **Epic AC9 is now fully satisfied**, and AC7's
+text was amended by `@po` (QA-1.4-03) to name both removed middlewares. The epic is
 still **not** closed: AC8 needs a human to verify/rotate `SESSION_SECRET` in Vercel
-(QA-1.5-01, high severity), and epic AC7's text needs a small amendment by `@po`
-(QA-1.4-03). See `docs/estado.md` for the closure checklist. 2.x remain to be drafted
-with `@sm *draft`.
+(QA-1.5-01, high severity) — the only item left. See `docs/estado.md` for the closure
+checklist. 2.x remain to be drafted with `@sm *draft`.

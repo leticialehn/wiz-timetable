@@ -38,8 +38,8 @@ usuarios.functions.ts` calls `requireAuthenticated()` before touching data.
    call `requireRole(["secretaria"])`.
 6. `professor` / `coordenador` can use the professora screens and their own alerts but
    receive an authorization error from admin-only endpoints.
-7. The no-op `attachSupabaseAuth` middleware is removed or repurposed to forward the
-   session cookie.
+7. The no-op `attachSupabaseAuth` middleware and the unused `requireSupabaseAuth`
+   middleware (`src/integrations/supabase/auth-middleware.ts`) are removed.
 8. `SESSION_SECRET` is confirmed set and strong in Vercel; documented in
    `docs/framework/tech-stack.md`.
 9. `npm run typecheck` and `npm run lint` pass; manual auth walkthrough recorded.
