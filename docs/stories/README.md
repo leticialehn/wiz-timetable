@@ -22,6 +22,17 @@ Status legend: **Draft** (@sm) → **Ready** (@po) → **InProgress** (@dev) →
 | 2.2   | Realtime strategy decision + implementation                                     | _not drafted_ | @data-engineer |
 | 2.3   | Verify + document RLS/GRANT/constraints for all tables                          | _not drafted_ | @data-engineer |
 
+## EPIC-006 — "Comercial" Class Type & Prospect Tracking (P2)
+
+`docs/stories/epics/EPIC-006-comercial-tipo-aula.md` — **blocked on EPIC-002 Story
+2.1 landing first** (needs a clean migration history before widening `tipo` CHECK
+constraints).
+
+| Story | Title                                                           | Status | Executor |
+| ----- | --------------------------------------------------------------- | ------ | -------- |
+| 6.1   | [Add "Comercial" horario type](6.1.add-comercial-tipo-aula.md)  | Draft  | @dev     |
+| 6.2   | ["Comercial" nav tab + prospect list](6.2.comercial-nav-tab.md) | Draft  | @dev     |
+
 ## EPIC-003 — Test harness + CI (P1, not yet drafted)
 
 Add `vitest`; cover `src/lib/` pure modules (`licoes.ts`, `alertas` helpers,
@@ -44,6 +55,11 @@ middlewares. AC8 was resolved with the user's live permission: `SESSION_SECRET` 
 missing from every Vercel environment (not weak — absent); a fresh high-entropy value
 was generated and added to Production and Preview (an add, not a rotation — no user
 was logged out). See `docs/estado.md` for full detail. EPIC-001's formal closure
-(flipping the epic `Status` field) is `@po`/`@pm`'s call. Separately: the repo has
-unpushed local commits — `@devops`-exclusive, needed before any of this is live.
-2.x remain to be drafted with `@sm *draft`.
+(flipping the epic `Status` field) is `@po`/`@pm`'s call. All commits are now
+pushed to `origin/main`.
+
+EPIC-006 ("Comercial" class type) was drafted 2026-09-14 from a user feature
+request — two stories, both Draft, both **blocked on EPIC-002 Story 2.1** landing
+first (a clean migration baseline before widening any `tipo` CHECK constraint).
+2.1 itself needs Supabase credentials from a human before `@data-engineer` can run
+it. 2.2/2.3 remain to be drafted with `@sm *draft`.
