@@ -7,13 +7,14 @@
 
 ## Runtime targets
 
-| Concern          | Choice                                                                             | Notes                                                                                                     |
-| ---------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Language         | TypeScript 5.8, `strict: true`                                                     | `target` ES2022, `moduleResolution: "Bundler"`, `noEmit`                                                  |
-| Package manager  | **bun** (`bun.lock`, `bunfig.toml`)                                                | `npm` also works locally; never commit `package-lock.json` (`.gitignore` + `.gitattributes` enforce this) |
-| Node (tooling)   | >= 18, tested on v24                                                               | husky / lint-staged / eslint run under Node                                                               |
-| Deploy target    | **Vercel** (`nitro: { preset: "vercel" }` in `vite.config.ts`)                     | Nitro builds the server bundle; `.vercel/output/` is the build artifact                                   |
-| SSR server entry | `src/server.ts` (custom `fetch` wrapper over `@tanstack/react-start/server-entry`) | Wraps catastrophic SSR errors into an HTML 500 page                                                       |
+| Concern           | Choice                                                                                    | Notes                                                                                                                   |
+| ----------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Language          | TypeScript 5.8, `strict: true`                                                            | `target` ES2022, `moduleResolution: "Bundler"`, `noEmit`                                                                |
+| Package manager   | **bun** (`bun.lock`, `bunfig.toml`)                                                       | `npm` also works locally; never commit `package-lock.json` (`.gitignore` + `.gitattributes` enforce this)               |
+| Node (tooling)    | >= 18, tested on v24                                                                      | husky / lint-staged / eslint run under Node                                                                             |
+| Deploy target     | **Vercel** (`nitro: { preset: "vercel" }` in `vite.config.ts`)                            | Nitro builds the server bundle; `.vercel/output/` is the build artifact                                                 |
+| SSR server entry  | `src/server.ts` (custom `fetch` wrapper over `@tanstack/react-start/server-entry`)        | Wraps catastrophic SSR errors into an HTML 500 page                                                                     |
+| Env vars (server) | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_PUBLISHABLE_KEY`, `SESSION_SECRET` | Set in Vercel **Production + Preview** and in local `.env`/`.env.local`. See § Secrets below and `docs/architecture.md` |
 
 > Historical note: comments in `src/lib/auth.server.ts` still reference Cloudflare
 > Workers / PBKDF2 100k-iteration limit. The active deploy preset is Vercel. Keep
@@ -78,6 +79,54 @@ Realtime: `useRealtimeGrade` subscribes to 8 tables on one channel and calls
 
 Pre-commit: `lint-staged` (eslint --fix + prettier on staged app files) then `tsc --noEmit`.
 Pre-push: `tsc --noEmit` then full `eslint`.
+
+## Secrets
+
+### `SESSION_SECRET`
+
+**What it is.** The encryption password for the `escola-auth` session cookie. It is
+read by `sessionConfig()` in `src/lib/auth.server.ts` and handed to
+`useSession()` from `@tanstack/react-start/server`, which derives a key from it
+(PBKDF2) and encrypts/decrypts the cookie on **every** request. Cookie flags:
+`httpOnly`, `secure`, `sameSite: "lax"`, `maxAge` 7 days.
+
+Because auth is hand-rolled (see "Not in the stack" below), this single value is
+what makes a session cookie unforgeable. A weak, guessable or leaked
+`SESSION_SECRET` lets an attacker mint a valid cookie for any `usuarioId` and walk
+straight past every guard added in Stories 1.1–1.3 (`beforeLoad` route guards,
+`requireAuthenticated`, `requireRole`). Treat it like a private key.
+
+**Where it must be set.**
+
+| Location            | Required | How                                                                                       |
+| ------------------- | -------- | ----------------------------------------------------------------------------------------- |
+| Vercel — Production | Yes      | Project → Settings → Environment Variables, or `vercel env add SESSION_SECRET production` |
+| Vercel — Preview    | Yes      | Same, scope `preview`. A missing value here breaks login on every PR preview deploy       |
+| Local dev           | Yes      | `.env` / `.env.local` (both git-ignored). `.env.example` carries a blank placeholder only |
+
+Never commit the real value — not to `.env.example`, not to a story file, not to
+git history.
+
+**Strength requirement.** At minimum 32 bytes of high-entropy randomness:
+
+```bash
+openssl rand -base64 32
+```
+
+A human-readable passphrase does not qualify, however long it looks. If the current
+value does not meet this bar, rotate it (`vercel env rm SESSION_SECRET production`
+then `vercel env add SESSION_SECRET production`, and the same for `preview`).
+**Rotating invalidates every existing session** — all logged-in
+secretaria/professor/coordenador users are forced to log in again on their next
+request. Announce it before rolling out. No code change or redeploy of application
+code is needed; the value is read from `process.env` at runtime.
+
+**What happens if it's missing.** `sessionConfig()` throws
+`"SESSION_SECRET não configurado"`. Per the fail-closed fix from Story 1.1,
+`src/routes/__root.tsx`'s `beforeLoad` catches the throw and renders the login
+screen instead of a 500 — so the app does not crash, but **no one can authenticate**
+until the variable is set. The symptom is a login page that never lets anyone in,
+not an error page, which makes this failure mode easy to misdiagnose.
 
 ## Not in the stack (do not add without a decision)
 
