@@ -16,6 +16,10 @@ function sessionConfig() {
 }
 
 export async function getAuthSession() {
+  // Not a React hook: `useSession` is TanStack Start's server-side session
+  // helper (@tanstack/react-start/server). eslint-plugin-react-hooks flags it
+  // by name convention only — this file has no React components.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   return useSession<AuthSession>(sessionConfig());
 }
 

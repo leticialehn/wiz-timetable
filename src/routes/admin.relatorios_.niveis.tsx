@@ -22,7 +22,9 @@ function NiveisPage() {
   const porNivel = useMemo(() => {
     const contagem = new Map<string, number>();
     for (const a of alunos) contagem.set(a.nivel, (contagem.get(a.nivel) ?? 0) + 1);
-    return NIVEIS.map((n) => ({ nivel: n, total: contagem.get(n) ?? 0 })).filter((n) => n.total > 0);
+    return NIVEIS.map((n) => ({ nivel: n, total: contagem.get(n) ?? 0 })).filter(
+      (n) => n.total > 0,
+    );
   }, [alunos]);
 
   const porGrupo = useMemo(() => {
@@ -31,7 +33,10 @@ function NiveisPage() {
       const g = grupoDoNivel(a.nivel);
       contagem.set(g, (contagem.get(g) ?? 0) + 1);
     }
-    return (["kids", "teens", "adultos"] as const).map((g) => ({ grupo: g, total: contagem.get(g) ?? 0 }));
+    return (["kids", "teens", "adultos"] as const).map((g) => ({
+      grupo: g,
+      total: contagem.get(g) ?? 0,
+    }));
   }, [alunos]);
 
   return (

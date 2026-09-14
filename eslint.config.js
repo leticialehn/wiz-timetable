@@ -11,6 +11,7 @@ export default tseslint.config(
       "dist",
       ".output",
       ".vinxi",
+      ".vercel",
       "src/routeTree.gen.ts",
       // Vendored / generated tooling — not application code
       ".aiox-core/**",

@@ -72,7 +72,9 @@ function FaltasPage() {
   });
 
   function navegar(direcao: -1 | 1) {
-    setReferencia((r) => (periodo === "semana" ? somarSemanas(r, direcao) : somarMeses(r, direcao)));
+    setReferencia((r) =>
+      periodo === "semana" ? somarSemanas(r, direcao) : somarMeses(r, direcao),
+    );
   }
 
   function exportarCSV() {

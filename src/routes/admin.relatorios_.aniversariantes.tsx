@@ -78,7 +78,9 @@ function AniversariantesPage() {
             </button>
           </div>
           {porMes[mesRef].length === 0 ? (
-            <p className="text-muted-foreground text-sm">Nenhum aniversariante em {nomeDoMes(mesRef)}.</p>
+            <p className="text-muted-foreground text-sm">
+              Nenhum aniversariante em {nomeDoMes(mesRef)}.
+            </p>
           ) : (
             <ul className="space-y-1.5">
               {porMes[mesRef].map((a) => (
@@ -101,7 +103,10 @@ function AniversariantesPage() {
                   </h2>
                   <ul className="space-y-1.5">
                     {lista.map((a) => (
-                      <li key={a.aluno_id} className="rounded-lg border border-border px-3 py-2 text-sm">
+                      <li
+                        key={a.aluno_id}
+                        className="rounded-lg border border-border px-3 py-2 text-sm"
+                      >
                         <span className="font-medium">Dia {a.dia}</span> — {a.nome}{" "}
                         <span className="text-muted-foreground">({a.nivel})</span>
                       </li>

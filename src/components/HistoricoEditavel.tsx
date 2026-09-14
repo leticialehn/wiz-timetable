@@ -252,8 +252,8 @@ export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
         </select>
       </h1>
       <p className="text-[10px] text-amber-600 dark:text-amber-400 mb-2">
-        Isso é só pra corrigir um lançamento errado (reescreve TODAS as lições abaixo). Pra avançar de
-        nível de verdade, edite na aba Alunos — o livro antigo fica intacto no boletim.
+        Isso é só pra corrigir um lançamento errado (reescreve TODAS as lições abaixo). Pra avançar
+        de nível de verdade, edite na aba Alunos — o livro antigo fica intacto no boletim.
       </p>
       <p className="text-[10px] text-muted-foreground mb-4">
         O - Ótimo &nbsp; MB - Muito Bom &nbsp; B - Bom &nbsp; R - Regular &nbsp;&nbsp; P - Presente
@@ -300,7 +300,9 @@ export function HistoricoEditavel({ alunoId }: { alunoId: string }) {
                   <tr key={item.chave} className="border-t border-border">
                     <td className="px-2 py-1.5 whitespace-nowrap">{formatarDataBR(item.data)}</td>
                     <td className="px-2 py-1.5 whitespace-nowrap">
-                      {item.horario_especifico || HORARIO_INICIO_PERIODO[item.periodo] || item.periodo}
+                      {item.horario_especifico ||
+                        HORARIO_INICIO_PERIODO[item.periodo] ||
+                        item.periodo}
                       {item.parte > 1 && (
                         <span className="text-muted-foreground"> ({item.parte}ª lição)</span>
                       )}

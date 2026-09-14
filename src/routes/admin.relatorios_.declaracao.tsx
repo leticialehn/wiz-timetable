@@ -32,7 +32,9 @@ function DeclaracaoPage() {
       >
         ← Voltar a Relatórios
       </Link>
-      <h1 className="print:hidden text-2xl font-semibold mb-4">Declaração de matrícula e frequência</h1>
+      <h1 className="print:hidden text-2xl font-semibold mb-4">
+        Declaração de matrícula e frequência
+      </h1>
 
       <BuscaAluno alunos={alunos} selecionado={alunoSelecionado} onSelecionar={setAlunoId} />
 

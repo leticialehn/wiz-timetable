@@ -51,7 +51,9 @@ function LeadsPage() {
         <div className="text-muted-foreground">Carregando…</div>
       ) : filtrados.length === 0 ? (
         <p className="text-muted-foreground text-sm">
-          {data.length === 0 ? "Nenhum lead registrado ainda." : "Nenhum lead encontrado com essa busca."}
+          {data.length === 0
+            ? "Nenhum lead registrado ainda."
+            : "Nenhum lead encontrado com essa busca."}
         </p>
       ) : (
         <ul className="space-y-2">

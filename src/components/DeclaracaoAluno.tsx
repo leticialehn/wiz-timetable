@@ -41,9 +41,7 @@ export function DeclaracaoAluno({ alunoId }: { alunoId: string }) {
         Declaramos, para os devidos fins, que <strong>{aluno.nome}</strong> está regularmente
         matriculado(a) e frequentando as aulas de inglês na Wizard, atualmente no nível{" "}
         <strong>{aluno.nivel}</strong>
-        {resumo.dataInicioNivel
-          ? `, iniciado em ${formatarDataBR(resumo.dataInicioNivel)}.`
-          : "."}
+        {resumo.dataInicioNivel ? `, iniciado em ${formatarDataBR(resumo.dataInicioNivel)}.` : "."}
       </p>
 
       {frequenciaPct !== null && (
