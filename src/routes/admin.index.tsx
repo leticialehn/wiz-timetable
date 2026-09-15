@@ -177,30 +177,34 @@ function GradePage() {
   }
 
   return (
-    <main className="max-w-[1400px] mx-auto px-4 py-6">
-      <div className="sticky top-[59px] z-10 bg-background pt-2 -mx-4 px-4">
-        <div className="flex flex-wrap items-center gap-3 mb-4">
-          <button
-            onClick={() => setDataSegunda(somarSemanas(dataSegunda, -1))}
-            className="px-3 py-1.5 rounded-md border border-border hover:bg-accent bg-card"
-          >
-            ← Semana anterior
-          </button>
-          <button
-            onClick={() => {
-              setDataSegunda(toISODate(segundaDaSemana()));
-              setDiaAtivo(diaAtivoHoje());
-            }}
-            className="px-3 py-1.5 rounded-md border border-border hover:bg-accent bg-card"
-          >
-            Hoje
-          </button>
-          <button
-            onClick={() => setDataSegunda(somarSemanas(dataSegunda, 1))}
-            className="px-3 py-1.5 rounded-md border border-border hover:bg-accent bg-card"
-          >
-            Próxima semana →
-          </button>
+    <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
+      <div className="sticky top-[65px] z-10 bg-background pt-2 -mx-4 px-4 sm:-mx-6 sm:px-6">
+        <div className="flex flex-wrap items-center gap-2.5 mb-3 rounded-xl border border-border bg-card px-3 py-2.5 shadow-[0_1px_2px_-1px_rgb(0_0_0_/_0.05)]">
+          <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-background">
+            <button
+              onClick={() => setDataSegunda(somarSemanas(dataSegunda, -1))}
+              title="Semana anterior"
+              className="px-2.5 py-1.5 rounded-md text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <span aria-hidden="true">←</span> Anterior
+            </button>
+            <button
+              onClick={() => {
+                setDataSegunda(toISODate(segundaDaSemana()));
+                setDiaAtivo(diaAtivoHoje());
+              }}
+              className="px-3 py-1.5 rounded-md text-sm font-semibold text-primary transition-colors hover:bg-primary/10"
+            >
+              Hoje
+            </button>
+            <button
+              onClick={() => setDataSegunda(somarSemanas(dataSegunda, 1))}
+              title="Próxima semana"
+              className="px-2.5 py-1.5 rounded-md text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              Próxima <span aria-hidden="true">→</span>
+            </button>
+          </div>
           {data && (
             <BuscaAlunoNaSemana
               alunos={data.alunos}
@@ -210,7 +214,10 @@ function GradePage() {
               onIrParaDia={setDiaAtivo}
             />
           )}
-          <div className="ml-auto text-sm text-muted-foreground">
+          <div className="ml-auto flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+            <span aria-hidden="true" className="text-xs opacity-60">
+              🗓
+            </span>
             Semana de {formatarDataBR(datas[0])} a {formatarDataBR(datas[5])}
           </div>
         </div>
@@ -220,13 +227,13 @@ function GradePage() {
             <button
               key={d.n}
               onClick={() => setDiaAtivo(d.n)}
-              className={`px-4 py-2.5 rounded-md transition-all ${
+              className={`px-4 py-2 rounded-lg text-sm transition-colors ${
                 diaAtivo === d.n
-                  ? "text-base font-bold text-primary bg-primary/10 border-2 border-primary shadow-sm"
-                  : "text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent bg-card border border-border"
+                  ? "font-semibold text-primary bg-primary/10 border border-primary/30"
+                  : "font-medium text-muted-foreground hover:text-foreground hover:bg-accent bg-card border border-border"
               }`}
             >
-              {d.nome} <span className="opacity-70">{formatarDataBR(datas[i])}</span>
+              {d.nome} <span className="opacity-60 font-normal">{formatarDataBR(datas[i])}</span>
             </button>
           ))}
         </div>
@@ -304,17 +311,17 @@ function GradeTabela(props: {
   const { professoras, celulas, horariosConfig, diaSemana, dataDoDia, calendarioExcecoes } = props;
   const periodos = periodosDoDia(diaSemana);
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full border-collapse">
+    <div className="overflow-x-auto rounded-xl border border-border bg-card p-2 shadow-[0_1px_3px_-1px_rgb(0_0_0_/_0.06)]">
+      <table className="w-full" style={{ borderCollapse: "separate", borderSpacing: "5px 5px" }}>
         <thead>
           <tr>
-            <th className="w-16 border border-border bg-muted text-xs font-medium text-muted-foreground p-2">
+            <th className="w-16 rounded-lg bg-muted/60 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground p-2">
               Per.
             </th>
             {professoras.map((p) => (
               <th
                 key={p.id}
-                className="border border-border p-3 font-semibold text-sm"
+                className="rounded-t-lg p-3 text-center text-sm font-semibold"
                 style={{ backgroundColor: p.cor, color: corTextoLegivel(p.cor) }}
               >
                 {p.nome}
@@ -326,11 +333,9 @@ function GradeTabela(props: {
           {periodos.map((per) => (
             <tr key={per}>
               <td
-                className="border border-border bg-muted text-center text-sm font-medium p-2"
-                style={{
-                  borderBottomWidth: per === 4 && diaSemana !== 6 ? 16 : undefined,
-                  borderBottomColor: per === 4 && diaSemana !== 6 ? "var(--border)" : undefined,
-                }}
+                className={`rounded-lg bg-muted/60 text-center text-sm font-semibold text-foreground/80 p-2 align-middle ${
+                  per === 5 && diaSemana !== 6 ? "border-t-2 border-border" : ""
+                }`}
               >
                 {HORARIO_INICIO_PERIODO[per]}
               </td>
@@ -341,12 +346,12 @@ function GradeTabela(props: {
                 return (
                   <td
                     key={p.id}
-                    className={`border border-border align-top p-1.5 min-w-[170px] ${tipoCellBg(tipo)}`}
+                    className={`rounded-lg border border-border/60 align-top p-2 min-w-[170px] ${tipoCellBg(tipo)} ${
+                      per === 5 && diaSemana !== 6 ? "border-t-2 border-t-border" : ""
+                    }`}
                     style={{
-                      borderLeftColor: p.cor,
-                      borderLeftWidth: 4,
-                      borderBottomColor: p.cor,
-                      borderBottomWidth: per === 4 && diaSemana !== 6 ? 16 : 4,
+                      borderTopColor: per === 5 && diaSemana !== 6 ? undefined : p.cor,
+                      borderTopWidth: per === 5 && diaSemana !== 6 ? undefined : 3,
                     }}
                   >
                     <div className="group relative min-h-[9rem]">
@@ -430,10 +435,14 @@ function CelulaConteudo({
   onDestrancarVaga: () => Promise<void>;
 }) {
   if (TIPO_FECHADO[tipo]) {
+    const icone = tipo === "break" ? "☕" : tipo === "preparacao_homework" ? "📝" : "🚫";
     return (
-      <div className="text-center py-2">
-        <div className="text-xs font-bold uppercase tracking-wide">{ROTULO_TIPO[tipo]}</div>
-        {cfg?.tema && <div className="text-[11px] mt-1 opacity-80">{cfg.tema}</div>}
+      <div className="flex h-full min-h-[8.5rem] flex-col items-center justify-center gap-1 py-2 text-center opacity-80">
+        <span aria-hidden="true" className="text-sm leading-none opacity-50">
+          {icone}
+        </span>
+        <div className="text-[11px] font-semibold uppercase tracking-wide">{ROTULO_TIPO[tipo]}</div>
+        {cfg?.tema && <div className="text-[11px] opacity-80">{cfg.tema}</div>}
       </div>
     );
   }
@@ -545,17 +554,17 @@ function CelulaConteudo({
   }
 
   return (
-    <div className="space-y-0.5 pr-3">
+    <div className="space-y-1 pr-2">
       {tipo !== "regular" && (
-        <div className="flex items-center justify-between gap-1 mb-0.5">
-          <span className="text-[10px] uppercase font-bold opacity-70">{ROTULO_TIPO[tipo]}</span>
-          <span className="text-[10px] opacity-70">
+        <div className="flex items-baseline justify-between gap-1.5 mb-1">
+          <span className="text-[11px] font-bold uppercase tracking-wide">{ROTULO_TIPO[tipo]}</span>
+          <span className="text-[10px] font-medium tabular-nums opacity-55">
             {ocupamVaga}/{capDisponivel}
           </span>
         </div>
       )}
-      {cfg?.tema && <div className="text-[11px] italic opacity-80 leading-tight">{cfg.tema}</div>}
-      {linhas}
+      {cfg?.tema && <div className="text-[11px] italic opacity-70 leading-tight">{cfg.tema}</div>}
+      <div className="space-y-1">{linhas}</div>
     </div>
   );
 }
@@ -692,11 +701,11 @@ function LinhaPreenchida({
 
   return (
     <div
-      className={`group/linha flex items-center gap-1 text-[12px] leading-tight rounded ${
+      className={`group/linha flex items-center gap-1 text-[12px] leading-tight rounded-md ${
         excecao
-          ? "border border-rose-500 bg-rose-500/10 px-1"
+          ? "border border-rose-400/70 bg-rose-500/[0.07] px-1.5 py-0.5"
           : aniversario
-            ? "border border-rose-500 px-1"
+            ? "border border-rose-400/70 px-1.5 py-0.5"
             : ""
       } ${horarioAvulso ? "text-blue-600 dark:text-blue-400" : ""} ${c.avisou_falta ? "opacity-50" : ""}`}
       title={
@@ -731,7 +740,11 @@ function LinhaPreenchida({
           </span>
         )}
       </button>
-      {mostraLivro && c.aluno_nivel && <span className="shrink-0 opacity-70">{c.aluno_nivel}</span>}
+      {mostraLivro && c.aluno_nivel && (
+        <span className="shrink-0 min-w-[26px] text-right text-[11px] font-medium opacity-60">
+          {c.aluno_nivel}
+        </span>
+      )}
       {excecao && <span className="shrink-0">🎉</span>}
       {aniversario && <span className="shrink-0">🎂{diaAniversario}</span>}
       {c.aluno_avulso && <span className="shrink-0 text-[9px] uppercase opacity-70">avulso</span>}
@@ -871,7 +884,7 @@ function LinhaVaziaEditavel({
         <button
           type="button"
           onClick={() => setEditando(true)}
-          className="min-w-0 flex-1 border-b border-dashed border-muted-foreground text-left text-[12px] leading-relaxed text-transparent hover:border-foreground"
+          className="min-w-0 flex-1 border-b border-dashed border-muted-foreground/35 text-left text-[12px] leading-relaxed text-transparent hover:border-muted-foreground/70"
         >
           &nbsp;
         </button>

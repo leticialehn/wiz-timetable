@@ -27,7 +27,7 @@ export function LogoutButton({ className }: { className?: string }) {
       disabled={loading}
       className={
         className ??
-        "rounded-md border border-border px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50"
+        "rounded-lg border border-border px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
       }
     >
       {loading ? "Saindo…" : "Sair"}
