@@ -185,6 +185,8 @@ function UsuarioLinha({
   onRedefinirSenha: (novaSenha: string) => void;
   onRemover: () => void;
 }) {
+  const [confirmandoRemocao, setConfirmandoRemocao] = useState(false);
+
   function togglePapel(p: Papel, checked: boolean) {
     const novosPapeis = checked ? [...usuario.papeis, p] : usuario.papeis.filter((x) => x !== p);
     onSalvar({
@@ -219,12 +221,33 @@ function UsuarioLinha({
         >
           Redefinir senha
         </button>
-        <button
-          onClick={() => confirm(`Remover ${usuario.nome}?`) && onRemover()}
-          className="text-xs px-2 py-1 rounded border border-border hover:bg-destructive hover:text-destructive-foreground"
-        >
-          Remover
-        </button>
+        {confirmandoRemocao ? (
+          <span className="flex items-center gap-1">
+            <span className="text-xs text-destructive">Remover {usuario.nome}?</span>
+            <button
+              onClick={() => {
+                setConfirmandoRemocao(false);
+                onRemover();
+              }}
+              className="text-xs px-2 py-1 rounded border border-destructive bg-destructive text-destructive-foreground"
+            >
+              Confirmar
+            </button>
+            <button
+              onClick={() => setConfirmandoRemocao(false)}
+              className="text-xs px-2 py-1 rounded border border-border hover:bg-accent"
+            >
+              Cancelar
+            </button>
+          </span>
+        ) : (
+          <button
+            onClick={() => setConfirmandoRemocao(true)}
+            className="text-xs px-2 py-1 rounded border border-border hover:bg-destructive hover:text-destructive-foreground"
+          >
+            Remover
+          </button>
+        )}
       </div>
       <div className="flex flex-wrap items-center gap-4">
         {PAPEIS.map((p) => (
