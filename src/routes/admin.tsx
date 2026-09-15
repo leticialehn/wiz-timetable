@@ -18,57 +18,61 @@ function AdminShell() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="print:hidden border-b border-border bg-card sticky top-0 z-20">
-        <div className="max-w-[1400px] mx-auto px-4 py-3 flex items-center gap-4 flex-wrap">
-          <Link to="/admin" activeOptions={{ exact: true }} className="font-bold text-lg">
+      <header className="print:hidden border-b border-border bg-card/95 backdrop-blur-sm sticky top-0 z-20 shadow-[0_1px_2px_-1px_rgb(0_0_0_/_0.06)]">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-3.5 flex items-center gap-6 flex-wrap">
+          <Link
+            to="/admin"
+            activeOptions={{ exact: true }}
+            className="font-bold text-lg tracking-tight text-foreground shrink-0"
+          >
             Wizard Timetable
           </Link>
-          <nav className="flex gap-1 text-sm">
+          <nav className="flex items-center gap-1 text-sm">
             <Link
               to="/admin/alunos"
-              activeProps={{ className: "bg-accent" }}
-              className="px-3 py-1.5 rounded-md hover:bg-accent"
+              activeProps={{ className: "bg-accent text-foreground" }}
+              className="px-3.5 py-2 rounded-lg font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               Alunos
             </Link>
             <Link
               to="/admin/relatorios"
-              activeProps={{ className: "bg-accent" }}
-              className="px-3 py-1.5 rounded-md hover:bg-accent"
+              activeProps={{ className: "bg-accent text-foreground" }}
+              className="px-3.5 py-2 rounded-lg font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               Relatórios
             </Link>
             <Link
               to="/admin/calendario"
-              activeProps={{ className: "bg-accent" }}
-              className="px-3 py-1.5 rounded-md hover:bg-accent"
+              activeProps={{ className: "bg-accent text-foreground" }}
+              className="px-3.5 py-2 rounded-lg font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               Calendário
             </Link>
             <Link
               to="/admin/professoras"
-              activeProps={{ className: "bg-accent" }}
-              className="px-3 py-1.5 rounded-md hover:bg-accent"
+              activeProps={{ className: "bg-accent text-foreground" }}
+              className="px-3.5 py-2 rounded-lg font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               Professoras
             </Link>
             <Link
               to="/admin/alertas"
-              activeProps={{ className: "bg-accent" }}
-              className="px-3 py-1.5 rounded-md hover:bg-accent flex items-center gap-1"
+              activeProps={{ className: "bg-accent text-foreground" }}
+              className="px-3.5 py-2 rounded-lg font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground flex items-center gap-1.5"
             >
               Alertas
               {pendentes > 0 && (
-                <span className="text-xs px-1.5 py-0.5 rounded-full bg-orange-500 text-white font-medium">
+                <span className="text-[11px] leading-none px-1.5 py-1 rounded-full bg-orange-500 text-white font-semibold">
                   {pendentes}
                 </span>
               )}
             </Link>
           </nav>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2.5">
             <Link
               to="/professora"
-              className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-accent"
+              className="text-sm font-medium px-3.5 py-2 rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               Ver tela da professora
             </Link>
