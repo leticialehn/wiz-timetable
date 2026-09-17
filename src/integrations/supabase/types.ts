@@ -6,6 +6,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5";
   };
+  graphql_public: {
+    Tables: {
+      [_ in never]: never;
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json;
+          operationName?: string;
+          query?: string;
+          variables?: Json;
+        };
+        Returns: Json;
+      };
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
+    };
+  };
   public: {
     Tables: {
       alertas_status: {
@@ -67,33 +92,6 @@ export type Database = {
           },
         ];
       };
-      calendario_excecoes: {
-        Row: {
-          created_at: string;
-          data: string;
-          descricao: string;
-          grupo: string;
-          id: string;
-          tipo: string;
-        };
-        Insert: {
-          created_at?: string;
-          data: string;
-          descricao: string;
-          grupo: string;
-          id?: string;
-          tipo: string;
-        };
-        Update: {
-          created_at?: string;
-          data?: string;
-          descricao?: string;
-          grupo?: string;
-          id?: string;
-          tipo?: string;
-        };
-        Relationships: [];
-      };
       alunos: {
         Row: {
           ativo: boolean;
@@ -135,6 +133,66 @@ export type Database = {
           situacao?: string;
         };
         Relationships: [];
+      };
+      aulas_licoes: {
+        Row: {
+          aluno_id: string;
+          created_at: string;
+          data: string;
+          horario_especifico: string;
+          id: string;
+          licao: string;
+          nivel_no_momento: string;
+          parte: number;
+          periodo: number;
+          praticado: boolean;
+          professora_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          aluno_id: string;
+          created_at?: string;
+          data: string;
+          horario_especifico?: string;
+          id?: string;
+          licao: string;
+          nivel_no_momento: string;
+          parte?: number;
+          periodo: number;
+          praticado?: boolean;
+          professora_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          aluno_id?: string;
+          created_at?: string;
+          data?: string;
+          horario_especifico?: string;
+          id?: string;
+          licao?: string;
+          nivel_no_momento?: string;
+          parte?: number;
+          periodo?: number;
+          praticado?: boolean;
+          professora_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "aulas_licoes_aluno_id_fkey";
+            columns: ["aluno_id"];
+            isOneToOne: false;
+            referencedRelation: "alunos";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "aulas_licoes_professora_id_fkey";
+            columns: ["professora_id"];
+            isOneToOne: false;
+            referencedRelation: "professoras";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       aulas_notas: {
         Row: {
@@ -259,65 +317,32 @@ export type Database = {
           },
         ];
       };
-      aulas_licoes: {
+      calendario_excecoes: {
         Row: {
-          aluno_id: string;
           created_at: string;
           data: string;
-          horario_especifico: string;
+          descricao: string;
+          grupo: string;
           id: string;
-          licao: string;
-          nivel_no_momento: string;
-          parte: number;
-          periodo: number;
-          praticado: boolean;
-          professora_id: string;
-          updated_at: string;
+          tipo: string;
         };
         Insert: {
-          aluno_id: string;
           created_at?: string;
           data: string;
-          horario_especifico?: string;
+          descricao: string;
+          grupo: string;
           id?: string;
-          licao: string;
-          nivel_no_momento: string;
-          parte?: number;
-          periodo: number;
-          praticado?: boolean;
-          professora_id: string;
-          updated_at?: string;
+          tipo: string;
         };
         Update: {
-          aluno_id?: string;
           created_at?: string;
           data?: string;
-          horario_especifico?: string;
+          descricao?: string;
+          grupo?: string;
           id?: string;
-          licao?: string;
-          nivel_no_momento?: string;
-          parte?: number;
-          periodo?: number;
-          praticado?: boolean;
-          professora_id?: string;
-          updated_at?: string;
+          tipo?: string;
         };
-        Relationships: [
-          {
-            foreignKeyName: "aulas_licoes_aluno_id_fkey";
-            columns: ["aluno_id"];
-            isOneToOne: false;
-            referencedRelation: "alunos";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "aulas_licoes_professora_id_fkey";
-            columns: ["professora_id"];
-            isOneToOne: false;
-            referencedRelation: "professoras";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
       excecoes_semana: {
         Row: {
@@ -464,7 +489,7 @@ export type Database = {
           periodo: number;
           professora_id: string;
           tema?: string | null;
-          tipo?: string;
+          tipo: string;
           vagas_fechadas?: number;
         };
         Update: {
@@ -483,6 +508,65 @@ export type Database = {
             columns: ["professora_id"];
             isOneToOne: false;
             referencedRelation: "professoras";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      professoras: {
+        Row: {
+          ativa: boolean;
+          coordenadora: boolean;
+          cor: string;
+          created_at: string;
+          id: string;
+          nome: string;
+          ordem: number;
+          sem_lancamento: boolean;
+        };
+        Insert: {
+          ativa?: boolean;
+          coordenadora?: boolean;
+          cor?: string;
+          created_at?: string;
+          id?: string;
+          nome: string;
+          ordem?: number;
+          sem_lancamento?: boolean;
+        };
+        Update: {
+          ativa?: boolean;
+          coordenadora?: boolean;
+          cor?: string;
+          created_at?: string;
+          id?: string;
+          nome?: string;
+          ordem?: number;
+          sem_lancamento?: boolean;
+        };
+        Relationships: [];
+      };
+      usuario_papeis: {
+        Row: {
+          id: string;
+          papel: string;
+          usuario_id: string;
+        };
+        Insert: {
+          id?: string;
+          papel: string;
+          usuario_id: string;
+        };
+        Update: {
+          id?: string;
+          papel?: string;
+          usuario_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "usuario_papeis_usuario_id_fkey";
+            columns: ["usuario_id"];
+            isOneToOne: false;
+            referencedRelation: "usuarios";
             referencedColumns: ["id"];
           },
         ];
@@ -527,65 +611,6 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
-      };
-      usuario_papeis: {
-        Row: {
-          id: string;
-          papel: string;
-          usuario_id: string;
-        };
-        Insert: {
-          id?: string;
-          papel: string;
-          usuario_id: string;
-        };
-        Update: {
-          id?: string;
-          papel?: string;
-          usuario_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "usuario_papeis_usuario_id_fkey";
-            columns: ["usuario_id"];
-            isOneToOne: false;
-            referencedRelation: "usuarios";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      professoras: {
-        Row: {
-          ativa: boolean;
-          coordenadora: boolean;
-          cor: string;
-          created_at: string;
-          id: string;
-          nome: string;
-          ordem: number;
-          sem_lancamento: boolean;
-        };
-        Insert: {
-          ativa?: boolean;
-          coordenadora?: boolean;
-          cor?: string;
-          created_at?: string;
-          id?: string;
-          nome: string;
-          ordem?: number;
-          sem_lancamento?: boolean;
-        };
-        Update: {
-          ativa?: boolean;
-          coordenadora?: boolean;
-          cor?: string;
-          created_at?: string;
-          id?: string;
-          nome?: string;
-          ordem?: number;
-          sem_lancamento?: boolean;
-        };
-        Relationships: [];
       };
     };
     Views: {
@@ -715,6 +740,9 @@ export type CompositeTypes<
     : never;
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
