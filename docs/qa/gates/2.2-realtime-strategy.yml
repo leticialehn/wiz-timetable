@@ -1,0 +1,85 @@
+storyId: "2.2"
+storyTitle: "Realtime strategy decision + implementation"
+epic: "EPIC-002"
+gateType: blocking
+verdict: PASS
+reviewer: "Quinn (@qa)"
+reviewed_revision: "commit:63cce62"
+reviewed_at: "2026-09-17"
+
+summary: >
+  Independently re-verified rather than trusting the dev report. Re-ran
+  `supabase migration list` against the linked prod project myself: 4 migrations,
+  local == remote, no drift. Re-ran `supabase db advisors --linked --type security
+  --level warn`: 0 issues. Re-read the new migration
+  (20260917134453_public_select_low_sensitivity_tables.sql) end to end: it only
+  grants SELECT and only on the 4 tables the story names (professoras, grade_base,
+  horarios_config, excecoes_semana); confirmed no policy-name collision with the
+  prior relock migration (which DROP POLICY IF EXISTS's these exact 4 names first)
+  and correct timestamp ordering. Confirmed docs/DB-AUDIT.md no longer contains any
+  stale "🟠 partially broken" language contradicting the new state (grepped for it —
+  zero hits). The security decision itself (which tables get public SELECT back) was
+  not decided unilaterally by @dev — it was explained in plain language to the owner
+  and explicitly confirmed before any prod write, matching the discipline already
+  established in Story 2.1's RLS-incident handling.
+
+seven_checks:
+  code_review: PASS # /code-review (uncommitted, high) ran clean, 0 findings; independently spot-checked its two headline claims (policy-name collision safety, no call site depends on the 3 removed tables) by reading the actual SQL and grepping all useRealtimeGrade() call sites myself
+  unit_tests: CONCERNS # no test harness project-wide (EPIC-003) — inherited, identical to every prior story's gate in this repo; verification here is live/manual by necessity (migration list, security advisor, real anon-key probe), same pattern Story 2.1 used
+  acceptance_criteria: PASS # all 8 ACs independently re-checked against the actual committed migration, hook diff, and DB-AUDIT.md content — not just the dev's checkbox claims
+  no_regressions: PASS # typecheck and lint re-run clean (0 errors, same 6 pre-existing unrelated warnings as every gate since 1.6); use-realtime-grade.ts diff is a 6-line array edit plus a comment, no logic change beyond the table list
+  performance: PASS # not applicable beyond Realtime channel count — subscribing to 5 tables instead of 8 is strictly less client-side work, no new query added
+  security: PASS # the one security-relevant change (re-granting public SELECT) was scoped to exactly the 4 tables confirmed to carry zero student PII, verified live with the real anon key that SELECT works and INSERT is denied on those 4, and that the 3 PII-bearing tables remain fully denied
+  documentation: PASS # docs/DB-AUDIT.md §3/§6 and the story's own Dev Notes/Completion Notes accurately reflect the implemented state; the authenticated-Realtime rejection (AC3) is honestly justified against the app's actual auth model, not hand-waved
+
+acceptance_criteria_status:
+  AC1_decision_recorded: VERIFIED # docs/DB-AUDIT.md §3 replaces the old "🟠 partially broken" note with the full three-option writeup; re-read in full, no leftover contradicting text
+  AC2_sensitivity_split: VERIFIED # migration only touches the 4 named low-sensitivity tables; alunos/aulas_presenca/aulas_notas untouched (still revoked from Story 2.1)
+  AC3_authenticated_realtime_evaluated: VERIFIED # DB-AUDIT.md and story Dev Notes both correctly state the app uses a custom cookie-session (auth.server.ts), not Supabase Auth — re-confirmed by reading auth.server.ts myself, no Supabase Auth import/usage found anywhere in it
+  AC4_implemented: VERIFIED # migration applied to prod (supabase migration list shows it present, local==remote); high-sensitivity tables correctly left alone (option b, no migration needed)
+  AC5_hook_matches_decision: VERIFIED # TABELAS = [professoras, grade_base, horarios_config, excecoes_semana, aulas_licoes] — exactly the 5 tables that should be subscribed; grepped all call sites, none reference the 3 removed tables
+  AC6_verified_live_select_only: VERIFIED # gate independently ran an anon-key probe: SELECT succeeds and INSERT is denied on all 4 granted tables; alunos/aulas_presenca/aulas_notas still return permission denied
+  AC7_docs_updated: VERIFIED # DB-AUDIT.md §3 (RLS matrix + Realtime section) and §6 (checklist item checked) both updated and internally consistent
+  AC8_no_credentials_migration_only: VERIFIED # git show of the commit contains no token/secret/password strings; SUPABASE_ACCESS_TOKEN lives only in gitignored .env.local; schema change is a single migration file, no ad-hoc Studio edit
+
+regression_check:
+  migration_drift: "supabase migration list re-run by the gate — 4 migrations, local == remote"
+  security_advisor: "supabase db advisors --linked --type security --level warn re-run by the gate — 0 issues"
+  anon_key_probe: "gate independently probed the 4 granted tables (SELECT ok, INSERT denied) and the 3 PII tables (still permission denied) using VITE_SUPABASE_PUBLISHABLE_KEY"
+  typecheck: "npm run typecheck re-run by the gate — exit 0"
+  lint: "npm run lint re-run by the gate — 0 errors, 6 pre-existing unrelated warnings"
+  hook_diff_scope: "src/hooks/use-realtime-grade.ts diff re-read — TABELAS array + one comment only, invalidateQueries() call and effect structure unchanged"
+  stale_docs_check: "grepped docs/DB-AUDIT.md for '🟠'/'partially broken' — zero hits, no contradicting leftover text"
+
+positive_findings:
+  security_process: >
+    Unlike a purely mechanical story, this one required a real security trade-off
+    (which tables regain public read access). @dev did not decide this alone —
+    the trade-off was explained in non-technical terms and explicitly confirmed by
+    the owner before anything was written to prod. This mirrors the discipline
+    Story 2.1 established for the RLS-revert incident and is the right pattern for
+    this repo going forward given its recent history of an accidentally-reverted
+    lockdown.
+  epic_impact: >
+    Closes EPIC-002 AC6 (Realtime strategy decision). Only Story 2.3 (RLS/GRANT/
+    constraint documentation for all tables) remains open in EPIC-002, and much of
+    its factual content is already captured across Story 2.1 and 2.2's DB-AUDIT.md
+    updates.
+
+decision:
+  verdict: PASS
+  rationale: >
+    All 8 ACs independently re-verified against the live commit, not trusted from
+    the dev's report. No high-severity issues. The only "gap" — no automated
+    regression suite — is the same project-wide, pre-existing condition every gate
+    in this repo has noted (EPIC-003, not yet drafted) and is not something this
+    story could have closed on its own. The one explicit scope boundary in this
+    story (no polling added for the 3 high-sensitivity tables) is a deliberate,
+    owner-confirmed decision, not an oversight, so it is not counted as an open
+    issue. CodeRabbit remains unavailable in this environment (no Ubuntu WSL
+    distro) — /code-review plus Supabase's own security advisor plus a live
+    anon-key probe substitute for it, same as Story 2.1's precedent.
+  next_status: "InReview → Done"
+  follow_ups:
+    - "None blocking. Story 2.3 (RLS/GRANT/constraint documentation for all 12 tables) is the only remaining open story in EPIC-002."
+    - "If the owner later wants tighter freshness on alunos/aulas_presenca/aulas_notas without reopening public read access, a refetchInterval-based polling addition would be a small, well-scoped follow-up story — not needed now."

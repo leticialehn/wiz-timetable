@@ -117,7 +117,7 @@ fraco continua como está (fora do escopo da story, uso local apenas).
 | Story | Título                                                                          | Status                                                                                                                   |
 | ----- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | 2.1   | Baseline migration from production                                              | ✅ Done — todas as ACs 2026-09-17, QA via `/code-review` + advisor Supabase (achou e corrigiu gap de privilégios padrão) |
-| 2.2   | [Realtime strategy decision + implementation](stories/2.2.realtime-strategy.md) | InReview — implementada e verificada ao vivo 2026-09-17, aguardando QA gate                                              |
+| 2.2   | [Realtime strategy decision + implementation](stories/2.2.realtime-strategy.md) | ✅ Done — QA Gate PASS 2026-09-17, `docs/qa/gates/2.2-realtime-strategy.yml`                                             |
 | 2.3   | Verify + document RLS/GRANT/constraints for all tables                          | Não drafted                                                                                                              |
 
 ## EPIC-006 — Tipo de aula "Comercial" + aba de prospects (P2)
