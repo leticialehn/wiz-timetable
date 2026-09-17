@@ -4,7 +4,47 @@
 > mudar de status. Fonte de verdade para status individual continua sendo o
 > campo `## Status` de cada story file — este documento é um resumo agregado.
 
-**Última atualização:** 2026-09-14
+**Última atualização:** 2026-09-17
+
+## 🔴 Incidente de segurança encontrado e corrigido: lockdown de RLS revertido em produção (2026-09-17)
+
+Durante a Story 2.1 (baseline migration), o `supabase db pull` mostrou que o
+lockdown de acesso do EPIC-001 (que tinha revogado `anon`/`authenticated` e
+removido as políticas públicas de leitura/escrita) **tinha voltado** em
+produção — políticas públicas e `GRANT ALL TO anon` estavam de volta em 9
+tabelas (`alunos`, `aulas_notas`, `aulas_presenca`, `excecoes_semana`,
+`grade_base`, `horarios_config`, `professoras`, `alertas_status`,
+`calendario_excecoes`).
+
+- **Causa provável:** edição direta no Supabase Studio (não confirmada —
+  não checamos logs de auditoria do prod).
+- **Corrigido no mesmo dia:** nova migration
+  `supabase/migrations/20260917103416_relock_public_tables.sql`, aplicada
+  em produção e verificada com a `anon key` real — as 9 tabelas agora
+  retornam `permission denied`; `aulas_licoes` continua legível (exceção
+  documentada pro Realtime).
+- **Janela de exposição desconhecida** — enquanto durou, qualquer pessoa
+  com a `anon key` pública (embutida no bundle JS do navegador) podia
+  ler/escrever dados de alunos (menores de idade) direto pela API do
+  Supabase, sem precisar de login.
+- **Pendência:** confirmar com a equipe quando/como isso foi revertido, pra
+  não acontecer de novo silenciosamente. Ver `docs/DB-AUDIT.md` §0 para o
+  relato completo.
+
+## ⚠️ Decisão do owner: AUTH_DISABLED (2026-09-15)
+
+Com a equipe reduzida, o owner decidiu **desligar temporariamente a exigência de
+login**, sem remover o sistema de auth construído no EPIC-001. Implementado em
+`src/lib/auth.server.ts::usuarioDaSessao()`: se `AUTH_DISABLED=true`, qualquer
+acesso entra como usuário sintético "Acesso livre" com todos os papéis
+(secretaria, professor, coordenador), sem checar sessão/senha.
+
+- **Escopo atual:** só `.env.local` (dev). **Não está setada na Vercel** —
+  produção continua exigindo login normalmente.
+- **Reversão:** remover a env var (nenhuma mudança de código necessária).
+- **Risco aceito pelo owner:** qualquer pessoa com acesso ao ambiente onde a
+  flag está ligada tem acesso total, sem auditoria de quem fez o quê.
+- Mudança ainda **não commitada** no momento desta nota (2026-09-16).
 
 ## PRD
 
@@ -74,11 +114,11 @@ fraco continua como está (fora do escopo da story, uso local apenas).
 
 `docs/stories/epics/EPIC-002-db-reconciliation.md`
 
-| Story | Título                                                 | Status      |
-| ----- | ------------------------------------------------------ | ----------- |
-| 2.1   | Baseline migration from production                     | Draft       |
-| 2.2   | Realtime strategy decision + implementation            | Não drafted |
-| 2.3   | Verify + document RLS/GRANT/constraints for all tables | Não drafted |
+| Story | Título                                                 | Status                                                                 |
+| ----- | ------------------------------------------------------ | ---------------------------------------------------------------------- |
+| 2.1   | Baseline migration from production                     | InReview — todas as ACs implementadas 2026-09-17, falta QA gate formal |
+| 2.2   | Realtime strategy decision + implementation            | Não drafted                                                            |
+| 2.3   | Verify + document RLS/GRANT/constraints for all tables | Não drafted                                                            |
 
 ## EPIC-006 — Tipo de aula "Comercial" + aba de prospects (P2)
 
