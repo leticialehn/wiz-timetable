@@ -114,7 +114,22 @@ async function carregarUsuarioAutenticado(usuarioId: string): Promise<UsuarioAut
   };
 }
 
+// Decisão do owner (2026-09-15): equipe reduzida, risco aceito — desligar a
+// exigência de login sem apagar o sistema de auth (fica pronto pra religar).
+// Setar AUTH_DISABLED=true (Vercel + .env.local) faz todo mundo entrar como um
+// usuário sintético com todos os papéis, sem checar sessão/senha nenhuma.
+// Pra religar o login: remover essa env var (nenhuma mudança de código).
+const USUARIO_ACESSO_LIVRE: UsuarioAutenticado = {
+  id: "acesso-livre",
+  nome: "Acesso livre",
+  username: "acesso-livre",
+  papeis: ["secretaria", "professor", "coordenador"],
+  professora_id: null,
+  ativo: true,
+};
+
 export async function usuarioDaSessao(): Promise<UsuarioAutenticado | null> {
+  if (process.env.AUTH_DISABLED === "true") return USUARIO_ACESSO_LIVRE;
   const session = await getAuthSession();
   const usuarioId = session.data.usuarioId;
   if (!usuarioId) return null;
