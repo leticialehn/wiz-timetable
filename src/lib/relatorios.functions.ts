@@ -347,7 +347,12 @@ function ehExperimental(nome: string): boolean {
 }
 
 export type SituacaoRematricula =
-  "rematriculado" | "nao_rematriculado" | "parcelas_adicionais" | "contato_feito" | "sem_contato";
+  | "rematriculado"
+  | "nao_rematriculado"
+  | "parcelas_adicionais"
+  | "descartado"
+  | "contato_feito"
+  | "sem_contato";
 
 export type RegistroRematriculaPeriodo = {
   aluno_id: string;
@@ -374,6 +379,7 @@ function situacaoRematricula(row: {
 }): SituacaoRematricula {
   if (row.status === "resolvido") {
     if (row.desfecho === "parcelas_adicionais") return "parcelas_adicionais";
+    if (row.desfecho === "descartado") return "descartado";
     // Alertas antigos (de antes do campo "desfecho" existir) não têm esse
     // campo salvo — cai no critério antigo: motivo preenchido = não
     // rematriculado, senão rematriculado.
@@ -389,6 +395,7 @@ export const ROTULO_SITUACAO_REMATRICULA: Record<SituacaoRematricula, string> = 
   rematriculado: "Rematriculado",
   nao_rematriculado: "Não rematriculado",
   parcelas_adicionais: "Parcelas adicionais (sem renovar)",
+  descartado: "Descartado (engano no lançamento)",
   contato_feito: "Contato feito, aguardando decisão",
   sem_contato: "Ainda sem contato",
 };

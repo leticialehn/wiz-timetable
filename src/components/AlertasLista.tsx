@@ -134,6 +134,9 @@ function rotuloDesfechoRematricula(a: AlertaAtivo): string {
     return `Não rematriculado por ${a.resolvido_por}${a.motivo ? ` — ${a.motivo}` : ""}`;
   }
   if (a.desfecho === "parcelas_adicionais") return `Parcelas adicionais — ${a.resolvido_por}`;
+  if (a.desfecho === "descartado") {
+    return `Descartado (engano no lançamento) por ${a.resolvido_por}${a.motivo ? ` — ${a.motivo}` : ""}`;
+  }
   const base = `Rematriculado por ${a.resolvido_por}`;
   // A decisão em si (rematriculou) não depende de saber a data exata do novo
   // contrato — dá pra confirmar sem data e levantar/editar depois em Alunos.
@@ -162,6 +165,7 @@ export function AlertasLista({
   const getAniversariantesFn = useServerFn(getAniversariantesDoMes);
   const [salvando, setSalvando] = useState<string | null>(null);
   const [naoRematriculandoId, setNaoRematriculandoId] = useState<string | null>(null);
+  const [descartandoId, setDescartandoId] = useState<string | null>(null);
   const [motivo, setMotivo] = useState("");
   const [renovandoId, setRenovandoId] = useState<string | null>(null);
   const [novoInicio, setNovoInicio] = useState("");
@@ -188,6 +192,7 @@ export function AlertasLista({
       });
       qc.invalidateQueries({ queryKey: ["alertas-ativos"] });
       setNaoRematriculandoId(null);
+      setDescartandoId(null);
       setMotivo("");
       setRenovandoId(null);
     } finally {
@@ -287,6 +292,7 @@ export function AlertasLista({
                   const ehGravacao = a.tipo === "gravacao_r3r4" || a.tipo === "gravacao_r7r8";
                   const jaContactado = ehRematricula && a.contactado_em;
                   const escrevendoMotivo = naoRematriculandoId === a.id;
+                  const descartando = descartandoId === a.id;
                   const renovandoContrato = renovandoId === a.id;
                   return (
                     <li
@@ -345,6 +351,41 @@ export function AlertasLista({
                             </button>
                           </div>
                         )}
+                        {descartando && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <input
+                              autoFocus
+                              value={motivo}
+                              onChange={(e) => setMotivo(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && motivo.trim())
+                                  marcarResolvido(a.id, motivo.trim(), "descartado");
+                                if (e.key === "Escape") {
+                                  setDescartandoId(null);
+                                  setMotivo("");
+                                }
+                              }}
+                              placeholder="O que foi o engano? (ex.: lição lançada errada, já corrigida)"
+                              className="flex-1 min-w-[220px] rounded-md border border-input bg-background px-2 py-1 text-xs"
+                            />
+                            <button
+                              disabled={salvando === a.id || !motivo.trim()}
+                              onClick={() => marcarResolvido(a.id, motivo.trim(), "descartado")}
+                              className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground disabled:opacity-50"
+                            >
+                              Confirmar
+                            </button>
+                            <button
+                              onClick={() => {
+                                setDescartandoId(null);
+                                setMotivo("");
+                              }}
+                              className="text-xs px-2 py-1 rounded border border-border hover:bg-accent"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        )}
                         {renovandoContrato && (
                           <div className="mt-2 flex flex-wrap items-end gap-2">
                             <label className="text-xs text-muted-foreground">
@@ -389,7 +430,7 @@ export function AlertasLista({
                           </div>
                         )}
                       </div>
-                      {!escrevendoMotivo && !renovandoContrato && (
+                      {!escrevendoMotivo && !descartando && !renovandoContrato && (
                         <div className="flex items-center gap-2 shrink-0">
                           <button
                             disabled={salvando === a.id}
@@ -435,6 +476,17 @@ export function AlertasLista({
                                 className="text-sm px-3 py-1.5 rounded-md border border-border hover:bg-accent disabled:opacity-50"
                               >
                                 Não rematriculado
+                              </button>
+                              <button
+                                disabled={salvando === a.id}
+                                onClick={() => {
+                                  setDescartandoId(a.id);
+                                  setMotivo("");
+                                }}
+                                title="Use quando o alerta só apareceu por causa de um dado errado (ex.: lição lançada errada) — não é uma decisão de rematrícula de verdade"
+                                className="text-sm px-3 py-1.5 rounded-md border border-dashed border-border text-muted-foreground hover:bg-accent disabled:opacity-50"
+                              >
+                                Descartar (engano)
                               </button>
                             </>
                           )}

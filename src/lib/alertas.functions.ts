@@ -155,10 +155,15 @@ export const TIPOS_ALERTA_PROFESSORA: TipoAlerta[] = [
 ];
 
 // Desfecho de um alerta de rematrícula resolvido: rematriculado (contrato
-// novo/renovado), não rematriculado (motivo preenchido, aluno sai) ou
+// novo/renovado), não rematriculado (motivo preenchido, aluno sai),
 // parcelas adicionais (não renovou, mas continua no livro atual pagando à
-// parte dentro do mesmo contrato).
-export type DesfechoRematricula = "rematriculado" | "nao_rematriculado" | "parcelas_adicionais";
+// parte dentro do mesmo contrato) ou descartado (o alerta nunca deveria ter
+// sido gerado — ex.: lição lançada errada empurrou o aluno pra além da R8
+// por engano; corrigido, mas o alerta já tinha sido criado antes da
+// correção. Não é uma decisão de negócio real, então não mexe em aluno
+// nenhum — só sai da lista de pendentes com esse motivo registrado).
+export type DesfechoRematricula =
+  "rematriculado" | "nao_rematriculado" | "parcelas_adicionais" | "descartado";
 
 export type AlertaAtivo = {
   id: string;
