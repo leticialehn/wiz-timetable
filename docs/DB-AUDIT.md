@@ -96,20 +96,20 @@ rule wasn't followed (the RLS lockdown got silently reverted).
 
 ## 3. RLS & GRANT matrix — reverified against live prod, 2026-09-17
 
-| Table                 | RLS | anon/authenticated GRANT | Policies                                     | Effective anon access (tested with real anon key) |
-| --------------------- | --- | ------------------------ | -------------------------------------------- | ------------------------------------------------- |
-| `professoras`         | on  | **revoked** (re-applied) | none                                         | none — confirmed `permission denied`              |
-| `alunos`              | on  | **revoked** (re-applied) | none                                         | none — confirmed `permission denied`              |
-| `grade_base`          | on  | **revoked** (re-applied) | none                                         | none — confirmed `permission denied`              |
-| `horarios_config`     | on  | **revoked** (re-applied) | none                                         | none — confirmed `permission denied`              |
-| `excecoes_semana`     | on  | **revoked** (re-applied) | none                                         | none — confirmed `permission denied`              |
-| `aulas_presenca`      | on  | **revoked** (re-applied) | none (dropped)                               | none — confirmed `permission denied`              |
-| `aulas_notas`         | on  | **revoked** (re-applied) | none (dropped)                               | none — confirmed `permission denied`              |
-| `aulas_licoes`        | on  | not granted              | `SELECT USING (true)` (deliberate, Realtime) | SELECT only — confirmed readable, no write policy |
-| `calendario_excecoes` | on  | **revoked** (re-applied) | none                                         | none — confirmed `permission denied`              |
-| `alertas_status`      | on  | **revoked** (re-applied) | none                                         | none — confirmed `permission denied`              |
-| `usuarios`            | on  | **revoked**              | none                                         | none                                              |
-| `usuario_papeis`      | on  | **revoked**              | none                                         | none                                              |
+| Table                 | RLS | anon/authenticated GRANT  | Policies                                          | Effective anon access (tested with real anon key) |
+| --------------------- | --- | ------------------------- | ------------------------------------------------- | ------------------------------------------------- |
+| `professoras`         | on  | `SELECT` only (Story 2.2) | `SELECT USING (true)` (Realtime, low-sensitivity) | SELECT only — confirmed readable, INSERT denied   |
+| `alunos`              | on  | **revoked** (re-applied)  | none                                              | none — confirmed `permission denied`              |
+| `grade_base`          | on  | `SELECT` only (Story 2.2) | `SELECT USING (true)` (Realtime, low-sensitivity) | SELECT only — confirmed readable, INSERT denied   |
+| `horarios_config`     | on  | `SELECT` only (Story 2.2) | `SELECT USING (true)` (Realtime, low-sensitivity) | SELECT only — confirmed readable, INSERT denied   |
+| `excecoes_semana`     | on  | `SELECT` only (Story 2.2) | `SELECT USING (true)` (Realtime, low-sensitivity) | SELECT only — confirmed readable, INSERT denied   |
+| `aulas_presenca`      | on  | **revoked** (re-applied)  | none (dropped)                                    | none — confirmed `permission denied`              |
+| `aulas_notas`         | on  | **revoked** (re-applied)  | none (dropped)                                    | none — confirmed `permission denied`              |
+| `aulas_licoes`        | on  | not granted               | `SELECT USING (true)` (deliberate, Realtime)      | SELECT only — confirmed readable, no write policy |
+| `calendario_excecoes` | on  | **revoked** (re-applied)  | none                                              | none — confirmed `permission denied`              |
+| `alertas_status`      | on  | **revoked** (re-applied)  | none                                              | none — confirmed `permission denied`              |
+| `usuarios`            | on  | **revoked**               | none                                              | none                                              |
+| `usuario_papeis`      | on  | **revoked**               | none                                              | none                                              |
 
 **2026-09-17 finding:** this table was accurate as of the original 2026-07-11
 lockdown (migration `20260711121505`, now in `_legacy/` — not `20260812180211` as a
@@ -124,21 +124,34 @@ Historically, the `20260711121505` "lock down all schoolwide tables" migration d
 revoked anon/authenticated on the 7 original tables. **Good** for the DB layer: the
 browser's anon key can no longer read or write business data directly.
 
-### Side effect: Realtime is partially broken 🟠
+### Realtime strategy — decided and implemented 2026-09-17 (Story 2.2)
 
-`useRealtimeGrade` subscribes with the **anon key** to 8 tables. Realtime delivers a
-change event only if the subscriber's RLS lets it `SELECT` the row. After the
-lockdown, only `aulas_licoes` has a public SELECT policy. So cross-user live refresh
-works for lesson logging and is silently dead for `professoras`, `alunos`,
-`grade_base`, `horarios_config`, `excecoes_semana`, `aulas_presenca`, `aulas_notas`.
+`useRealtimeGrade` subscribed with the **anon key** to 8 tables. Realtime only
+delivers a change event if the subscriber's RLS lets it `SELECT` the row, so after
+Story 2.1's relock, only `aulas_licoes` (which keeps a deliberate public `SELECT`
+policy) actually received live updates — the other 7 were silently dead.
 
-Decide (Story 2.2): either
+**Decision (confirmed with the owner 2026-09-17), split by student-PII sensitivity:**
 
-- add narrow `SELECT USING (true)` policies + `GRANT SELECT` back on the tables the
-  professora screen must see live (they contain no secrets — names, schedule, grades
-  of a single school), **or**
-- drop Realtime and use polling / manual refresh, **or**
-- move to authenticated Realtime with a request-scoped client.
+- **Low-sensitivity** (`professoras`, `grade_base`, `horarios_config`,
+  `excecoes_semana` — schedule/config only, no student PII): granted narrow public
+  `SELECT USING (true)` + `GRANT SELECT` (never `INSERT`/`UPDATE`/`DELETE`), same
+  pattern as `aulas_licoes`. Migration:
+  `supabase/migrations/20260917134453_public_select_low_sensitivity_tables.sql`.
+  **Verified live** with the real anon key: `SELECT` works, `INSERT` denied, on all 4.
+- **High-sensitivity** (`alunos`, `aulas_presenca`, `aulas_notas` — PII of minors,
+  attendance, grades): stay locked down, no public policy added. No Realtime for
+  these; screens depending on them fall back to react-query's default
+  refetch-on-focus/mount (no `refetchInterval` polling was added — explicitly out of
+  scope unless the owner asks for it later).
+- **Authenticated Realtime** (the third option from epic AC6): evaluated and
+  rejected as out of scope for this story. This app's login is a custom
+  cookie-session system (`src/lib/auth.server.ts`), not Supabase Auth — the browser's
+  Supabase client only ever holds the anon key, so there is no per-user Supabase
+  session to authenticate a Realtime channel with. Would require a broader auth
+  architecture change to revisit.
+- `src/hooks/use-realtime-grade.ts`'s `TABELAS` list updated to match: `alunos`,
+  `aulas_presenca`, `aulas_notas` removed (they never received events anyway).
 
 ## 4. Application-layer authorization 🔴 (the real hole)
 
@@ -204,7 +217,8 @@ anyone who can reach the deployment URL and knows/guesses the RPC path.
       intentionally for local dev; not set in Vercel.
 - [ ] 🔴 **New (2026-09-17):** confirm with the team/collaborators when/how the RLS
       lockdown got reverted in prod, so it doesn't happen again silently
-- [ ] 🟠 Decide Realtime strategy (Story 2.2)
+- [x] ✅ Decide Realtime strategy (Story 2.2, 2026-09-17) — split by PII
+      sensitivity, see §3
 - [x] ✅ Verify RLS/GRANT state of the 3 untracked tables directly in prod (Story 2.1,
       2026-09-17 — all 3 confirmed and, for `alertas_status`/`calendario_excecoes`,
       locked down for the first time)

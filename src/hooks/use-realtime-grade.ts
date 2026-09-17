@@ -2,14 +2,14 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+// alunos, aulas_presenca e aulas_notas ficaram de fora (Story 2.2): carregam
+// PII de aluno e não têm política pública de leitura, então nunca receberiam
+// evento de qualquer forma — decisão registrada em docs/DB-AUDIT.md §3.
 const TABELAS = [
   "professoras",
-  "alunos",
   "grade_base",
   "horarios_config",
   "excecoes_semana",
-  "aulas_presenca",
-  "aulas_notas",
   "aulas_licoes",
 ] as const;
 
