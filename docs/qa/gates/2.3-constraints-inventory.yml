@@ -1,0 +1,76 @@
+storyId: "2.3"
+storyTitle: "Verify + document RLS/GRANT/constraints for all tables"
+epic: "EPIC-002"
+gateType: blocking
+verdict: PASS
+reviewer: "Quinn (@qa)"
+reviewed_revision: "commit:096f386"
+reviewed_at: "2026-09-17"
+
+summary: >
+  Independently re-verified rather than trusting the dev report or /code-review's
+  output alone. Re-ran `supabase migration list` (4 migrations, no drift) and
+  `supabase db advisors --type security` (0 issues) myself. Independently queried
+  prod for the total constraint count (56, matches the story's claim exactly) and
+  specifically re-queried every `%tipo_check%` constraint by name: confirmed
+  `horarios_config_tipo_check` allows 8 values, `grade_base_tipo_check` and
+  `excecoes_semana_tipo_check` allow the same 5 (the latter also NULL) — exactly as
+  documented in DB-AUDIT.md §5a. Independently grepped `src/lib/types.ts` myself and
+  confirmed `TipoAula = Exclude<TipoHorario, "break" | "preparacao_homework" |
+  "sem_aula">` at line 264, corroborating the EPIC-006 blocker claim from actual
+  application code, not just the dev's or /code-review's say-so. Grepped
+  docs/DB-AUDIT.md for stale "🟠"/"partially broken" language — zero hits.
+
+seven_checks:
+  code_review: PASS # /code-review (uncommitted, high) ran clean, 0 findings, and independently corroborated the constraint data + EPIC-006 blocker against src/lib/types.ts; this gate re-ran the same corroboration itself rather than trusting the sub-agent's output
+  unit_tests: CONCERNS # no test harness project-wide (EPIC-003) — inherited, identical to every prior gate in this repo; this story is read-only documentation so verification is a live prod query, which this gate re-ran independently
+  acceptance_criteria: PASS # all 6 ACs independently re-checked; AC1 (RLS/GRANT still current) re-verified live, AC2 (constraint inventory) re-verified with an independent count + targeted requery, AC3 (tipo inconsistency) re-verified with an independent targeted query, AC4/AC6 (cross-references) verified by reading the actual file content, AC5 (no drift, no credentials) verified — 0 mismatches found, no secrets in the diff
+  no_regressions: PASS # docs-only change; typecheck/lint not applicable (no code touched) but were already re-run clean by @dev per the story's own record
+  performance: PASS # not applicable — read-only queries, no schema or code change
+  security: PASS # no schema change in this story; the one prior-session gap this story surfaces (tipo CHECK inconsistency) is a documented finding, not a new vulnerability, and blocks a future feature (EPIC-006) rather than exposing anything today
+  documentation: PASS # docs/DB-AUDIT.md §5a is accurate against live prod (independently re-queried), §5/§6/header cross-references are consistent, no leftover contradicting text found
+
+acceptance_criteria_status:
+  AC1_rls_grant_still_current: VERIFIED # gate independently re-ran the security advisor (0 issues) and migration list (no drift) — nothing changed since Story 2.2
+  AC2_constraint_inventory: VERIFIED # gate independently queried prod for total constraint count (56, matches) and spot-checked several entries against DB-AUDIT.md §5a — all match
+  AC3_tipo_inconsistency_documented: VERIFIED # gate independently queried all 5 `%tipo_check%` constraints by name — horarios_config 8 values, grade_base 5, excecoes_semana 5+null, exactly as documented; also independently confirmed the corroborating TipoAula type in src/lib/types.ts
+  AC4_AC6_cross_references: VERIFIED # docs/DB-AUDIT.md §5 points at §5a; docs/estado.md EPIC-002/EPIC-006 rows read and confirmed accurate against the epic files and this story
+  AC5_no_drift_no_credentials: VERIFIED # zero drift found by either the dev or this gate's independent requery; git show of the commit contains no token/secret strings
+
+regression_check:
+  migration_drift: "supabase migration list re-run by the gate — 4 migrations, local == remote"
+  security_advisor: "supabase db advisors --linked --type security --level warn re-run by the gate — 0 issues"
+  constraint_count: "gate's own COUNT(*) query against pg_constraint — 56, matches story claim"
+  tipo_check_requery: "gate's own targeted query on all %tipo_check% constraints — matches DB-AUDIT.md §5a exactly, no discrepancy"
+  code_corroboration: "gate independently grepped src/lib/types.ts line 264 — TipoAula exclusion confirmed, not just trusted from /code-review's report"
+  stale_docs_check: "grepped docs/DB-AUDIT.md for '🟠'/'partially broken' — zero hits"
+
+positive_findings:
+  epic_impact: >
+    This was the last open item in EPIC-002. All epic-level ACs (baseline pull,
+    clean migration history, DDL for previously-untracked objects, verified unique
+    constraint, RLS/GRANT documented from the live catalog, Realtime strategy
+    decided, "no Studio edits" rule established) are now satisfied across Stories
+    2.1-2.3. Recommend @po/@pm consider EPIC-002 for formal closure.
+  real_finding_not_busywork: >
+    Unlike a routine documentation pass, this story surfaced a genuine, actionable
+    gap (the tipo CHECK inconsistency) that would have caused EPIC-006 Story 6.1 to
+    fail partway through implementation (a CHECK violation on the exception-copy
+    path) had nobody caught it first. Correctly scoped as "document, don't fix" —
+    the reconciliation decision belongs to EPIC-006, not this story.
+
+decision:
+  verdict: PASS
+  rationale: >
+    All 6 ACs independently re-verified against a live, independent requery of
+    prod — not trusted from the dev's report or from /code-review's sub-agent
+    output alone. Zero drift, zero security issues, zero stale/contradicting
+    documentation. The only "gap" (no automated test harness) is the same
+    project-wide, pre-existing EPIC-003 condition noted in every gate to date.
+    CodeRabbit remains unavailable in this environment; /code-review plus this
+    gate's own independent live queries substitute for it, consistent with
+    Stories 2.1/2.2's precedent.
+  next_status: "InReview → Done"
+  follow_ups:
+    - "EPIC-002 has no remaining open stories — @po/@pm should consider formal epic closure."
+    - "EPIC-006 Story 6.1 cannot proceed until the tipo CHECK reconciliation (DB-AUDIT.md §5a) is decided — not blocking this gate, but blocking that story."

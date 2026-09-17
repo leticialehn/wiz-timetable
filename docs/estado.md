@@ -118,12 +118,12 @@ fraco continua como está (fora do escopo da story, uso local apenas).
 | ----- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | 2.1   | Baseline migration from production                                                             | ✅ Done — todas as ACs 2026-09-17, QA via `/code-review` + advisor Supabase (achou e corrigiu gap de privilégios padrão) |
 | 2.2   | [Realtime strategy decision + implementation](stories/2.2.realtime-strategy.md)                | ✅ Done — QA Gate PASS 2026-09-17, `docs/qa/gates/2.2-realtime-strategy.yml`                                             |
-| 2.3   | [Verify + document RLS/GRANT/constraints for all tables](stories/2.3.constraints-inventory.md) | Implementada 2026-09-17 — inventário completo em `docs/DB-AUDIT.md` §5a, zero drift; aguardando QA gate                  |
+| 2.3   | [Verify + document RLS/GRANT/constraints for all tables](stories/2.3.constraints-inventory.md) | ✅ Done — QA Gate PASS 2026-09-17, `docs/qa/gates/2.3-constraints-inventory.yml`                                         |
 
-**EPIC-002 pronto pra @po/@pm considerar fechamento** — todas as ACs do epic
-(baseline, drift, DDL capturado, constraint verificado, RLS/GRANT documentado,
-Realtime decidido, regra "sem edição no Studio" registrada) estão satisfeitas assim
-que a 2.3 passar pelo QA gate.
+**EPIC-002 sem stories abertas** — todas as ACs do epic (baseline, drift, DDL
+capturado, constraint verificado, RLS/GRANT documentado, Realtime decidido, regra
+"sem edição no Studio" registrada) estão satisfeitas. Pronto pra @po/@pm considerar
+fechamento formal.
 
 ## EPIC-006 — Tipo de aula "Comercial" + aba de prospects (P2)
 
