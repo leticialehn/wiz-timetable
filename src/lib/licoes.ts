@@ -159,6 +159,48 @@ export function posicoesAlemDaR8(
   return maiorPos - POSICAO_R8;
 }
 
+// Quantas posições à frente do maior progresso já registrado uma lição
+// digitada precisa estar pra soar como possível engano de digitação, em vez
+// de avanço legítimo (aluno que refez o nível rápido, pulou aula, etc.).
+// Maior que um ciclo inteiro (6 lições + 1 revisão = 7 posições).
+const SALTO_SUSPEITO = 8;
+
+// Checagem leve, feita no momento da digitação (não bloqueia salvar — só
+// avisa): pega o mesmo tipo de engano que já aconteceu de verdade (ex.:
+// "R44" digitado em vez de "L44" — R44 não existe em nenhum nível, já que
+// revisão só vai até R10) e saltos grandes demais em relação ao progresso
+// real do aluno (ex.: uma R9/R10 isolada aparecendo quando ele só tinha
+// chegado em L4/L5). Retorna null quando não há nada suspeito a avisar —
+// inclusive pra valores que não são lição/revisão (HW, Extra, pendente…).
+export function avisoLicao(
+  nivelAtual: string,
+  valorDigitado: string,
+  historico: { licao: string; nivel_no_momento: string; praticado: boolean }[],
+): string | null {
+  const valor = valorDigitado.trim();
+  if (!valor) return null;
+  const blockStart = BLOCO_INICIO[nivelAtual as Nivel];
+  if (blockStart === undefined) return null;
+
+  const label = normalizarLicao(valor);
+  const ehTentativaDeLicao = /^[LR]\d+$/i.test(label);
+  if (!ehTentativaDeLicao) return null;
+
+  const pos = posicaoDoLabel(label, blockStart);
+  if (pos === null) {
+    const mR = /^R(\d+)$/.exec(label);
+    if (mR) return `${label} não existe nesse nível (revisão só vai até R${CICLOS_POR_BLOCO}).`;
+    return `${label} não existe nesse nível.`;
+  }
+
+  const maiorPos = maiorPosicaoAtingida(nivelAtual, historico);
+  if (maiorPos === null) return null;
+  if (pos - maiorPos > SALTO_SUSPEITO) {
+    return `Salto grande em relação ao progresso atual — confirma que é ${label} mesmo?`;
+  }
+  return null;
+}
+
 // Data (ISO) da 1ª lição registrada no nível atual — usada como estimativa de
 // quando o aluno começou este nível, quando não há uma data manual informada.
 export function dataInicioInferida(

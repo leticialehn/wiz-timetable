@@ -16,7 +16,7 @@ import {
   TIPOS_ALERTA_PROFESSORA,
   type AlunoLicaoPendente,
 } from "@/lib/alertas.functions";
-import { temTrackingDeLicao, licaoSugerida, normalizarLicao } from "@/lib/licoes";
+import { temTrackingDeLicao, licaoSugerida, normalizarLicao, avisoLicao } from "@/lib/licoes";
 import { getCalendarioExcecoes } from "@/lib/calendario.functions";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
 import { LogoutButton } from "@/components/LogoutButton";
@@ -735,16 +735,18 @@ function AlunoLinha({
   // A 2ª lição é sempre a seguinte à maior lição já atingida — encadeia a
   // partir do valor (editado ou sugerido) que está na parte 1 agora mesmo,
   // junto com o histórico, pra não "voltar" se a parte 1 for uma repetição.
-  const licaoSugestao2 = temLicao
-    ? licaoSugerida(c.aluno_nivel, [
-        {
-          licao: parte1.licaoLocal || licaoSugestao1,
-          nivel_no_momento: c.aluno_nivel,
-          praticado: parte1.praticadoLocal,
-        },
-        ...historicoLicao,
-      ])
-    : "";
+  // O mesmo array serve pro aviso de digitação (avisoLicao) da parte 2, pelo
+  // mesmo motivo — senão ela veria só o histórico salvo, sem o que acabou de
+  // ser digitado na parte 1, e poderia acusar salto falso.
+  const historicoParaParte2 = [
+    {
+      licao: parte1.licaoLocal || licaoSugestao1,
+      nivel_no_momento: c.aluno_nivel,
+      praticado: parte1.praticadoLocal,
+    },
+    ...historicoLicao,
+  ];
+  const licaoSugestao2 = temLicao ? licaoSugerida(c.aluno_nivel, historicoParaParte2) : "";
   const parte2 = useParte(2, {
     presenca: presencas.find((p) => p.parte === 2) ?? null,
     nota: notas.find((n) => n.parte === 2) ?? null,
@@ -753,21 +755,20 @@ function AlunoLinha({
   });
 
   // A 3ª lição (só na aula online) encadeia da mesma forma, a partir da 2ª.
-  const licaoSugestao3 = temLicao
-    ? licaoSugerida(c.aluno_nivel, [
-        {
-          licao: parte2.licaoLocal || licaoSugestao2,
-          nivel_no_momento: c.aluno_nivel,
-          praticado: parte2.praticadoLocal,
-        },
-        {
-          licao: parte1.licaoLocal || licaoSugestao1,
-          nivel_no_momento: c.aluno_nivel,
-          praticado: parte1.praticadoLocal,
-        },
-        ...historicoLicao,
-      ])
-    : "";
+  const historicoParaParte3 = [
+    {
+      licao: parte2.licaoLocal || licaoSugestao2,
+      nivel_no_momento: c.aluno_nivel,
+      praticado: parte2.praticadoLocal,
+    },
+    {
+      licao: parte1.licaoLocal || licaoSugestao1,
+      nivel_no_momento: c.aluno_nivel,
+      praticado: parte1.praticadoLocal,
+    },
+    ...historicoLicao,
+  ];
+  const licaoSugestao3 = temLicao ? licaoSugerida(c.aluno_nivel, historicoParaParte3) : "";
   const parte3 = useParte(3, {
     presenca: presencas.find((p) => p.parte === 3) ?? null,
     nota: notas.find((n) => n.parte === 3) ?? null,
@@ -776,26 +777,25 @@ function AlunoLinha({
   });
 
   // A 4ª lição (só na aula online, quando dá tempo) encadeia a partir da 3ª.
-  const licaoSugestao4 = temLicao
-    ? licaoSugerida(c.aluno_nivel, [
-        {
-          licao: parte3.licaoLocal || licaoSugestao3,
-          nivel_no_momento: c.aluno_nivel,
-          praticado: parte3.praticadoLocal,
-        },
-        {
-          licao: parte2.licaoLocal || licaoSugestao2,
-          nivel_no_momento: c.aluno_nivel,
-          praticado: parte2.praticadoLocal,
-        },
-        {
-          licao: parte1.licaoLocal || licaoSugestao1,
-          nivel_no_momento: c.aluno_nivel,
-          praticado: parte1.praticadoLocal,
-        },
-        ...historicoLicao,
-      ])
-    : "";
+  const historicoParaParte4 = [
+    {
+      licao: parte3.licaoLocal || licaoSugestao3,
+      nivel_no_momento: c.aluno_nivel,
+      praticado: parte3.praticadoLocal,
+    },
+    {
+      licao: parte2.licaoLocal || licaoSugestao2,
+      nivel_no_momento: c.aluno_nivel,
+      praticado: parte2.praticadoLocal,
+    },
+    {
+      licao: parte1.licaoLocal || licaoSugestao1,
+      nivel_no_momento: c.aluno_nivel,
+      praticado: parte1.praticadoLocal,
+    },
+    ...historicoLicao,
+  ];
+  const licaoSugestao4 = temLicao ? licaoSugerida(c.aluno_nivel, historicoParaParte4) : "";
   const parte4 = useParte(4, {
     presenca: presencas.find((p) => p.parte === 4) ?? null,
     nota: notas.find((n) => n.parte === 4) ?? null,
@@ -1059,6 +1059,8 @@ function AlunoLinha({
             mostraLicao={mostraNotasELicao && temLicao}
             mostraPresenca
             estado={parte1}
+            nivel={c.aluno_nivel}
+            historico={historicoLicao}
             onAdicionarExtra={
               !ehOnline && nivelExtra === 0 && mostraNotasELicao && temLicao
                 ? () => setNivelExtra(1)
@@ -1074,6 +1076,8 @@ function AlunoLinha({
               mostraLicao={mostraNotasELicao && temLicao}
               mostraPresenca={ehOnline}
               estado={parte2}
+              nivel={c.aluno_nivel}
+              historico={historicoParaParte2}
               onAdicionarExtra={
                 ehOnline && nivelExtra === 0 && mostraNotasELicao && temLicao
                   ? () => setNivelExtra(1)
@@ -1090,6 +1094,8 @@ function AlunoLinha({
               mostraLicao={mostraNotasELicao && temLicao}
               mostraPresenca
               estado={parte3}
+              nivel={c.aluno_nivel}
+              historico={historicoParaParte3}
               onAdicionarExtra={
                 nivelExtra === 1 && mostraNotasELicao && temLicao
                   ? () => setNivelExtra(2)
@@ -1106,6 +1112,8 @@ function AlunoLinha({
               mostraLicao={mostraNotasELicao && temLicao}
               mostraPresenca
               estado={parte4}
+              nivel={c.aluno_nivel}
+              historico={historicoParaParte4}
               salvarSlot={botaoSalvar}
             />
           )}
@@ -1123,6 +1131,8 @@ function BlocoLancamento({
   mostraLicao,
   mostraPresenca,
   estado,
+  nivel,
+  historico,
   onAdicionarExtra,
   salvarSlot,
 }: {
@@ -1132,9 +1142,12 @@ function BlocoLancamento({
   mostraLicao: boolean;
   mostraPresenca: boolean;
   estado: EstadoParte;
+  nivel: string;
+  historico: { licao: string; nivel_no_momento: string; praticado: boolean }[];
   onAdicionarExtra?: () => void;
   salvarSlot?: ReactNode;
 }) {
+  const aviso = mostraLicao ? avisoLicao(nivel, estado.licaoLocal, historico) : null;
   return (
     <div className="mt-1 flex items-center gap-3 flex-wrap">
       {rotulo && (
@@ -1186,6 +1199,10 @@ function BlocoLancamento({
             estado.praticadoLocal ? "border-input" : "border-amber-500"
           }`}
         />
+      )}
+
+      {mostraLicao && aviso && (
+        <div className="w-full text-[11px] text-amber-600 dark:text-amber-400">⚠️ {aviso}</div>
       )}
 
       {mostraLicao && (
