@@ -114,11 +114,11 @@ fraco continua como está (fora do escopo da story, uso local apenas).
 
 `docs/stories/epics/EPIC-002-db-reconciliation.md`
 
-| Story | Título                                                 | Status                                                                 |
-| ----- | ------------------------------------------------------ | ---------------------------------------------------------------------- |
-| 2.1   | Baseline migration from production                     | InReview — todas as ACs implementadas 2026-09-17, falta QA gate formal |
-| 2.2   | Realtime strategy decision + implementation            | Não drafted                                                            |
-| 2.3   | Verify + document RLS/GRANT/constraints for all tables | Não drafted                                                            |
+| Story | Título                                                 | Status                                                                                                                   |
+| ----- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| 2.1   | Baseline migration from production                     | ✅ Done — todas as ACs 2026-09-17, QA via `/code-review` + advisor Supabase (achou e corrigiu gap de privilégios padrão) |
+| 2.2   | Realtime strategy decision + implementation            | Não drafted                                                                                                              |
+| 2.3   | Verify + document RLS/GRANT/constraints for all tables | Não drafted                                                                                                              |
 
 ## EPIC-006 — Tipo de aula "Comercial" + aba de prospects (P2)
 

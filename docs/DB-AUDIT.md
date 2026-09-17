@@ -49,6 +49,18 @@
     bypassing the app and its auth entirely, for however long this was
     reverted. No way to determine when the revert happened without prod
     audit logs (not checked as part of this story).
+  - **Follow-up gap found in QA review**: the relock migration above revoked
+    access on the _existing_ 9 tables, but the baseline also carries a
+    standing `ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+GRANT ALL ... TO anon, authenticated` rule. Left alone, the next table
+    created by a migration (or a Studio edit) would silently reproduce the
+    exact same regression with zero policy change needed. **Fixed same
+    day**: `supabase/migrations/20260917110000_revoke_default_privileges_anon.sql`
+    revokes the default-privilege grants to `anon`/`authenticated` on future
+    tables/sequences/functions. **Verified live**: created a throwaway table
+    on prod after the fix and confirmed `information_schema.role_table_grants`
+    shows only `postgres`/`service_role`, no `anon`/`authenticated`; table
+    dropped immediately after.
 
 ## 1. Tables (12)
 
