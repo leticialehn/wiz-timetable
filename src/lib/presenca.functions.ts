@@ -247,10 +247,11 @@ export const getHistoricoLicoes = createServerFn({ method: "GET" })
       const client = await sb();
       const { data: rows, error } = await client
         .from("aulas_licoes")
-        .select("aluno_id, licao, nivel_no_momento, praticado, data, parte")
+        .select("aluno_id, licao, nivel_no_momento, praticado, data, periodo, parte")
         .in("aluno_id", data.aluno_ids)
         .lt("data", data.antesDe)
         .order("data", { ascending: false })
+        .order("periodo", { ascending: false })
         .order("parte", { ascending: false });
       if (error) throw new Error(error.message);
       const resultado: Record<
