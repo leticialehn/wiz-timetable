@@ -134,7 +134,11 @@ function rotuloDesfechoRematricula(a: AlertaAtivo): string {
     return `Não rematriculado por ${a.resolvido_por}${a.motivo ? ` — ${a.motivo}` : ""}`;
   }
   if (a.desfecho === "parcelas_adicionais") return `Parcelas adicionais — ${a.resolvido_por}`;
-  return `Rematriculado por ${a.resolvido_por}`;
+  const base = `Rematriculado por ${a.resolvido_por}`;
+  // A decisão em si (rematriculou) não depende de saber a data exata do novo
+  // contrato — dá pra confirmar sem data e levantar/editar depois em Alunos.
+  // Esse aviso é só pra não esquecer que falta esse dado.
+  return a.contrato_inicio ? base : `${base} — aguardando data de início do contrato`;
 }
 
 function agruparPorTipo(alertas: AlertaAtivo[]): { tipo: TipoAlerta; itens: AlertaAtivo[] }[] {
@@ -211,7 +215,7 @@ export function AlertasLista({
     setRenovandoId(a.id);
   }
 
-  async function confirmarRenovacao(id: string) {
+  async function confirmarRenovacao(id: string, semData?: boolean) {
     setSalvando(id);
     try {
       await resolverFn({
@@ -219,8 +223,8 @@ export function AlertasLista({
           id,
           resolvido_por: resolvidoPor,
           desfecho: "rematriculado",
-          novoContratoInicio: novoInicio ? `${novoInicio}-01` : null,
-          novoContratoFim: novoFim ? `${novoFim}-01` : null,
+          novoContratoInicio: !semData && novoInicio ? `${novoInicio}-01` : null,
+          novoContratoFim: !semData && novoFim ? `${novoFim}-01` : null,
         },
       });
       qc.invalidateQueries({ queryKey: ["alertas-ativos"] });
@@ -367,6 +371,14 @@ export function AlertasLista({
                               className="text-xs px-2 py-1 rounded bg-primary text-primary-foreground disabled:opacity-50"
                             >
                               Confirmar
+                            </button>
+                            <button
+                              disabled={salvando === a.id}
+                              onClick={() => confirmarRenovacao(a.id, true)}
+                              title="Marca como rematriculado agora e deixa a data pra preencher depois em Alunos"
+                              className="text-xs px-2 py-1 rounded border border-border hover:bg-accent disabled:opacity-50"
+                            >
+                              Ainda não sei a data
                             </button>
                             <button
                               onClick={() => setRenovandoId(null)}

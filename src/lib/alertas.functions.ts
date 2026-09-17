@@ -177,6 +177,11 @@ export type AlertaAtivo = {
   // Só populado pra tipo "rematricula" — informativo, pra mostrar o prazo
   // do contrato junto do alerta.
   contrato_fim: string | null;
+  // Idem — usado pra sinalizar "rematriculado, mas ainda sem data de início
+  // registrada" na lista de resolvidos, já que confirmar a rematrícula não
+  // exige preencher as datas na hora (dá pra levantar depois e editar em
+  // Alunos).
+  contrato_inicio: string | null;
   created_at: string;
 };
 
@@ -275,6 +280,7 @@ function paraAlertaAtivo(row: AlertaStatusRow, aluno: Aluno): AlertaAtivo {
     motivo: row.motivo,
     desfecho: row.desfecho as DesfechoRematricula | null,
     contrato_fim: aluno.contrato_fim ?? null,
+    contrato_inicio: aluno.contrato_inicio ?? null,
     created_at: row.created_at,
   };
 }
