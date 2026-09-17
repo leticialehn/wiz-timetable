@@ -1,8 +1,28 @@
 # EPIC-002: Reconcile Database with Production
 
-**Status:** Draft
+**Status:** Done (closed 2026-09-17, authorized by owner)
 **Priority:** P1 (do right after EPIC-001)
 **Addresses:** NFR-2, NFR-9 · `docs/DB-AUDIT.md` §2/§3/§5
+
+## Closure summary (2026-09-17)
+
+All 3 stories Done, all with QA Gate PASS:
+
+- 2.1 — baseline migration, drift resolved, DDL captured, unique constraint
+  verified. Also found and fixed a live RLS lockdown regression + a
+  default-privileges gap along the way (see `docs/DB-AUDIT.md` §0).
+- 2.2 — Realtime strategy decided and implemented, split by student-PII
+  sensitivity.
+- 2.3 — full constraint inventory (PK/UNIQUE/FK/CHECK) for all 12 tables,
+  verified live against prod with zero drift. Surfaced a real blocker for
+  EPIC-006 (disagreeing `tipo` CHECK constraints across 3 tables) —
+  documented in `docs/DB-AUDIT.md` §5a, not resolved here (out of this
+  epic's scope).
+
+All 7 epic-level ACs satisfied. Gates: `docs/qa/gates/2.2-realtime-strategy.yml`,
+`docs/qa/gates/2.3-constraints-inventory.yml` (2.1 used `/code-review` +
+Supabase's security advisor in place of a formal gate file, documented in the
+story itself).
 
 ## Problem
 

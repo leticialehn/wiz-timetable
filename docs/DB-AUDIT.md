@@ -304,8 +304,9 @@ This story (2.3) documents the gap; it does not resolve it.
 - [x] ✅ Decide + implement auth wiring (EPIC-001) — **note:** owner has since set
       `AUTH_DISABLED=true` locally (see `docs/estado.md`), bypassing this
       intentionally for local dev; not set in Vercel.
-- [ ] 🔴 **New (2026-09-17):** confirm with the team/collaborators when/how the RLS
-      lockdown got reverted in prod, so it doesn't happen again silently
+- [x] ⚪ Investigate when/how the RLS lockdown got reverted in prod — **owner
+      decision 2026-09-17: accepted as human error, not investigating further.**
+      The fix (re-lockdown + revoked default privileges) stands regardless.
 - [x] ✅ Decide Realtime strategy (Story 2.2, 2026-09-17) — split by PII
       sensitivity, see §3
 - [x] ✅ Verify RLS/GRANT state of the 3 untracked tables directly in prod (Story 2.1,

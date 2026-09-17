@@ -27,9 +27,9 @@ tabelas (`alunos`, `aulas_notas`, `aulas_presenca`, `excecoes_semana`,
   com a `anon key` pública (embutida no bundle JS do navegador) podia
   ler/escrever dados de alunos (menores de idade) direto pela API do
   Supabase, sem precisar de login.
-- **Pendência:** confirmar com a equipe quando/como isso foi revertido, pra
-  não acontecer de novo silenciosamente. Ver `docs/DB-AUDIT.md` §0 para o
-  relato completo.
+- **Decisão do owner (2026-09-17):** aceito como erro humano, sem investigar mais.
+  A correção (lockdown reaplicado + privilégios padrão revogados) continua valendo
+  independente da causa. Ver `docs/DB-AUDIT.md` §0 para o relato completo.
 
 ## ⚠️ Decisão do owner: AUTH_DISABLED (2026-09-15)
 
@@ -110,7 +110,7 @@ fraco continua como está (fora do escopo da story, uso local apenas).
 
 **Nota:** `docs/stories/README.md` está sincronizado com este arquivo.
 
-## EPIC-002 — Reconcile Database with Production (P1)
+## EPIC-002 — Reconcile Database with Production (P1) — ✅ ENCERRADO 2026-09-17
 
 `docs/stories/epics/EPIC-002-db-reconciliation.md`
 
