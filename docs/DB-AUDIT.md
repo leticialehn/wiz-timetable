@@ -3,8 +3,10 @@
 > Supabase Postgres, project `eaebeymijwkzfoozerzw`, single `public` schema.
 > Audited 2026-09-10 from `supabase/migrations/*.sql` (12 files, 423 lines) and
 > `src/integrations/supabase/types.ts` (generated types = ground truth for shape).
-> **Updated 2026-09-17** (Story 2.1): baseline pulled from prod, drift resolved,
-> a live RLS/GRANT regression found and fixed — see §2 and §3.
+> **Updated 2026-09-17** (Stories 2.1-2.3): baseline pulled from prod, drift resolved,
+> a live RLS/GRANT regression found and fixed (§2/§3), Realtime strategy decided
+> (§3), full constraint inventory verified live with zero drift (§5a). EPIC-002 is
+> now feature-complete pending only the `tipo` CHECK reconciliation for EPIC-006.
 > **Owner action required** on the items marked 🔴.
 
 ## 0. Story 2.1 — baseline migration (2026-09-17)
@@ -194,16 +196,103 @@ anyone who can reach the deployment URL and knows/guesses the RPC path.
 
 ## 5. Data-integrity notes
 
-- ✅ **Resolved 2026-09-17 (Story 2.1):** `aulas_presenca` / `aulas_notas` unique key
-  is confirmed as `(data, professora_id, aluno_id, periodo, parte, horario_especifico)`
-  in the baseline — it does include `parte` and `horario_especifico`, matching what
-  the code writes.
+- See §5a for the full constraint inventory (Story 2.3, 2026-09-17). Highlights:
+  `aulas_presenca`/`aulas_notas`/`aulas_licoes` share the same 6-column UNIQUE key;
+  `usuarios.professora_id → professoras.id` is the one FK that's `ON DELETE SET
+NULL` instead of `CASCADE`; three different `tipo` CHECK constraints disagree on
+  allowed values (§5a, blocks EPIC-006).
 - `alunos.creditos` adjustment is application-side only; a crash between the presença
   write and the `alunos` update leaves credits wrong. Consider a DB trigger or a
   transaction (Story 3.x).
 - `ON DELETE CASCADE` from `alunos`/`professoras` into presença/notas/lições/grade —
   deleting an aluno erases their academic history. Consider soft-delete only (there is
   already `ativo` + `situacao`).
+
+## 5a. Constraint inventory — verified live, 2026-09-17 (Story 2.3)
+
+Queried directly from prod (`pg_constraint`/`pg_get_constraintdef`), not read off the
+migration file — cross-checked against
+`supabase/migrations/20260915134213_baseline_from_prod.sql` line by line: **zero
+drift**, the file and prod agree on every one of the 56 constraints below.
+
+**Primary keys**: every one of the 12 tables has `{table}_pkey` on `id` (uuid). No
+exceptions.
+
+**Unique constraints**:
+
+| Table             | Columns                                                               |
+| ----------------- | --------------------------------------------------------------------- |
+| `aulas_licoes`    | `(data, professora_id, aluno_id, periodo, parte, horario_especifico)` |
+| `aulas_notas`     | `(data, professora_id, aluno_id, periodo, parte, horario_especifico)` |
+| `aulas_presenca`  | `(data, professora_id, aluno_id, periodo, parte, horario_especifico)` |
+| `horarios_config` | `(dia_semana, periodo, professora_id)`                                |
+| `usuario_papeis`  | `(usuario_id, papel)`                                                 |
+| `usuarios`        | `professora_id` (unique); `username` (unique)                         |
+
+**Foreign keys** (all `ON DELETE CASCADE` except one):
+
+| Table (column)                  | References       | On delete    |
+| ------------------------------- | ---------------- | ------------ |
+| `alertas_status.aluno_id`       | `alunos.id`      | CASCADE      |
+| `aulas_licoes.aluno_id`         | `alunos.id`      | CASCADE      |
+| `aulas_licoes.professora_id`    | `professoras.id` | CASCADE      |
+| `aulas_notas.aluno_id`          | `alunos.id`      | CASCADE      |
+| `aulas_notas.professora_id`     | `professoras.id` | CASCADE      |
+| `aulas_presenca.aluno_id`       | `alunos.id`      | CASCADE      |
+| `aulas_presenca.professora_id`  | `professoras.id` | CASCADE      |
+| `excecoes_semana.aluno_id`      | `alunos.id`      | CASCADE      |
+| `excecoes_semana.grade_base_id` | `grade_base.id`  | CASCADE      |
+| `excecoes_semana.professora_id` | `professoras.id` | CASCADE      |
+| `grade_base.aluno_id`           | `alunos.id`      | CASCADE      |
+| `grade_base.professora_id`      | `professoras.id` | CASCADE      |
+| `horarios_config.professora_id` | `professoras.id` | CASCADE      |
+| `usuario_papeis.usuario_id`     | `usuarios.id`    | CASCADE      |
+| `usuarios.professora_id`        | `professoras.id` | **SET NULL** |
+
+`calendario_excecoes`, `alunos`, and `professoras` have no outgoing FKs (they're
+referenced, not referencing).
+
+**CHECK constraints**:
+
+| Table.column                                        | Allowed values                                                                                                     |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `alertas_status.status`                             | `pendente`, `resolvido`                                                                                            |
+| `alertas_status.tipo`                               | `faltas`, `nota_fala`, `sem_aula`, `rematricula`, `atrasado`, `escrita_pendente`, `gravacao_r3r4`, `gravacao_r7r8` |
+| `alunos.situacao`                                   | `matriculado`, `nao_rematriculado`, `cancelado`                                                                    |
+| `aulas_notas.{audicao,escrita,fala,leitura}` (each) | `O`, `MB`, `B`, `R`                                                                                                |
+| `aulas_presenca.status`                             | `presente`, `falta`, `falta_avisada`                                                                               |
+| `calendario_excecoes.grupo`                         | `todos`, `kids`, `teens`, `adultos`                                                                                |
+| `calendario_excecoes.tipo`                          | `feriado`, `recesso`, `ferias`                                                                                     |
+| `excecoes_semana.{dia_semana,periodo}`              | `1..6`, `1..12`                                                                                                    |
+| `excecoes_semana.tipo`                              | `NULL` or `regular`, `online`, `vip`, `reforco`, `conversacao` (5 values + null)                                   |
+| `excecoes_semana.tipo_excecao`                      | `adicionar`, `remover`, `mover`, `ausente`                                                                         |
+| `grade_base.{dia_semana,periodo}`                   | `1..6`, `1..12`                                                                                                    |
+| `grade_base.tipo`                                   | `regular`, `online`, `vip`, `reforco`, `conversacao` (5 values)                                                    |
+| `horarios_config.{dia_semana,periodo}`              | `1..6`, `1..12`                                                                                                    |
+| `horarios_config.tipo`                              | `regular`, `online`, `break`, `preparacao_homework`, `reforco`, `vip`, `conversacao`, `sem_aula` (**8 values**)    |
+| `horarios_config.vagas_fechadas`                    | `>= 0`                                                                                                             |
+| `usuario_papeis.papel`                              | `secretaria`, `professor`, `coordenador`                                                                           |
+
+`professoras`, `usuarios`, and `aulas_licoes` (beyond its unique key) have no CHECK
+constraints.
+
+### 🟡 `tipo` CHECK inconsistency — blocks EPIC-006
+
+`horarios_config_tipo_check` allows **8** values; `grade_base_tipo_check` and
+`excecoes_semana_tipo_check` only allow the same **5** (the latter also allows
+`NULL`). A cell's `tipo` is copied from `horarios_config`/`grade_base` into
+`excecoes_semana` whenever a week deviates from the template — so today, only the 5
+common values (`regular`, `online`, `vip`, `reforco`, `conversacao`) can safely
+round-trip through all three tables; `break`, `preparacao_homework`, and `sem_aula`
+only exist in `horarios_config`.
+
+**This blocks EPIC-006** ("Comercial" class type, `docs/stories/epics/EPIC-006-comercial-tipo-aula.md`):
+adding `comercial` to only one of these three CHECK constraints will make the
+exception/copy path fail its own constraint the moment a "Comercial" cell gets an
+exception. EPIC-006 Story 6.1 must widen all three CHECK constraints together (or
+decide `excecoes_semana`/`grade_base` should stay narrower and handle "Comercial"
+without ever needing an exception — a real design choice, not just a migration).
+This story (2.3) documents the gap; it does not resolve it.
 
 ## 6. Priority checklist for the owner
 
@@ -222,4 +311,9 @@ anyone who can reach the deployment URL and knows/guesses the RPC path.
 - [x] ✅ Verify RLS/GRANT state of the 3 untracked tables directly in prod (Story 2.1,
       2026-09-17 — all 3 confirmed and, for `alertas_status`/`calendario_excecoes`,
       locked down for the first time)
+- [x] ✅ Document full constraint inventory (PK/UNIQUE/FK/CHECK) for all 12 tables,
+      verified live against prod (Story 2.3, 2026-09-17) — see §5a; zero drift found
+- [ ] 🟡 **New (2026-09-17):** reconcile the 3 disagreeing `tipo` CHECK constraints
+      (`horarios_config` 8 values vs `grade_base`/`excecoes_semana` 5 values) before
+      EPIC-006 can add `comercial` — see §5a
 - [ ] 🟡 Review `ON DELETE CASCADE` vs soft-delete for `alunos`

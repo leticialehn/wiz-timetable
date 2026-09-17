@@ -114,22 +114,31 @@ fraco continua como está (fora do escopo da story, uso local apenas).
 
 `docs/stories/epics/EPIC-002-db-reconciliation.md`
 
-| Story | Título                                                                          | Status                                                                                                                   |
-| ----- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| 2.1   | Baseline migration from production                                              | ✅ Done — todas as ACs 2026-09-17, QA via `/code-review` + advisor Supabase (achou e corrigiu gap de privilégios padrão) |
-| 2.2   | [Realtime strategy decision + implementation](stories/2.2.realtime-strategy.md) | ✅ Done — QA Gate PASS 2026-09-17, `docs/qa/gates/2.2-realtime-strategy.yml`                                             |
-| 2.3   | Verify + document RLS/GRANT/constraints for all tables                          | Não drafted                                                                                                              |
+| Story | Título                                                                                         | Status                                                                                                                   |
+| ----- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| 2.1   | Baseline migration from production                                                             | ✅ Done — todas as ACs 2026-09-17, QA via `/code-review` + advisor Supabase (achou e corrigiu gap de privilégios padrão) |
+| 2.2   | [Realtime strategy decision + implementation](stories/2.2.realtime-strategy.md)                | ✅ Done — QA Gate PASS 2026-09-17, `docs/qa/gates/2.2-realtime-strategy.yml`                                             |
+| 2.3   | [Verify + document RLS/GRANT/constraints for all tables](stories/2.3.constraints-inventory.md) | Implementada 2026-09-17 — inventário completo em `docs/DB-AUDIT.md` §5a, zero drift; aguardando QA gate                  |
+
+**EPIC-002 pronto pra @po/@pm considerar fechamento** — todas as ACs do epic
+(baseline, drift, DDL capturado, constraint verificado, RLS/GRANT documentado,
+Realtime decidido, regra "sem edição no Studio" registrada) estão satisfeitas assim
+que a 2.3 passar pelo QA gate.
 
 ## EPIC-006 — Tipo de aula "Comercial" + aba de prospects (P2)
 
 `docs/stories/epics/EPIC-006-comercial-tipo-aula.md` — pedido de feature do usuário
-(2026-09-14). **Bloqueado na Story 2.1 do EPIC-002** (precisa de histórico de
-migration limpo antes de alargar qualquer CHECK constraint de `tipo`).
+(2026-09-14). **Ainda bloqueado**, mas o motivo mudou: não é mais "histórico de
+migration sujo" (isso a Story 2.1 resolveu) — agora é um achado concreto da Story
+2.3: os CHECK constraints de `tipo` em `horarios_config` (8 valores), `grade_base`
+e `excecoes_semana` (5 valores cada) **são diferentes entre si**. Adicionar
+"comercial" só numa tabela quebra o round-trip entre elas. Ver
+`docs/DB-AUDIT.md` §5a.
 
-| Story | Título                                                          | Status |
-| ----- | --------------------------------------------------------------- | ------ |
-| 6.1   | Adicionar tipo de aula "Comercial" (schema + types + grid)      | Draft  |
-| 6.2   | Aba "Comercial" no menu + lista de prospects, separada de Leads | Draft  |
+| Story | Título                                                          | Status                                                                               |
+| ----- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| 6.1   | Adicionar tipo de aula "Comercial" (schema + types + grid)      | Draft — precisa decidir a reconciliação dos 3 CHECK constraints antes de implementar |
+| 6.2   | Aba "Comercial" no menu + lista de prospects, separada de Leads | Draft                                                                                |
 
 Decisões já tomadas pelo usuário: aba própria no menu (não dentro de Relatórios);
 disponível em qualquer período/professora, sem restrição extra; migration só
