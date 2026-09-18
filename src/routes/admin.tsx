@@ -43,6 +43,13 @@ function AdminShell() {
               Relatórios
             </Link>
             <Link
+              to="/admin/comercial"
+              activeProps={{ className: "bg-accent text-foreground" }}
+              className="px-3.5 py-2 rounded-lg font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              Comercial
+            </Link>
+            <Link
               to="/admin/calendario"
               activeProps={{ className: "bg-accent text-foreground" }}
               className="px-3.5 py-2 rounded-lg font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"

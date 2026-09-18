@@ -17,6 +17,7 @@ import { Route as ProfessoraAlertasRouteImport } from './routes/professora_.aler
 import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as AdminRelatoriosRouteImport } from './routes/admin.relatorios'
 import { Route as AdminProfessorasRouteImport } from './routes/admin.professoras'
+import { Route as AdminComercialRouteImport } from './routes/admin.comercial'
 import { Route as AdminCalendarioRouteImport } from './routes/admin.calendario'
 import { Route as AdminAlunosRouteImport } from './routes/admin.alunos'
 import { Route as AdminAlertasRouteImport } from './routes/admin.alertas'
@@ -72,6 +73,11 @@ const AdminRelatoriosRoute = AdminRelatoriosRouteImport.update({
 const AdminProfessorasRoute = AdminProfessorasRouteImport.update({
   id: '/professoras',
   path: '/professoras',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminComercialRoute = AdminComercialRouteImport.update({
+  id: '/comercial',
+  path: '/comercial',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminCalendarioRoute = AdminCalendarioRouteImport.update({
@@ -166,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/admin/alertas': typeof AdminAlertasRoute
   '/admin/alunos': typeof AdminAlunosRoute
   '/admin/calendario': typeof AdminCalendarioRoute
+  '/admin/comercial': typeof AdminComercialRoute
   '/admin/professoras': typeof AdminProfessorasRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
@@ -191,6 +198,7 @@ export interface FileRoutesByTo {
   '/admin/alertas': typeof AdminAlertasRoute
   '/admin/alunos': typeof AdminAlunosRoute
   '/admin/calendario': typeof AdminCalendarioRoute
+  '/admin/comercial': typeof AdminComercialRoute
   '/admin/professoras': typeof AdminProfessorasRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
@@ -218,6 +226,7 @@ export interface FileRoutesById {
   '/admin/alertas': typeof AdminAlertasRoute
   '/admin/alunos': typeof AdminAlunosRoute
   '/admin/calendario': typeof AdminCalendarioRoute
+  '/admin/comercial': typeof AdminComercialRoute
   '/admin/professoras': typeof AdminProfessorasRoute
   '/admin/relatorios': typeof AdminRelatoriosRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
@@ -246,6 +255,7 @@ export interface FileRouteTypes {
     | '/admin/alertas'
     | '/admin/alunos'
     | '/admin/calendario'
+    | '/admin/comercial'
     | '/admin/professoras'
     | '/admin/relatorios'
     | '/admin/usuarios'
@@ -271,6 +281,7 @@ export interface FileRouteTypes {
     | '/admin/alertas'
     | '/admin/alunos'
     | '/admin/calendario'
+    | '/admin/comercial'
     | '/admin/professoras'
     | '/admin/relatorios'
     | '/admin/usuarios'
@@ -297,6 +308,7 @@ export interface FileRouteTypes {
     | '/admin/alertas'
     | '/admin/alunos'
     | '/admin/calendario'
+    | '/admin/comercial'
     | '/admin/professoras'
     | '/admin/relatorios'
     | '/admin/usuarios'
@@ -381,6 +393,13 @@ declare module '@tanstack/react-router' {
       path: '/professoras'
       fullPath: '/admin/professoras'
       preLoaderRoute: typeof AdminProfessorasRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/comercial': {
+      id: '/admin/comercial'
+      path: '/comercial'
+      fullPath: '/admin/comercial'
+      preLoaderRoute: typeof AdminComercialRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/calendario': {
@@ -502,6 +521,7 @@ interface AdminRouteChildren {
   AdminAlertasRoute: typeof AdminAlertasRoute
   AdminAlunosRoute: typeof AdminAlunosRoute
   AdminCalendarioRoute: typeof AdminCalendarioRoute
+  AdminComercialRoute: typeof AdminComercialRoute
   AdminProfessorasRoute: typeof AdminProfessorasRoute
   AdminRelatoriosRoute: typeof AdminRelatoriosRoute
   AdminUsuariosRoute: typeof AdminUsuariosRoute
@@ -524,6 +544,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAlertasRoute: AdminAlertasRoute,
   AdminAlunosRoute: AdminAlunosRoute,
   AdminCalendarioRoute: AdminCalendarioRoute,
+  AdminComercialRoute: AdminComercialRoute,
   AdminProfessorasRoute: AdminProfessorasRoute,
   AdminRelatoriosRoute: AdminRelatoriosRoute,
   AdminUsuariosRoute: AdminUsuariosRoute,

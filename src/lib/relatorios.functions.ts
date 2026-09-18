@@ -252,35 +252,20 @@ export type Lead = {
   ultimaData: string | null;
 };
 
-// Nomes avulsos (aula marcada só com o nome, sem virar cadastro de aluno) —
-// pra achar quem fez uma aula experimental e nunca chegou a matricular. No
-// relatório isso aparece como "Lead", não como aluno.
-// Agrupa por nome sem acento/maiúsculas ([[normalizarNomeParaComparacao]]),
-// então "Joao" e "João" caem na mesma pessoa — a grafia exibida é a mais usada
-// entre as variações digitadas (empate: a mais recente).
-export const getLeads = createServerFn({ method: "GET" }).handler(async (): Promise<Lead[]> => {
-  const sb = await publicClient();
-  const [baseRes, excRes, profRes] = await Promise.all([
-    sb
-      .from("grade_base")
-      .select("dia_semana,periodo,professora_id,tipo,aluno_nome_avulso")
-      .not("aluno_nome_avulso", "is", null),
-    sb
-      .from("excecoes_semana")
-      .select("data,dia_semana,periodo,professora_id,tipo,tipo_excecao,aluno_nome_avulso")
-      .not("aluno_nome_avulso", "is", null)
-      .neq("tipo_excecao", "remover"),
-    sb.from("professoras").select("id,nome"),
-  ]);
-  const professoras = (profRes.data ?? []) as { id: string; nome: string }[];
-  const nomeProf = new Map(professoras.map((p) => [p.id, p.nome]));
-
+// Agrupa ocorrências de nomes avulsos por nome normalizado
+// ([[normalizarNomeParaComparacao]]), então "Joao" e "João" caem na mesma
+// pessoa — a grafia exibida é a mais usada entre as variações digitadas
+// (empate: a mais recente). Compartilhado por getLeads e
+// getProspectosComerciais, que só diferem no filtro de `tipo` da query.
+function agruparOcorrenciasPorNome(
+  entradas: { nomeDigitado: string; oc: OcorrenciaLead }[],
+): Lead[] {
   type Grupo = {
     ocorrencias: OcorrenciaLead[];
     variantes: Map<string, { contagem: number; ultimaData: string | null }>;
   };
   const porChave = new Map<string, Grupo>();
-  function add(nomeDigitado: string, oc: OcorrenciaLead) {
+  for (const { nomeDigitado, oc } of entradas) {
     const chave = normalizarNomeParaComparacao(nomeDigitado);
     if (!porChave.has(chave)) porChave.set(chave, { ocorrencias: [], variantes: new Map() });
     const grupo = porChave.get(chave)!;
@@ -291,25 +276,6 @@ export const getLeads = createServerFn({ method: "GET" }).handler(async (): Prom
       variante.ultimaData = oc.data;
     }
     grupo.variantes.set(nomeDigitado, variante);
-  }
-
-  for (const row of (baseRes.data ?? []) as GradeBaseRow[]) {
-    if (!row.aluno_nome_avulso) continue;
-    add(row.aluno_nome_avulso, {
-      data: null,
-      dia_semana: row.dia_semana,
-      tipo: row.tipo,
-      professora_nome: nomeProf.get(row.professora_id) ?? "?",
-    });
-  }
-  for (const row of (excRes.data ?? []) as ExcecaoSemana[]) {
-    if (!row.aluno_nome_avulso || row.dia_semana === null) continue;
-    add(row.aluno_nome_avulso, {
-      data: row.data,
-      dia_semana: row.dia_semana,
-      tipo: row.tipo ?? "regular",
-      professora_nome: nomeProf.get(row.professora_id ?? "") ?? "?",
-    });
   }
 
   return [...porChave.values()]
@@ -333,7 +299,85 @@ export const getLeads = createServerFn({ method: "GET" }).handler(async (): Prom
       (a, b) =>
         (b.ultimaData ?? "").localeCompare(a.ultimaData ?? "") || a.nome.localeCompare(b.nome),
     );
+}
+
+async function buscarAvulsosPorTipo(
+  sb: SupabaseLike,
+  filtro: "excluir-comercial" | "somente-comercial",
+): Promise<Lead[]> {
+  let baseQuery = sb
+    .from("grade_base")
+    .select("dia_semana,periodo,professora_id,tipo,aluno_nome_avulso")
+    .not("aluno_nome_avulso", "is", null);
+  let excQuery = sb
+    .from("excecoes_semana")
+    .select("data,dia_semana,periodo,professora_id,tipo,tipo_excecao,aluno_nome_avulso")
+    .not("aluno_nome_avulso", "is", null)
+    .neq("tipo_excecao", "remover");
+  if (filtro === "excluir-comercial") {
+    baseQuery = baseQuery.neq("tipo", "comercial");
+    excQuery = excQuery.neq("tipo", "comercial");
+  } else {
+    baseQuery = baseQuery.eq("tipo", "comercial");
+    excQuery = excQuery.eq("tipo", "comercial");
+  }
+
+  const [baseRes, excRes, profRes] = await Promise.all([
+    baseQuery,
+    excQuery,
+    sb.from("professoras").select("id,nome"),
+  ]);
+  const professoras = (profRes.data ?? []) as { id: string; nome: string }[];
+  const nomeProf = new Map(professoras.map((p) => [p.id, p.nome]));
+
+  const entradas: { nomeDigitado: string; oc: OcorrenciaLead }[] = [];
+  for (const row of (baseRes.data ?? []) as GradeBaseRow[]) {
+    if (!row.aluno_nome_avulso) continue;
+    entradas.push({
+      nomeDigitado: row.aluno_nome_avulso,
+      oc: {
+        data: null,
+        dia_semana: row.dia_semana,
+        tipo: row.tipo,
+        professora_nome: nomeProf.get(row.professora_id) ?? "?",
+      },
+    });
+  }
+  for (const row of (excRes.data ?? []) as ExcecaoSemana[]) {
+    if (!row.aluno_nome_avulso || row.dia_semana === null) continue;
+    entradas.push({
+      nomeDigitado: row.aluno_nome_avulso,
+      oc: {
+        data: row.data,
+        dia_semana: row.dia_semana,
+        tipo: row.tipo ?? "regular",
+        professora_nome: nomeProf.get(row.professora_id ?? "") ?? "?",
+      },
+    });
+  }
+
+  return agruparOcorrenciasPorNome(entradas);
+}
+
+// Nomes avulsos (aula marcada só com o nome, sem virar cadastro de aluno) —
+// pra achar quem fez uma aula experimental e nunca chegou a matricular. No
+// relatório isso aparece como "Lead", não como aluno. Exclui `tipo ===
+// "comercial"` (Story 6.2) — esses prospects aparecem só em
+// getProspectosComerciais, nunca nos dois.
+export const getLeads = createServerFn({ method: "GET" }).handler(async (): Promise<Lead[]> => {
+  const sb = await publicClient();
+  return buscarAvulsosPorTipo(sb, "excluir-comercial");
 });
+
+// Prospects comerciais — nomes avulsos marcados num slot `tipo === "comercial"`
+// (Story 6.2). Mesmo mecanismo de agrupamento de getLeads, mas filtrado pro
+// tipo oposto — mutuamente exclusivo com getLeads.
+export const getProspectosComerciais = createServerFn({ method: "GET" }).handler(
+  async (): Promise<Lead[]> => {
+    const sb = await publicClient();
+    return buscarAvulsosPorTipo(sb, "somente-comercial");
+  },
+);
 
 export function rotuloOcorrenciaLead(o: OcorrenciaLead): string {
   const dia = DIAS_SEMANA.find((d) => d.n === o.dia_semana)?.nome ?? `dia ${o.dia_semana}`;

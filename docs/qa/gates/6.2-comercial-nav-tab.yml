@@ -1,0 +1,29 @@
+schema: 1
+story: "6.2"
+gate: CONCERNS
+status_reason: >-
+  All 7 ACs implemented and independently re-verified against the diff
+  (getLeads/getProspectosComerciais split, new route + nav link, auth
+  inheritance). typecheck/lint clean, routes confirmed reachable (HTTP 200)
+  against a live dev server. CONCERNS only because no real Comercial booking
+  exists in prod yet, so the mutual-exclusivity guarantee (getLeads vs
+  getProspectosComerciais) was verified by code construction, not by an
+  actual end-to-end booking observation.
+reviewer: "Aria (@architect)"
+reviewed_revision: "worktree:uncommitted (2026-09-18, base commit 84b2b14)"
+updated: "2026-09-18T11:02:06Z"
+top_issues:
+  - id: "TEST-001"
+    severity: low
+    finding: >-
+      Mutual exclusivity between getLeads (excludes tipo="comercial") and
+      getProspectosComerciais (includes only tipo="comercial") is guaranteed
+      by construction (both filter the same tipo column with .neq/.eq, and a
+      row has exactly one tipo), but was not exercised with a live booking —
+      no real Comercial prospect exists in prod yet. The reasoning is sound
+      but untested end-to-end.
+    suggested_action: >-
+      Once a secretaria books a real Comercial slot, spot-check that it
+      appears on /admin/comercial and not on /admin/relatorios/avulsos, and
+      that an "Exp" avulso still appears only on the latter.
+waiver: { active: false }
