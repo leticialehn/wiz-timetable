@@ -1,0 +1,39 @@
+schema: 1
+story: "6.1"
+gate: CONCERNS
+status_reason: >-
+  All 8 ACs implemented and independently re-verified against the diff (types,
+  all 5 admin.index.tsx call sites, professora.tsx exclusion, migration
+  applied+verified live against prod). typecheck/lint clean. CONCERNS only
+  because 2 of Task 6's verification steps (Online-cell visual diff, live
+  Comercial booking) were done by code inspection, not a live run — browser
+  automation was unavailable this session.
+reviewer: "Aria (@architect)"
+reviewed_revision: "worktree:uncommitted (2026-09-18, base commit 15a9784)"
+updated: "2026-09-18T10:40:36Z"
+top_issues:
+  - id: "TEST-001"
+    severity: low
+    finding: >-
+      Task 6's visual diff of an Online cell (before/after the
+      slotsOnlinePorPeriodo -> slotsFixosPorPeriodo refactor) was not run live
+      in a browser; verified instead by reading the diff and confirming
+      SLOT_MINUTOS_POR_TIPO.online = 20 reproduces the old hardcoded
+      :00/:20/:40 sequence byte-for-byte, and that all 5 call sites only
+      changed their branch condition, not their rendering body.
+    suggested_action: >-
+      Spot-check one populated Online cell in the grid editor and in
+      professora.tsx next time browser automation is available, to close this
+      out with a live observation instead of code-level reasoning alone.
+  - id: "TEST-002"
+    severity: low
+    finding: >-
+      AC5 (Comercial booking uses the existing aluno_nome_avulso path, no new
+      server function/DB column) was verified by reading grade.functions.ts
+      and confirming the admin cell editor calls the same mutation for every
+      tipo — not by actually booking a name into a live Comercial slot and
+      observing the resulting row.
+    suggested_action: >-
+      Book one real Comercial slot end-to-end (or add this as a manual test
+      step in EPIC-003's future test harness) to get live confirmation.
+waiver: { active: false }

@@ -31,7 +31,7 @@ import {
   TIPO_FECHADO,
   TIPO_MOSTRA_LIVRO,
   NIVEIS,
-  slotsOnlinePorPeriodo,
+  slotsFixosPorPeriodo,
   configDe,
   idiomaDoNivel,
   corTextoLegivel,
@@ -54,6 +54,7 @@ export const Route = createFileRoute("/admin/")({
 const TIPOS_ORDEM: TipoHorario[] = [
   "regular",
   "online",
+  "comercial",
   "vip",
   "reforco",
   "conversacao",
@@ -468,10 +469,12 @@ function CelulaConteudo({
 
   let linhas: ReactNode[];
 
-  if (tipo === "online") {
-    // Cada linha da célula é presa a um horário fixo (X:00/X:20/X:40) pela sua
-    // posição — digitar ali já grava aquele horário, sem escolher em nada.
-    const slots = slotsOnlinePorPeriodo(periodo);
+  const slotsFixos = slotsFixosPorPeriodo(tipo, periodo);
+  if (slotsFixos.length > 0) {
+    // Cada linha da célula é presa a um horário fixo (X:00/X:20/X:40, ou
+    // X:00/X:15/X:30/X:45 no Comercial) pela sua posição — digitar ali já
+    // grava aquele horário, sem escolher em nada.
+    const slots = slotsFixos;
     const porSlot = new Map<string, CelulaAula>();
     const semSlot: CelulaAula[] = [];
     for (const c of cels) {
@@ -834,8 +837,8 @@ function LinhaVaziaEditavel({
   const [salvando, setSalvando] = useState(false);
   const [trancando, setTrancando] = useState(false);
 
-  const ehOnline = tipo === "online";
-  const precisaEscolherHorario = ehOnline && !horarioFixo;
+  const temSlotsFixos = slotsFixosPorPeriodo(tipo, periodo).length > 0;
+  const precisaEscolherHorario = temSlotsFixos && !horarioFixo;
 
   const sugestoes =
     !alunoId && nome.trim()
@@ -868,7 +871,7 @@ function LinhaVaziaEditavel({
     setErro(null);
     setSalvando(true);
     try {
-      const horarioEspecifico = ehOnline ? (horarioFixo ?? horario) : null;
+      const horarioEspecifico = temSlotsFixos ? (horarioFixo ?? horario) : null;
       if (alunoId) await onAdicionar(alunoId, avulso, horarioEspecifico);
       else await onCriarEAdicionar(nome.trim(), nivel, avulso, horarioEspecifico);
       cancelar();
@@ -982,7 +985,7 @@ function LinhaVaziaEditavel({
           <option value="" disabled>
             Horário do slot
           </option>
-          {slotsOnlinePorPeriodo(periodo).map((slot) => (
+          {slotsFixosPorPeriodo(tipo, periodo).map((slot) => (
             <option key={slot} value={slot} disabled={horariosOcupados.includes(slot)}>
               {slot}
               {horariosOcupados.includes(slot) ? " (ocupado)" : ""}
@@ -1032,6 +1035,7 @@ function tipoCellBg(tipo: TipoHorario) {
   const map: Record<TipoHorario, string> = {
     regular: "bg-[var(--tipo-regular-bg)] text-[var(--tipo-regular-fg)]",
     online: "bg-[var(--tipo-online-bg)] text-[var(--tipo-online-fg)]",
+    comercial: "bg-[var(--tipo-comercial-bg)] text-[var(--tipo-comercial-fg)]",
     vip: "bg-[var(--tipo-vip-bg)] text-[var(--tipo-vip-fg)]",
     reforco: "bg-[var(--tipo-reforco-bg)] text-[var(--tipo-reforco-fg)]",
     conversacao: "bg-[var(--tipo-conversacao-bg)] text-[var(--tipo-conversacao-fg)]",
@@ -1122,7 +1126,8 @@ function CelulaEditor(props: {
       setErro("Escolha um aluno matriculado ou informe o nome do aluno avulso.");
       return;
     }
-    if (tipo === "online" && !horario) {
+    const temSlotsFixos = slotsFixosPorPeriodo(tipo, props.periodo).length > 0;
+    if (temSlotsFixos && !horario) {
       setErro("Escolha o horário do slot.");
       return;
     }
@@ -1136,7 +1141,7 @@ function CelulaEditor(props: {
           professora_id: props.professora.id,
           aluno_id: pendingAlunoId ?? null,
           aluno_nome_avulso: pendingAlunoId ? null : avulsoNome.trim() || null,
-          horario_especifico: tipo === "online" ? horario || null : null,
+          horario_especifico: temSlotsFixos ? horario || null : null,
           observacao: null,
         },
       });
@@ -1399,7 +1404,7 @@ function CelulaEditor(props: {
 
                   {(pendingAlunoId || avulsoNome.trim()) && (
                     <div className="mt-3 space-y-2 rounded border border-border p-3">
-                      {tipo === "online" && (
+                      {slotsFixosPorPeriodo(tipo, props.periodo).length > 0 && (
                         <select
                           value={horario}
                           onChange={(e) => setHorario(e.target.value)}
@@ -1408,7 +1413,7 @@ function CelulaEditor(props: {
                           <option value="" disabled>
                             Horário do slot
                           </option>
-                          {slotsOnlinePorPeriodo(props.periodo).map((slot) => {
+                          {slotsFixosPorPeriodo(tipo, props.periodo).map((slot) => {
                             const ocupado = props.celulas.some(
                               (c) => c.horario_especifico === slot,
                             );

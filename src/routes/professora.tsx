@@ -445,7 +445,7 @@ function AulaCard({
   onOcultar: (celulaId: string) => void;
 }) {
   const mostraLivro = TIPO_MOSTRA_LIVRO[tipo];
-  const mostraNotasELicao = tipo !== "conversacao";
+  const mostraNotasELicao = tipo !== "conversacao" && tipo !== "comercial";
   const cls = tipoCardBg(tipo);
   const fechado = TIPO_FECHADO[tipo];
 
@@ -1271,6 +1271,7 @@ function tipoCardBg(tipo: TipoHorario) {
   const map: Record<TipoHorario, string> = {
     regular: "bg-[var(--tipo-regular-bg)] text-[var(--tipo-regular-fg)]",
     online: "bg-[var(--tipo-online-bg)] text-[var(--tipo-online-fg)]",
+    comercial: "bg-[var(--tipo-comercial-bg)] text-[var(--tipo-comercial-fg)]",
     vip: "bg-[var(--tipo-vip-bg)] text-[var(--tipo-vip-fg)]",
     reforco: "bg-[var(--tipo-reforco-bg)] text-[var(--tipo-reforco-fg)]",
     conversacao: "bg-[var(--tipo-conversacao-bg)] text-[var(--tipo-conversacao-fg)]",

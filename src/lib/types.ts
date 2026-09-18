@@ -253,6 +253,7 @@ export function mesclarPeriodosCalendario(
 export type TipoHorario =
   | "regular"
   | "online"
+  | "comercial"
   | "break"
   | "preparacao_homework"
   | "reforco"
@@ -266,6 +267,7 @@ export type TipoAula = Exclude<TipoHorario, "break" | "preparacao_homework" | "s
 export const CAPACIDADE: Record<TipoHorario, number> = {
   regular: 7,
   online: 3,
+  comercial: 4,
   vip: 2,
   reforco: 4,
   conversacao: 6,
@@ -277,6 +279,7 @@ export const CAPACIDADE: Record<TipoHorario, number> = {
 export const ROTULO_TIPO: Record<TipoHorario, string> = {
   regular: "Aula regular",
   online: "Aula online",
+  comercial: "Comercial",
   break: "Break",
   preparacao_homework: "Preparação & Homework",
   reforco: "Reforço",
@@ -288,6 +291,7 @@ export const ROTULO_TIPO: Record<TipoHorario, string> = {
 export const TIPO_MOSTRA_LIVRO: Record<TipoHorario, boolean> = {
   regular: true,
   online: true,
+  comercial: false,
   vip: true,
   reforco: true,
   conversacao: false,
@@ -299,6 +303,7 @@ export const TIPO_MOSTRA_LIVRO: Record<TipoHorario, boolean> = {
 export const TIPO_FECHADO: Record<TipoHorario, boolean> = {
   regular: false,
   online: false,
+  comercial: false,
   vip: false,
   reforco: false,
   conversacao: false,
@@ -405,12 +410,28 @@ export const HORARIO_INICIO_PERIODO: Record<number, string> = {
   12: "20h",
 };
 
-// Cada horário de 1h "Online" vira 3 vagas de 20min (ex: 8h -> 8:00, 8:20, 8:40).
-export function slotsOnlinePorPeriodo(periodo: number): string[] {
+// Tipos cujo horário de 1h vira N vagas fixas de M minutos cada — Online já
+// fazia isso (3x20min); Comercial usa o mesmo mecanismo (4x15min). Tipos fora
+// deste mapa não têm sub-slots (slotsFixosPorPeriodo retorna []).
+const SLOT_MINUTOS_POR_TIPO: Partial<Record<TipoHorario, number>> = {
+  online: 20,
+  comercial: 15,
+};
+
+// Cada horário de 1h vira vagas fixas de `SLOT_MINUTOS_POR_TIPO[tipo]` minutos
+// (ex: online, 8h -> 8:00, 8:20, 8:40; comercial, 8h -> 8:00, 8:15, 8:30, 8:45).
+// [] pra qualquer tipo sem sub-slots fixos.
+export function slotsFixosPorPeriodo(tipo: TipoHorario, periodo: number): string[] {
+  const minutos = SLOT_MINUTOS_POR_TIPO[tipo];
+  if (!minutos) return [];
   const inicio = HORARIO_INICIO_PERIODO[periodo];
   const hora = parseInt(inicio, 10);
   if (Number.isNaN(hora)) return [];
-  return [`${hora}:00`, `${hora}:20`, `${hora}:40`];
+  const slots: string[] = [];
+  for (let m = 0; m < 60; m += minutos) {
+    slots.push(`${hora}:${m.toString().padStart(2, "0")}`);
+  }
+  return slots;
 }
 
 export function periodosDoDia(dia_semana: number): readonly number[] {
