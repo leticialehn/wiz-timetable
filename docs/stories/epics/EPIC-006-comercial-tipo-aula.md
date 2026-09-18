@@ -1,8 +1,18 @@
 # EPIC-006: "Comercial" Class Type & Prospect Tracking
 
-**Status:** Draft
+**Status:** Done (2026-09-18)
 **Priority:** P2 (product feature; blocked on EPIC-002 Story 2.1)
 **Addresses:** user request 2026-09-14 (session), `docs/DB-AUDIT.md` §2 (migration drift)
+
+**Closure (2026-09-18, @po):** Both stories Done. 6.1 added `"comercial"` end
+to end (types, grid UI, migration applied and verified live against prod,
+QA gate CONCERNS — docs/qa/gates/6.1-add-comercial-tipo-aula.yml). 6.2 added
+the dedicated nav tab + prospect list, split from Leads by construction (QA
+gate CONCERNS — docs/qa/gates/6.2-comercial-nav-tab.yml). All 7 epic-level
+ACs satisfied, no open items. Both gates' one CONCERNS item is the same:
+no real Comercial booking exists in prod yet, so end-to-end behavior was
+verified by code inspection/construction rather than a live booking — worth
+a spot-check next time this area is touched, not blocking.
 
 ## Problem
 
