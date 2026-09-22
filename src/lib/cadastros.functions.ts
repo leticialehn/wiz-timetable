@@ -159,6 +159,10 @@ export const getUltimasLicoesPorAluno = createServerFn({ method: "GET" }).handle
   },
 );
 
+// Story 5.2: soft-delete — antes fazia um DELETE de verdade, que apagava em
+// cascata toda a presença/notas/lições do aluno pra sempre. Agora só marca
+// ativo=false + situacao="removido", preservando o histórico acadêmico
+// (decisão do owner, 2026-09-18).
 export const removerAluno = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data }) => {
@@ -166,7 +170,10 @@ export const removerAluno = createServerFn({ method: "POST" })
     const { requireRole } = await import("./auth.server");
     await requireRole(["secretaria"]);
     const sb = await admin();
-    const { error } = await sb.from("alunos").delete().eq("id", data.id);
+    const { error } = await sb
+      .from("alunos")
+      .update({ ativo: false, situacao: "removido" })
+      .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

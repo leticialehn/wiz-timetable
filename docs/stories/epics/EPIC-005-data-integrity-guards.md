@@ -1,8 +1,18 @@
 # EPIC-005: Data-Integrity Guards (Credits, Cascade Delete)
 
-**Status:** Draft
+**Status:** Done (2026-09-22)
 **Priority:** P2
 **Addresses:** `docs/DB-AUDIT.md` §5, `docs/architecture.md` §9
+
+**Closure (2026-09-22, @po):** Both stories Done, both QA gate PASS (clean,
+no CONCERNS). 5.1 fixed the credits race condition via an atomic
+`increment_creditos` Postgres function, verified against live prod (a real
+aluno's credits moved -1 then +1, restored exactly; guard confirmed for a
+non-credit-tracked aluno). 5.2 replaced the hard `DELETE ... CASCADE` on
+"Remover aluno" with soft-delete (`situacao = "removido"`), per the owner's
+explicit decision — found and fixed a real UI gap along the way
+(`admin.alunos_.inativos.tsx` had no visible section for removido alunos).
+All 4 epic-level ACs satisfied, no open items.
 
 ## Problem
 

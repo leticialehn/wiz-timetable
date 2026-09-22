@@ -23,13 +23,18 @@ export type Professora = {
 
 // Por que o aluno ficou inativo (situacao só é != "matriculado" quando
 // ativo=false). "nao_rematriculado": terminou o livro/curso mas não vai pro
-// próximo. "cancelado": parou no meio do curso/livro.
-export type SituacaoAluno = "matriculado" | "nao_rematriculado" | "cancelado";
+// próximo. "cancelado": parou no meio do curso/livro. "removido" (Story 5.2):
+// tirado do quadro pelo botão "Remover" — soft-delete, mantém todo o
+// histórico (presença/notas/lições), distinto de nao_rematriculado/cancelado
+// porque esses dois são desfechos normais de fim de curso já rastreados pelo
+// fluxo de alerta de rematrícula.
+export type SituacaoAluno = "matriculado" | "nao_rematriculado" | "cancelado" | "removido";
 
 export const ROTULO_SITUACAO: Record<SituacaoAluno, string> = {
   matriculado: "Matriculado",
   nao_rematriculado: "Não Rematriculado",
   cancelado: "Cancelado",
+  removido: "Removido",
 };
 
 export type Aluno = {

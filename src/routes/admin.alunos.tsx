@@ -471,7 +471,12 @@ function LinhaAluno({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (confirm(`Remover ${aluno.nome}?`)) onRemover();
+              if (
+                confirm(
+                  `Remover ${aluno.nome}? O aluno sai da lista de ativos, mas o histórico (presença, notas, lições) fica guardado — dá pra reverter em "Alunos inativos".`,
+                )
+              )
+                onRemover();
             }}
             className="text-xs px-2 py-1 rounded border border-border hover:bg-destructive hover:text-destructive-foreground"
           >

@@ -1,0 +1,17 @@
+schema: 1
+story: "5.2"
+gate: PASS
+status_reason: >-
+  All 6 ACs implemented and independently re-verified: migration applied
+  with zero drift, removerAluno diff confirmed as a soft-update not a
+  delete, the reversal path confirmed automatic via both situacao
+  dropdowns, and Task 3's consumer audit re-checked against the actual
+  code. The audit found and fixed a real gap (admin.alunos_.inativos.tsx
+  had no visible section for "removido" alunos) — now covered by an
+  added "Removidos" section following the existing pattern exactly.
+  typecheck/lint clean, no issues found.
+reviewer: "Aria (@architect)"
+reviewed_revision: "worktree:uncommitted (2026-09-22, base commit 6de5fc9)"
+updated: "2026-09-22T22:53:24Z"
+top_issues: []
+waiver: { active: false }

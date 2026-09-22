@@ -39,6 +39,10 @@ function AlunosInativosPage() {
     .sort((a, b) => a.nome.localeCompare(b.nome));
   const naoRematriculados = inativos.filter((a) => a.situacao === "nao_rematriculado");
   const cancelados = inativos.filter((a) => a.situacao === "cancelado");
+  // Story 5.2: "removido" (soft-delete via o botão "Remover") precisa da sua
+  // própria seção — sem isso, um aluno removido cai em `inativos` mas some da
+  // tela, já que os dois filtros acima não o pegam.
+  const removidos = inativos.filter((a) => a.situacao === "removido");
 
   return (
     <main className="max-w-3xl mx-auto px-4 py-6">
@@ -114,6 +118,39 @@ function AlunosInativosPage() {
             ) : (
               <ul className="space-y-2">
                 {cancelados.map((a) => (
+                  <LinhaInativo
+                    key={a.id}
+                    aluno={a}
+                    ultimaLicao={ultimasLicoes?.[a.id]}
+                    onAtualizar={(situacao) =>
+                      atualizar.mutate({
+                        data: {
+                          id: a.id,
+                          nome: a.nome,
+                          nivel: a.nivel,
+                          ativo: situacao === "matriculado",
+                          situacao,
+                          dataInicioNivel: a.data_inicio_nivel,
+                          dataNascimento: a.data_nascimento,
+                        },
+                      })
+                    }
+                    onAbrir={() => navigate({ to: "/admin/alunos/$id", params: { id: a.id } })}
+                  />
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section>
+            <h2 className="text-sm font-semibold text-muted-foreground mb-2">
+              Removidos ({removidos.length})
+            </h2>
+            {removidos.length === 0 ? (
+              <p className="text-muted-foreground text-sm">Nenhum.</p>
+            ) : (
+              <ul className="space-y-2">
+                {removidos.map((a) => (
                   <LinhaInativo
                     key={a.id}
                     aluno={a}
