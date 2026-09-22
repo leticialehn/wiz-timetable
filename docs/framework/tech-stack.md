@@ -80,6 +80,24 @@ Realtime: `useRealtimeGrade` subscribes to 8 tables on one channel and calls
 Pre-commit: `lint-staged` (eslint --fix + prettier on staged app files) then `tsc --noEmit`.
 Pre-push: `tsc --noEmit` then full `eslint`.
 
+## Testing
+
+Vitest (`vitest.config.ts`, standalone — deliberately **not** merged into
+`vite.config.ts`, which wraps `@lovable.dev/vite-tanstack-config`'s own
+`defineConfig` and warns against re-adding its plugins). Run with `npm test`
+(`vitest run`); no dev server or Supabase connection required.
+
+**Covered (Story 3.1):** pure domain calculation functions only —
+`src/lib/licoes.ts` (lição/nível progression math) and `src/lib/types.ts`
+(nível/idioma/grupo lookups, grade slot math). Test files live next to their
+source (`*.test.ts`).
+
+**Not yet covered:** anything that touches Supabase directly (most
+`*.functions.ts` server functions), and `alertas.functions.ts`'s internal
+pure helpers (`calcularSequenciaFaltas` etc.) — they're module-private, not
+exported, so testing them needs a follow-up decision (export vs. mock the DB
+client). React/UI components have no test coverage either.
+
 ## Secrets
 
 ### `SESSION_SECRET`

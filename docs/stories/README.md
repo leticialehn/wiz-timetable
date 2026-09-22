@@ -3,63 +3,72 @@
 Status legend: **Draft** (@sm) → **Ready** (@po) → **InProgress** (@dev) →
 **InReview** (@qa) → **Done**.
 
-## EPIC-001 — Wire Authentication & Authorization (P0)
+> Fonte de verdade agregada: `docs/estado.md`. Este arquivo é um índice rápido por
+> epic/story — se divergir de `docs/estado.md`, o outro documento prevalece.
 
-| Story | Title                                                                              | Status              | Executor |
-| ----- | ---------------------------------------------------------------------------------- | ------------------- | -------- |
-| 1.1   | [Mount login and route guards](1.1.mount-login-and-route-guards.md)                | **Done** (CONCERNS) | @dev     |
-| 1.2   | [Guard all data server functions](1.2.guard-server-functions.md)                   | **Done** (CONCERNS) | @dev     |
-| 1.3   | [Role checks on admin-only endpoints](1.3.role-checks-admin-endpoints.md)          | **Done** (CONCERNS) | @dev     |
-| 1.4   | [Remove `attachSupabaseAuth`; session hygiene](1.4.remove-attach-supabase-auth.md) | **Done** (CONCERNS) | @dev     |
-| 1.5   | [Verify `SESSION_SECRET` in Vercel; ops doc](1.5.verify-session-secret-vercel.md)  | **Done** (all ACs)  | @devops  |
-| 1.6   | [Fix repo-wide `npm run lint`](1.6.fix-repo-wide-lint.md)                          | **Done** (PASS)     | @dev     |
+## EPIC-001 — Wire Authentication & Authorization (P0) — ✅ Done
 
-## EPIC-002 — Reconcile Database with Production (P1)
+| Story | Title                                                                              | Status          | Executor |
+| ----- | ---------------------------------------------------------------------------------- | --------------- | -------- |
+| 1.1   | [Mount login and route guards](1.1.mount-login-and-route-guards.md)                | Done (CONCERNS) | @dev     |
+| 1.2   | [Guard all data server functions](1.2.guard-server-functions.md)                   | Done (CONCERNS) | @dev     |
+| 1.3   | [Role checks on admin-only endpoints](1.3.role-checks-admin-endpoints.md)          | Done (CONCERNS) | @dev     |
+| 1.4   | [Remove `attachSupabaseAuth`; session hygiene](1.4.remove-attach-supabase-auth.md) | Done (CONCERNS) | @dev     |
+| 1.5   | [Verify `SESSION_SECRET` in Vercel; ops doc](1.5.verify-session-secret-vercel.md)  | Done (all ACs)  | @devops  |
+| 1.6   | [Fix repo-wide `npm run lint`](1.6.fix-repo-wide-lint.md)                          | Done (PASS)     | @dev     |
 
-| Story | Title                                                                           | Status        | Executor       |
-| ----- | ------------------------------------------------------------------------------- | ------------- | -------------- |
-| 2.1   | [Baseline migration from production](2.1.baseline-migration-from-production.md) | Draft         | @data-engineer |
-| 2.2   | Realtime strategy decision + implementation                                     | _not drafted_ | @data-engineer |
-| 2.3   | Verify + document RLS/GRANT/constraints for all tables                          | _not drafted_ | @data-engineer |
+## EPIC-002 — Reconcile Database with Production (P1) — ✅ Done (closed 2026-09-17)
 
-## EPIC-006 — "Comercial" Class Type & Prospect Tracking (P2)
+| Story | Title                                                                                  | Status                                                        | Executor       |
+| ----- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------- | -------------- |
+| 2.1   | [Baseline migration from production](2.1.baseline-migration-from-production.md)        | Done (`/code-review` + Supabase advisor, no formal gate file) | @data-engineer |
+| 2.2   | [Realtime strategy decision + implementation](2.2.realtime-strategy.md)                | Done (PASS)                                                   | @data-engineer |
+| 2.3   | [Verify + document RLS/GRANT/constraints for all tables](2.3.constraints-inventory.md) | Done (PASS)                                                   | @data-engineer |
 
-`docs/stories/epics/EPIC-006-comercial-tipo-aula.md` — **blocked on EPIC-002 Story
-2.1 landing first** (needs a clean migration history before widening `tipo` CHECK
-constraints).
+## EPIC-006 — "Comercial" Class Type & Prospect Tracking (P2) — ✅ Done (closed 2026-09-18)
 
-| Story | Title                                                           | Status | Executor |
-| ----- | --------------------------------------------------------------- | ------ | -------- |
-| 6.1   | [Add "Comercial" horario type](6.1.add-comercial-tipo-aula.md)  | Draft  | @dev     |
-| 6.2   | ["Comercial" nav tab + prospect list](6.2.comercial-nav-tab.md) | Draft  | @dev     |
+| Story | Title                                                           | Status          | Executor |
+| ----- | --------------------------------------------------------------- | --------------- | -------- |
+| 6.1   | [Add "Comercial" horario type](6.1.add-comercial-tipo-aula.md)  | Done (CONCERNS) | @dev     |
+| 6.2   | ["Comercial" nav tab + prospect list](6.2.comercial-nav-tab.md) | Done (CONCERNS) | @dev     |
 
-## EPIC-003 — Test harness + CI (P1, not yet drafted)
+## EPIC-003 — Test Harness + CI (P1) — Draft, created 2026-09-18
 
-Add `vitest`; cover `src/lib/` pure modules (`licoes.ts`, `alertas` helpers,
-`types.ts` calendar/grid, credit transitions). GitHub Actions: typecheck + lint + test
-on PR and on push to the connected branch.
+`docs/stories/epics/EPIC-003-test-harness-ci.md`
 
-## EPIC-004 / EPIC-005 — Hardening (P2, not yet drafted)
+| Story | Title                                                                          | Status           | Executor |
+| ----- | ------------------------------------------------------------------------------ | ---------------- | -------- |
+| 3.1   | [Install Vitest + unit tests for domain math](3.1.vitest-domain-unit-tests.md) | Done (PASS)      | @dev     |
+| 3.2   | [GitHub Actions CI (typecheck+lint+test)](3.2.github-actions-ci.md)            | Ready (GO 10/10) | @devops  |
 
-Realtime/perf (targeted invalidation) and data-integrity guards (credit trigger,
-soft-delete, cascade review). See `docs/TECHNICAL-DEBT-REPORT.md`.
+## EPIC-004 — Realtime & Performance Hardening (P2) — Draft, created 2026-09-18
+
+`docs/stories/epics/EPIC-004-realtime-performance-hardening.md` — re-scoped during
+grounding: the original NFR-9 access-breakage concern was already resolved by
+Story 2.2; what's left is `useRealtimeGrade`'s blanket `invalidateQueries()`.
+
+| Story | Title                                                                                    | Status          | Executor |
+| ----- | ---------------------------------------------------------------------------------------- | --------------- | -------- |
+| 4.1   | [Scope realtime invalidation to affected query keys](4.1.scope-realtime-invalidation.md) | Ready (GO 9/10) | @dev     |
+
+## EPIC-005 — Data-Integrity Guards (P2) — Draft, created 2026-09-18
+
+`docs/stories/epics/EPIC-005-data-integrity-guards.md`
+
+| Story | Title                                                                                                | Status           | Executor |
+| ----- | ---------------------------------------------------------------------------------------------------- | ---------------- | -------- |
+| 5.1   | [Atomic credit adjustment (fix race condition)](5.1.atomic-credit-adjustment.md)                     | Ready (GO 10/10) | @dev     |
+| 5.2   | [Soft-delete for "Remover aluno"](5.2.soft-delete-aluno.md) — owner confirmed soft-delete 2026-09-18 | Ready (GO 9/10)  | @dev     |
 
 ---
 
-Next: **all nine EPIC-001 acceptance criteria are satisfied as of 2026-09-14.** All
-six stories are **Done** — 1.6 closed with the epic's first **PASS** (no CONCERNS).
-The manual auth walkthrough was resolved via direct HTTP calls to the dev server's
-server-fn RPC endpoints (Chrome automation is blocked at the extension level on
-plain-HTTP navigation). AC7's text was amended by `@po` to name both removed
-middlewares. AC8 was resolved with the user's live permission: `SESSION_SECRET` was
-missing from every Vercel environment (not weak — absent); a fresh high-entropy value
-was generated and added to Production and Preview (an add, not a rotation — no user
-was logged out). See `docs/estado.md` for full detail. EPIC-001's formal closure
-(flipping the epic `Status` field) is `@po`/`@pm`'s call. All commits are now
-pushed to `origin/main`.
+Todas as 5 stories de EPIC-003/004/005 foram validadas pelo `@po` em 2026-09-22 —
+todas **GO**, **Ready**, prontas pro `@dev *develop`. Nenhuma tem dependência
+bloqueante entre si (epics independentes), exceto 3.2 → 3.1 (CI precisa do
+`npm test` que 3.1 cria) dentro do próprio EPIC-003. A validação encontrou e
+corrigiu 3 imprecisões reais nos drafts (nenhuma bloqueante): 3.1 precisava de
+um `vitest.config.ts` standalone em vez de mexer em `vite.config.ts` (risco de
+CON-4); 4.1 tinha um off-by-one no grep dos call sites; 5.2 tinha uma referência
+de linha desatualizada.
 
-EPIC-006 ("Comercial" class type) was drafted 2026-09-14 from a user feature
-request — two stories, both Draft, both **blocked on EPIC-002 Story 2.1** landing
-first (a clean migration baseline before widening any `tipo` CHECK constraint).
-2.1 itself needs Supabase credentials from a human before `@data-engineer` can run
-it. 2.2/2.3 remain to be drafted with `@sm *draft`.
+Ver `docs/estado.md` para o histórico completo de progresso e decisões.
