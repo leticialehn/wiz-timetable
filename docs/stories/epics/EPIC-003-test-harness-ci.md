@@ -1,6 +1,6 @@
 # EPIC-003: Test Harness + CI for the Domain Core
 
-**Status:** Draft
+**Status:** Draft (in progress — Story 3.1 Done 2026-09-22, Story 3.2 Ready)
 **Priority:** P1
 **Addresses:** NFR-3, NFR-4 · `docs/prd.md` §4, `docs/architecture.md` §9 (risks #3, #4)
 
