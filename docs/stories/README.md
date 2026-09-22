@@ -55,10 +55,10 @@ Story 2.2; what's left is `useRealtimeGrade`'s blanket `invalidateQueries()`.
 
 `docs/stories/epics/EPIC-005-data-integrity-guards.md`
 
-| Story | Title                                                                                                | Status           | Executor |
-| ----- | ---------------------------------------------------------------------------------------------------- | ---------------- | -------- |
-| 5.1   | [Atomic credit adjustment (fix race condition)](5.1.atomic-credit-adjustment.md)                     | Ready (GO 10/10) | @dev     |
-| 5.2   | [Soft-delete for "Remover aluno"](5.2.soft-delete-aluno.md) — owner confirmed soft-delete 2026-09-18 | Ready (GO 9/10)  | @dev     |
+| Story | Title                                                                                                | Status          | Executor |
+| ----- | ---------------------------------------------------------------------------------------------------- | --------------- | -------- |
+| 5.1   | [Atomic credit adjustment (fix race condition)](5.1.atomic-credit-adjustment.md)                     | Done (PASS)     | @dev     |
+| 5.2   | [Soft-delete for "Remover aluno"](5.2.soft-delete-aluno.md) — owner confirmed soft-delete 2026-09-18 | Ready (GO 9/10) | @dev     |
 
 ---
 

@@ -617,7 +617,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      increment_creditos: {
+        Args: { p_aluno_id: string; p_delta: number };
+        Returns: undefined;
+      };
     };
     Enums: {
       [_ in never]: never;

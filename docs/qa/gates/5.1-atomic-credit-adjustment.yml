@@ -1,0 +1,16 @@
+schema: 1
+story: "5.1"
+gate: PASS
+status_reason: >-
+  All 5 ACs implemented and independently re-verified: migration applied
+  with zero drift, live function definition in prod confirmed matching
+  the migration file exactly, all 3 call sites unchanged, types.ts diff
+  isolated to the new RPC entry, typecheck/lint clean. Manual DB-level
+  verification (credits moved -1 then +1, restored exactly; guard
+  confirmed for a non-credit-tracked aluno) re-confirmed by re-reading
+  the transcript evidence. No issues found.
+reviewer: "Aria (@architect)"
+reviewed_revision: "worktree:uncommitted (2026-09-22, base commit 96c256e)"
+updated: "2026-09-22T22:46:06Z"
+top_issues: []
+waiver: { active: false }

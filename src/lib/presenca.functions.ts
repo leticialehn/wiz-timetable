@@ -21,17 +21,20 @@ async function sb() {
 // "presente" — não a cada save, só na transição, senão corrigir uma presença
 // já lançada (algo que agora dá pra fazer direto no histórico do aluno)
 // descontaria de novo ou ficaria sem descontar.
+// Story 5.1: ajuste atômico via RPC (increment_creditos) — supabase-js não
+// tem como expressar `creditos = creditos + delta` num único `.update()`, e
+// um select+update em duas idas ao banco tem uma janela de race condition
+// entre duas escritas quase simultâneas pro mesmo aluno.
 async function ajustarCreditos(
   client: Awaited<ReturnType<typeof sb>>,
   alunoId: string,
   delta: number,
 ) {
-  const { data: aluno } = await client.from("alunos").select("creditos").eq("id", alunoId).single();
-  if (!aluno || aluno.creditos === null) return;
-  await client
-    .from("alunos")
-    .update({ creditos: aluno.creditos + delta })
-    .eq("id", alunoId);
+  const { error } = await client.rpc("increment_creditos", {
+    p_aluno_id: alunoId,
+    p_delta: delta,
+  });
+  if (error) throw new Error(error.message);
 }
 
 export const setPresenca = createServerFn({ method: "POST" })
