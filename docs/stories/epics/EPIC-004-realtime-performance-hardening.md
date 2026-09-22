@@ -1,8 +1,17 @@
 # EPIC-004: Realtime & Performance Hardening
 
-**Status:** Draft
+**Status:** Done (2026-09-22)
 **Priority:** P2
 **Addresses:** NFR-9 (partially already resolved — see Re-grounding below), `docs/architecture.md` §9 (risks #5, #6)
+
+**Closure (2026-09-22, @po):** Story 4.1 Done, QA gate CONCERNS (non-blocking
+— no live browser session available to click-through verify, everything else
+independently re-checked). `useRealtimeGrade` now scopes invalidation per
+table via `QUERY_KEYS_POR_TABELA`, derived by tracing every one of the 19
+call sites' server functions to their actual Supabase table reads. QA review
+found and fixed one real gap the draft didn't anticipate: `leads`/
+`prospectos-comerciais` also depend on the `professoras` table. All 5
+epic-level ACs satisfied, no open items.
 
 ## Re-grounding (2026-09-18)
 
