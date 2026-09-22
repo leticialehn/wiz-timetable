@@ -98,6 +98,22 @@ pure helpers (`calcularSequenciaFaltas` etc.) — they're module-private, not
 exported, so testing them needs a follow-up decision (export vs. mock the DB
 client). React/UI components have no test coverage either.
 
+## CI
+
+GitHub Actions (`.github/workflows/ci.yml`, Story 3.2) runs on every `push`
+to `main` and every `pull_request` targeting `main`: `npm ci` →
+`npm run typecheck` → `npm run lint` → `npm test`, in that order. A failing
+step fails the workflow run (visible as a red check on the commit/PR — no
+custom status reporting). No secrets are required — all four commands run
+without a Supabase connection. Results show up on the repo's **Actions**
+tab and as check runs on any PR.
+
+This is a second, server-side gate — it does not replace the local
+`.husky/pre-push` hook (`typecheck && lint`), which still gives fast local
+feedback before a push even reaches GitHub; CI exists because that local
+hook can be skipped or missing (e.g. a fresh clone without `npm install`/
+`husky` set up).
+
 ## Secrets
 
 ### `SESSION_SECRET`

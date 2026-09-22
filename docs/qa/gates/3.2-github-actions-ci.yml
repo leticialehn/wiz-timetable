@@ -1,0 +1,32 @@
+schema: 1
+story: "3.2"
+gate: CONCERNS
+status_reason: >-
+  All 7 ACs implemented and independently re-verified: workflow YAML
+  triggers, step order, secrets-free operation (confirmed by running all
+  3 commands locally), pinned Node version + npm cache, and docs all
+  check out. CONCERNS only because Task 4's live verification (an actual
+  GitHub Actions run going red then green) was not possible from this
+  isolated worktree with no push access — the workflow was reviewed by
+  eye, not machine-validated or exercised for real.
+reviewer: "Aria (@architect)"
+reviewed_revision: "worktree:uncommitted (2026-09-22, base commit 96c256e)"
+updated: "2026-09-22T12:40:27Z"
+top_issues:
+  - id: "TEST-001"
+    severity: low
+    finding: >-
+      The CI workflow (.github/workflows/ci.yml) was never actually
+      triggered — no push to GitHub happened from this session/worktree
+      (git push is @devops-exclusive, and no throwaway branch was pushed).
+      Correctness was verified by re-reading the YAML against each AC and
+      by running the 3 underlying commands (typecheck/lint/test) locally,
+      and additionally the YAML syntax itself was machine-parsed with
+      js-yaml (structurally valid), but neither confirms GitHub Actions'
+      own schema/semantic acceptance (action versions resolving, runner
+      availability, etc.) the way an actual triggered run would.
+    suggested_action: >-
+      Once this lands on a branch @devops can push, do a real spot-check:
+      push once as-is (expect green) and once with a deliberate lint
+      error (expect red), per the story's original Task 4 intent.
+waiver: { active: false }

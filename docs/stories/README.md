@@ -36,10 +36,10 @@ Status legend: **Draft** (@sm) → **Ready** (@po) → **InProgress** (@dev) →
 
 `docs/stories/epics/EPIC-003-test-harness-ci.md`
 
-| Story | Title                                                                          | Status           | Executor |
-| ----- | ------------------------------------------------------------------------------ | ---------------- | -------- |
-| 3.1   | [Install Vitest + unit tests for domain math](3.1.vitest-domain-unit-tests.md) | Done (PASS)      | @dev     |
-| 3.2   | [GitHub Actions CI (typecheck+lint+test)](3.2.github-actions-ci.md)            | Ready (GO 10/10) | @devops  |
+| Story | Title                                                                          | Status          | Executor |
+| ----- | ------------------------------------------------------------------------------ | --------------- | -------- |
+| 3.1   | [Install Vitest + unit tests for domain math](3.1.vitest-domain-unit-tests.md) | Done (PASS)     | @dev     |
+| 3.2   | [GitHub Actions CI (typecheck+lint+test)](3.2.github-actions-ci.md)            | Done (CONCERNS) | @devops  |
 
 ## EPIC-004 — Realtime & Performance Hardening (P2) — Draft, created 2026-09-18
 
