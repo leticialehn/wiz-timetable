@@ -51,7 +51,7 @@ Story 2.2; what's left is `useRealtimeGrade`'s blanket `invalidateQueries()`.
 | ----- | ---------------------------------------------------------------------------------------- | --------------- | -------- |
 | 4.1   | [Scope realtime invalidation to affected query keys](4.1.scope-realtime-invalidation.md) | Ready (GO 9/10) | @dev     |
 
-## EPIC-005 — Data-Integrity Guards (P2) — Draft, created 2026-09-18
+## EPIC-005 — Data-Integrity Guards (P2) — ✅ Done (closed 2026-09-22)
 
 `docs/stories/epics/EPIC-005-data-integrity-guards.md`
 
