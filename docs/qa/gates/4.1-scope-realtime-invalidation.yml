@@ -1,0 +1,33 @@
+schema: 1
+story: "4.1"
+gate: CONCERNS
+status_reason: >-
+  All 5 ACs implemented and independently re-verified, including a
+  targeted cross-check of the trickiest server functions. Found and
+  fixed a real gap during review: leads/prospectos-comerciais also
+  depend on the professoras table (name lookup), not just
+  grade_base/excecoes_semana - added to the mapping and covered by a
+  new unit test. typecheck/lint/test all clean (55/55). CONCERNS only
+  for the live click-through verification that neither @dev nor
+  @architect could perform this session (no browser automation
+  available) - not blocking, same caveat pattern as prior stories this
+  session.
+reviewer: "Aria (@architect)"
+reviewed_revision: "worktree:uncommitted (2026-09-22, base commit 96c256e)"
+updated: "2026-09-22T22:57:54Z"
+top_issues:
+  - id: "TEST-001"
+    severity: low
+    finding: >-
+      No live browser click-through was performed to confirm a grid edit
+      on admin.index.tsx live-updates professora.tsx (and vice versa),
+      or that an unrelated report page does not refetch on an unrelated
+      grade event. Verified instead by tracing every relevant server
+      function's actual Supabase table reads and locking the resulting
+      mapping in with 5 unit test assertions.
+    suggested_action: >-
+      Next time browser automation is available, do a live spot-check:
+      edit the grid, confirm the professora screen updates; open a
+      report page (e.g. aniversariantes), edit the grade elsewhere,
+      confirm the report does NOT refetch.
+waiver: { active: false }

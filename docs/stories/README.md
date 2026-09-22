@@ -41,7 +41,7 @@ Status legend: **Draft** (@sm) → **Ready** (@po) → **InProgress** (@dev) →
 | 3.1   | [Install Vitest + unit tests for domain math](3.1.vitest-domain-unit-tests.md) | Done (PASS)     | @dev     |
 | 3.2   | [GitHub Actions CI (typecheck+lint+test)](3.2.github-actions-ci.md)            | Done (CONCERNS) | @devops  |
 
-## EPIC-004 — Realtime & Performance Hardening (P2) — Draft, created 2026-09-18
+## EPIC-004 — Realtime & Performance Hardening (P2) — ✅ Done (closed 2026-09-22)
 
 `docs/stories/epics/EPIC-004-realtime-performance-hardening.md` — re-scoped during
 grounding: the original NFR-9 access-breakage concern was already resolved by
@@ -49,7 +49,7 @@ Story 2.2; what's left is `useRealtimeGrade`'s blanket `invalidateQueries()`.
 
 | Story | Title                                                                                    | Status          | Executor |
 | ----- | ---------------------------------------------------------------------------------------- | --------------- | -------- |
-| 4.1   | [Scope realtime invalidation to affected query keys](4.1.scope-realtime-invalidation.md) | Ready (GO 9/10) | @dev     |
+| 4.1   | [Scope realtime invalidation to affected query keys](4.1.scope-realtime-invalidation.md) | Done (CONCERNS) | @dev     |
 
 ## EPIC-005 — Data-Integrity Guards (P2) — ✅ Done (closed 2026-09-22)
 
