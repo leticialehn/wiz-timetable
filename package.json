@@ -14,6 +14,9 @@
     "test": "vitest run",
     "prepare": "husky"
   },
+  "overrides": {
+    "lru-cache": "^11.2.6"
+  },
   "lint-staged": {
     "src/**/*.{ts,tsx,js,jsx}": [
       "eslint --fix",
