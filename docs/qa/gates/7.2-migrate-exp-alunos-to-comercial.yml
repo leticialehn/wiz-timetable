@@ -1,0 +1,15 @@
+schema: 1
+story: "7.2"
+gate: PASS
+status_reason: >-
+  All 5 ACs completed and independently re-verified directly against the
+  live database (not the migration's own report): 0 "exp %" alunos rows
+  remain, all 5 repointed excecoes_semana rows confirmed correct
+  (tipo='comercial', aluno_id null, name set), a fresh Comercial-prospect
+  query confirms all 3 migrated names appear grouped correctly, and no
+  orphaned partial state exists for the original 4 ids. No issues found.
+reviewer: "Dex (@dev, second pass)"
+reviewed_revision: "live production database, verified 2026-09-23"
+updated: "2026-09-23T09:36:35Z"
+top_issues: []
+waiver: { active: false }
