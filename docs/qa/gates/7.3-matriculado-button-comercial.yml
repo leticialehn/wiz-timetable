@@ -1,0 +1,14 @@
+schema: 1
+story: "7.3"
+gate: PASS
+status_reason: >-
+  All 6 ACs implemented and independently re-verified: button/inline-form
+  wiring traced, criarAluno call matches its real signature exactly, no
+  write-back to Comercial history rows (confirmed scope boundary),
+  post-confirm client state correct, typecheck/lint/test all clean.
+  No issues found.
+reviewer: "Aria (@architect)"
+reviewed_revision: "worktree:uncommitted (2026-09-23, base commit 3df558f)"
+updated: "2026-09-23T09:36:35Z"
+top_issues: []
+waiver: { active: false }
