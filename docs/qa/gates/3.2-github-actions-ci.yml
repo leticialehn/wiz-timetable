@@ -29,4 +29,17 @@ top_issues:
       Once this lands on a branch @devops can push, do a real spot-check:
       push once as-is (expect green) and once with a deliberate lint
       error (expect red), per the story's original Task 4 intent.
+    resolution: >-
+      RESOLVED 2026-09-23. The real spot-check finally happened (many
+      pushes since this gate) and turned up a genuine bug the eye-review
+      couldn't have caught: every single run failed at `npm ci` with
+      "Missing: lru-cache@11.5.3 from lock file" — unrelated to the
+      workflow YAML itself (which was correct), caused by an
+      inconsistent package-lock.json (unstorage's optional peer
+      dependency on lru-cache@^11.2.6 conflicting with
+      @babel/helper-compilation-targets' lru-cache@^5.1.1, silently
+      dropped by npm's local resolution but still referenced in the
+      committed lockfile). Fixed via an `overrides` entry pinning
+      lru-cache to a single 11.x resolution tree-wide, lockfile
+      regenerated. First green run: https://github.com/leticialehn/wiz-timetable/actions/runs/35854804168.
 waiver: { active: false }
