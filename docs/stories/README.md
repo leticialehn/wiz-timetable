@@ -60,18 +60,22 @@ Story 2.2; what's left is `useRealtimeGrade`'s blanket `invalidateQueries()`.
 | 5.1   | [Atomic credit adjustment (fix race condition)](5.1.atomic-credit-adjustment.md)                     | Done (PASS) | @dev     |
 | 5.2   | [Soft-delete for "Remover aluno"](5.2.soft-delete-aluno.md) — owner confirmed soft-delete 2026-09-18 | Done (PASS) | @dev     |
 
-## EPIC-007 — Comercial Booking Integrity + Matriculation Flow (P1) — ✅ Done (closed 2026-09-23)
+## EPIC-007 — Comercial Booking Integrity + Matriculation Flow (P1) — ✅ Done (closed 2026-09-23, reopened + re-closed same day for 7.4)
 
 `docs/stories/epics/EPIC-007-comercial-matriculation-flow.md` — user-reported bug
 ("Exp" walk-ins were being saved as real `alunos`) plus a latent bug found during
 investigation (the same code path would've done this to Comercial bookings too,
-0 damage yet since none existed).
+0 damage yet since none existed). Reopened same day: 7.1's fix only covered
+Comercial-typed cells; the secretaria's real walk-in workflow (type a name +
+check "avulso" in whatever cell is open, often a regular one) still recreated
+the bug — see 7.4.
 
-| Story | Title                                                                                    | Status      | Executor       |
-| ----- | ---------------------------------------------------------------------------------------- | ----------- | -------------- |
-| 7.1   | [Fix: Comercial never auto-creates a real aluno](7.1.comercial-never-creates-aluno.md)   | Done (PASS) | @dev           |
-| 7.2   | [Migrate the 4 "Exp" alunos to Comercial avulso](7.2.migrate-exp-alunos-to-comercial.md) | Done (PASS) | @data-engineer |
-| 7.3   | ["MATRICULADO" button on /admin/comercial](7.3.matriculado-button-comercial.md)          | Done (PASS) | @dev           |
+| Story | Title                                                                                          | Status      | Executor       |
+| ----- | ---------------------------------------------------------------------------------------------- | ----------- | -------------- |
+| 7.1   | [Fix: Comercial never auto-creates a real aluno](7.1.comercial-never-creates-aluno.md)         | Done (PASS) | @dev           |
+| 7.2   | [Migrate the 4 "Exp" alunos to Comercial avulso](7.2.migrate-exp-alunos-to-comercial.md)       | Done (PASS) | @data-engineer |
+| 7.3   | ["MATRICULADO" button on /admin/comercial](7.3.matriculado-button-comercial.md)                | Done (PASS) | @dev           |
+| 7.4   | ["Experimental" flag works in any cell, not just Comercial](7.4.experimental-flag-any-cell.md) | Done (PASS) | @dev           |
 
 ---
 

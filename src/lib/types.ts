@@ -353,6 +353,7 @@ export type ExcecaoSemana = {
   tipo: TipoAula | null;
   horario_especifico: string | null;
   observacao: string | null;
+  experimental: boolean;
 };
 
 // Célula computada (aluno ocupando um período)
@@ -369,6 +370,11 @@ export type CelulaAula = {
   aluno_nivel: string;
   aluno_nascimento: string | null;
   aluno_avulso: boolean;
+  // Marca um avulso como "aula experimental" (prospect, não vira aluno de
+  // verdade) independente do tipo da célula — permite booking dentro de uma
+  // célula regular (misturado com alunos de verdade), diferente do Comercial
+  // (que exige a célula inteira configurada como tipo="comercial").
+  aluno_experimental: boolean;
   tipo: TipoAula;
   horario_especifico: string | null;
   observacao: string | null;

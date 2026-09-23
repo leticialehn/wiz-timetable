@@ -130,20 +130,25 @@ function GradePage() {
     avulso: boolean,
     horarioEspecifico: string | null,
     tipo: TipoHorario,
+    experimental: boolean,
   ) {
-    // Story 7.1: Comercial nunca cria um aluno de verdade — o nome digitado é
-    // só um prospect (aluno_nome_avulso), igual ao mecanismo que "Exp"/outros
-    // avulsos já usam em qualquer outro tipo de célula.
-    if (tipo === "comercial") {
+    // Story 7.1 + follow-up: Comercial nunca cria um aluno de verdade — o
+    // nome digitado é só um prospect (aluno_nome_avulso). "Experimental"
+    // faz o mesmo, mas dentro de QUALQUER tipo de célula (ex.: misturado
+    // numa célula regular junto de alunos de verdade) — é o caminho que a
+    // secretaria realmente usa pra marcar um walk-in de aula experimental,
+    // sem precisar reconfigurar a célula inteira pra Comercial primeiro.
+    if (tipo === "comercial" || experimental) {
       await adicionarFn({
         data: {
-          escopo: avulso ? "semana" : "base",
+          escopo: "semana",
           data: dataDoDia,
           dia_semana: diaAtivo,
           periodo,
           professora_id: professoraId,
           aluno_nome_avulso: nome,
           horario_especifico: horarioEspecifico,
+          experimental: tipo !== "comercial" && experimental,
         },
       });
       qc.invalidateQueries();
@@ -322,6 +327,7 @@ function GradeTabela(props: {
     avulso: boolean,
     horarioEspecifico: string | null,
     tipo: TipoHorario,
+    experimental: boolean,
   ) => Promise<void>;
   onEditarAluno: (alunoId: string, nome: string, nivel: string) => Promise<void>;
   onRemover: (c: CelulaAula) => Promise<void>;
@@ -394,7 +400,7 @@ function GradeTabela(props: {
                         onAdicionar={(alunoId, avulso, horarioEspecifico) =>
                           props.onAdicionar(p.id, per, alunoId, avulso, horarioEspecifico)
                         }
-                        onCriarEAdicionar={(nome, nivel, avulso, horarioEspecifico) =>
+                        onCriarEAdicionar={(nome, nivel, avulso, horarioEspecifico, experimental) =>
                           props.onCriarEAdicionar(
                             p.id,
                             per,
@@ -403,6 +409,7 @@ function GradeTabela(props: {
                             avulso,
                             horarioEspecifico,
                             tipo,
+                            experimental,
                           )
                         }
                         onEditarAluno={props.onEditarAluno}
@@ -456,6 +463,7 @@ function CelulaConteudo({
     nivel: string,
     avulso: boolean,
     horarioEspecifico: string | null,
+    experimental: boolean,
   ) => Promise<void>;
   onEditarAluno: (alunoId: string, nome: string, nivel: string) => Promise<void>;
   onRemover: (c: CelulaAula) => Promise<void>;
@@ -737,8 +745,16 @@ function LinhaPreenchida({
           ? "border border-rose-400/70 bg-rose-500/[0.07] px-1.5 py-0.5"
           : aniversario
             ? "border border-rose-400/70 px-1.5 py-0.5"
+            : c.aluno_experimental
+              ? "border border-amber-400/70 bg-amber-500/[0.10] px-1.5 py-0.5"
+              : ""
+      } ${
+        c.aluno_experimental
+          ? "text-amber-700 dark:text-amber-400"
+          : horarioAvulso
+            ? "text-blue-600 dark:text-blue-400"
             : ""
-      } ${horarioAvulso ? "text-blue-600 dark:text-blue-400" : ""} ${c.avisou_falta ? "opacity-50" : ""}`}
+      } ${c.avisou_falta ? "opacity-50" : ""}`}
       title={
         excecao
           ? ROTULO_TIPO_CALENDARIO[excecao.tipo]
@@ -746,9 +762,11 @@ function LinhaPreenchida({
             ? "Aniversário nesta semana! 🎂"
             : c.avisou_falta
               ? "Avisou que não vem hoje (horário fixo mantido, vaga liberada)"
-              : horarioAvulso
-                ? "Aula avulsa (só nesta semana)"
-                : "Horário fixo"
+              : c.aluno_experimental
+                ? "Aula experimental — prospect, ainda não é aluno matriculado"
+                : horarioAvulso
+                  ? "Aula avulsa (só nesta semana)"
+                  : "Horário fixo"
       }
     >
       {c.horario_especifico && (
@@ -778,7 +796,13 @@ function LinhaPreenchida({
       )}
       {excecao && <span className="shrink-0">🎉</span>}
       {aniversario && <span className="shrink-0">🎂{diaAniversario}</span>}
-      {c.aluno_avulso && <span className="shrink-0 text-[9px] uppercase opacity-70">avulso</span>}
+      {c.aluno_experimental ? (
+        <span className="shrink-0 text-[9px] font-bold uppercase text-amber-700 dark:text-amber-400">
+          🧪 experimental
+        </span>
+      ) : (
+        c.aluno_avulso && <span className="shrink-0 text-[9px] uppercase opacity-70">avulso</span>
+      )}
       {onAlternarAusencia ? (
         <button
           type="button"
@@ -852,6 +876,7 @@ function LinhaVaziaEditavel({
     nivel: string,
     avulso: boolean,
     horarioEspecifico: string | null,
+    experimental: boolean,
   ) => Promise<void>;
   onTrancarVaga: () => Promise<void>;
 }) {
@@ -859,6 +884,7 @@ function LinhaVaziaEditavel({
   const [nome, setNome] = useState("");
   const [nivel, setNivel] = useState("");
   const [avulso, setAvulso] = useState(false);
+  const [experimental, setExperimental] = useState(false);
   const [alunoId, setAlunoId] = useState<string | null>(null);
   const [horario, setHorario] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -878,6 +904,7 @@ function LinhaVaziaEditavel({
     setNome("");
     setNivel("");
     setAvulso(false);
+    setExperimental(false);
     setAlunoId(null);
     setHorario("");
     setErro(null);
@@ -892,7 +919,7 @@ function LinhaVaziaEditavel({
       cancelar();
       return;
     }
-    if (!alunoId && !nivel && !ehComercial) {
+    if (!alunoId && !nivel && !ehComercial && !experimental) {
       setErro("Escolha um nível.");
       return;
     }
@@ -904,11 +931,13 @@ function LinhaVaziaEditavel({
     setSalvando(true);
     try {
       const horarioEspecifico = temSlotsFixos ? (horarioFixo ?? horario) : null;
-      // Comercial é sempre "só esta semana" — um prospect não vira horário
-      // fixo recorrente na base, mesmo que alguém esqueça de marcar o avulso.
-      const avulsoEfetivo = ehComercial ? true : avulso;
+      // Comercial e "Experimental" são sempre "só esta semana" — um prospect
+      // não vira horário fixo recorrente na base, mesmo que alguém esqueça
+      // de marcar o avulso.
+      const avulsoEfetivo = ehComercial || experimental ? true : avulso;
       if (alunoId) await onAdicionar(alunoId, avulsoEfetivo, horarioEspecifico);
-      else await onCriarEAdicionar(nome.trim(), nivel, avulsoEfetivo, horarioEspecifico);
+      else
+        await onCriarEAdicionar(nome.trim(), nivel, avulsoEfetivo, horarioEspecifico, experimental);
       cancelar();
     } catch (e) {
       setSalvando(false);
@@ -1042,6 +1071,20 @@ function LinhaVaziaEditavel({
             className="h-3 w-3"
           />
           Avulso (só esta semana)
+        </label>
+      )}
+      {!ehComercial && !alunoId && (
+        <label
+          className="mt-0.5 flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400"
+          title="Aula experimental — nunca vira cadastro de aluno; aparece na aba Comercial em vez da lista de alunos"
+        >
+          <input
+            type="checkbox"
+            checked={experimental}
+            onChange={(e) => setExperimental(e.target.checked)}
+            className="h-3 w-3"
+          />
+          Experimental (não é aluno ainda)
         </label>
       )}
       {sugestoes.length > 0 && (

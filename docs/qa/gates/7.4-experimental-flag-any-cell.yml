@@ -1,0 +1,16 @@
+schema: 1
+story: "7.4"
+gate: PASS
+status_reason: >-
+  All 7 ACs implemented and independently re-verified: checkbox/prop-chain
+  wiring traced through typecheck, adicionarAluno's escopo="base" guard
+  confirmed, Leads/Comercial query split re-read as a real PostgREST OR
+  (not a client-side approximation), visual-marker ternary chains confirmed
+  non-colliding with existing excecao/aniversario/avulso styling,
+  typecheck/lint/test re-run clean, production test data ("Aaaa") cleanup
+  independently re-queried. No issues found.
+reviewer: "Dex (@dev, second pass)"
+reviewed_revision: "worktree:uncommitted (2026-09-23)"
+updated: "2026-09-23T09:58:00Z"
+top_issues: []
+waiver: { active: false }

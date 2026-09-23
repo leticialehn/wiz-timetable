@@ -311,15 +311,21 @@ async function buscarAvulsosPorTipo(
     .not("aluno_nome_avulso", "is", null);
   let excQuery = sb
     .from("excecoes_semana")
-    .select("data,dia_semana,periodo,professora_id,tipo,tipo_excecao,aluno_nome_avulso")
+    .select(
+      "data,dia_semana,periodo,professora_id,tipo,tipo_excecao,aluno_nome_avulso,experimental",
+    )
     .not("aluno_nome_avulso", "is", null)
     .neq("tipo_excecao", "remover");
+  // "experimental" marca um prospect dentro de QUALQUER tipo de célula
+  // (inclusive misturado numa célula regular com alunos de verdade) — conta
+  // como comercial pro agrupamento mesmo fora de uma célula tipo="comercial".
+  // grade_base não tem essa coluna (prospect nunca é horário fixo).
   if (filtro === "excluir-comercial") {
     baseQuery = baseQuery.neq("tipo", "comercial");
-    excQuery = excQuery.neq("tipo", "comercial");
+    excQuery = excQuery.neq("tipo", "comercial").neq("experimental", true);
   } else {
     baseQuery = baseQuery.eq("tipo", "comercial");
-    excQuery = excQuery.eq("tipo", "comercial");
+    excQuery = excQuery.or("tipo.eq.comercial,experimental.eq.true");
   }
 
   const [baseRes, excRes, profRes] = await Promise.all([

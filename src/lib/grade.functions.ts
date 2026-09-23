@@ -72,6 +72,9 @@ function celulaFromBase(
     aluno_nivel: info.nivel,
     aluno_nascimento: info.nascimento,
     aluno_avulso: info.avulso,
+    // grade_base é horário fixo/permanente — "experimental" não existe nesse
+    // escopo (a coluna nem existe na tabela), só em excecoes_semana.
+    aluno_experimental: false,
     tipo: row.tipo,
     horario_especifico: row.horario_especifico,
     observacao: row.observacao,
@@ -147,6 +150,7 @@ export const getGradeSemana = createServerFn({ method: "GET" })
             aluno_nivel: info.nivel,
             aluno_nascimento: info.nascimento,
             aluno_avulso: info.avulso,
+            aluno_experimental: m.experimental ?? false,
             tipo: (m.tipo ?? row.tipo) as TipoAula,
             horario_especifico: m.horario_especifico ?? row.horario_especifico,
             observacao: m.observacao ?? row.observacao,
@@ -178,6 +182,7 @@ export const getGradeSemana = createServerFn({ method: "GET" })
           aluno_nivel: info.nivel,
           aluno_nascimento: info.nascimento,
           aluno_avulso: info.avulso,
+          aluno_experimental: e.experimental,
           tipo: (e.tipo ?? "regular") as TipoAula,
           horario_especifico: e.horario_especifico,
           observacao: e.observacao,
@@ -259,6 +264,7 @@ export const adicionarAluno = createServerFn({ method: "POST" })
       tipo?: TipoAula;
       horario_especifico?: string | null;
       observacao?: string | null;
+      experimental?: boolean;
     }) => data,
   )
   .handler(async ({ data }) => {
@@ -269,6 +275,11 @@ export const adicionarAluno = createServerFn({ method: "POST" })
 
     if (!data.aluno_id && !data.aluno_nome_avulso) {
       throw new Error("Informe um aluno ou o nome do aluno avulso.");
+    }
+    // "experimental" só existe em excecoes_semana (não em grade_base) — um
+    // prospect nunca deve virar horário fixo permanente.
+    if (data.experimental && data.escopo === "base") {
+      throw new Error("Aula experimental não pode ser horário fixo — marque como avulso.");
     }
 
     // Descobre tipo do horário e valida capacidade
@@ -324,6 +335,7 @@ export const adicionarAluno = createServerFn({ method: "POST" })
         tipo: tipoAula,
         horario_especifico: data.horario_especifico ?? null,
         observacao: data.observacao ?? null,
+        experimental: data.experimental ?? false,
       });
       if (error) throw new Error(error.message);
     }
