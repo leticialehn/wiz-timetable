@@ -244,6 +244,11 @@ export type OcorrenciaLead = {
   dia_semana: number;
   tipo: TipoAula;
   professora_nome: string;
+  // Identifica a linha de verdade por trás da ocorrência — pra poder
+  // remover via `removerCelula`, o mesmo mecanismo que a grade já usa.
+  origem: "base" | "excecao";
+  grade_base_id: string | null;
+  excecao_id: string | null;
 };
 
 export type Lead = {
@@ -307,12 +312,12 @@ async function buscarAvulsosPorTipo(
 ): Promise<Lead[]> {
   let baseQuery = sb
     .from("grade_base")
-    .select("dia_semana,periodo,professora_id,tipo,aluno_nome_avulso")
+    .select("id,dia_semana,periodo,professora_id,tipo,aluno_nome_avulso")
     .not("aluno_nome_avulso", "is", null);
   let excQuery = sb
     .from("excecoes_semana")
     .select(
-      "data,dia_semana,periodo,professora_id,tipo,tipo_excecao,aluno_nome_avulso,experimental",
+      "id,data,dia_semana,periodo,professora_id,tipo,tipo_excecao,aluno_nome_avulso,experimental",
     )
     .not("aluno_nome_avulso", "is", null)
     .neq("tipo_excecao", "remover");
@@ -346,6 +351,9 @@ async function buscarAvulsosPorTipo(
         dia_semana: row.dia_semana,
         tipo: row.tipo,
         professora_nome: nomeProf.get(row.professora_id) ?? "?",
+        origem: "base",
+        grade_base_id: row.id,
+        excecao_id: null,
       },
     });
   }
@@ -358,6 +366,9 @@ async function buscarAvulsosPorTipo(
         dia_semana: row.dia_semana,
         tipo: row.tipo ?? "regular",
         professora_nome: nomeProf.get(row.professora_id ?? "") ?? "?",
+        origem: "excecao",
+        grade_base_id: null,
+        excecao_id: row.id,
       },
     });
   }

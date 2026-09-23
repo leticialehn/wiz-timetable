@@ -77,6 +77,7 @@ the bug — see 7.4.
 | 7.3   | ["MATRICULADO" button on /admin/comercial](7.3.matriculado-button-comercial.md)                | Done (PASS) | @dev           |
 | 7.4   | ["Experimental" flag works in any cell, not just Comercial](7.4.experimental-flag-any-cell.md) | Done (PASS) | @dev           |
 | 7.5   | [Nível on avulso/experimental bookings](7.5.nivel-avulso-experimental.md)                      | Done (PASS) | @dev           |
+| 7.6   | ["Remover" button on /admin/comercial](7.6.remover-button-comercial.md)                        | Done (PASS) | @dev           |
 
 ---
 

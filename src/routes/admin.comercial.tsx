@@ -8,6 +8,7 @@ import {
   type Lead,
 } from "@/lib/relatorios.functions";
 import { criarAluno } from "@/lib/cadastros.functions";
+import { removerCelula } from "@/lib/grade.functions";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
 import { formatarDataBR } from "@/lib/date-utils";
 import { NIVEIS } from "@/lib/types";
@@ -42,6 +43,30 @@ function ComercialPage() {
       setMatriculando(null);
       qc.invalidateQueries();
     },
+  });
+
+  // Remove um prospect inteiro — apaga TODAS as ocorrências dele (todas as
+  // reservas avulsas que caíram nesse nome agrupado), via o mesmo
+  // `removerCelula` que a grade já usa pra apagar uma célula.
+  const removerFn = useServerFn(removerCelula);
+  const [removendo, setRemovendo] = useState<string | null>(null);
+  const remover = useMutation({
+    mutationFn: async (lead: Lead) => {
+      for (const o of lead.ocorrencias) {
+        await removerFn({
+          data: {
+            escopo: o.origem === "base" ? "base" : "semana",
+            data: o.data ?? "",
+            origem: o.origem,
+            grade_base_id: o.grade_base_id,
+            excecao_id: o.excecao_id,
+          },
+        });
+      }
+    },
+    onMutate: (lead) => setRemovendo(lead.nome),
+    onSettled: () => setRemovendo(null),
+    onSuccess: () => qc.invalidateQueries(),
   });
 
   const filtrados = (data ?? []).filter((a: Lead) =>
@@ -94,20 +119,45 @@ function ComercialPage() {
                     </div>
                   )}
                 </div>
-                {matriculados.has(a.nome) ? (
-                  <span className="shrink-0 text-xs font-medium text-emerald-600 dark:text-emerald-400 px-2 py-1">
-                    Matriculado ✓
-                  </span>
-                ) : matriculando !== a.nome ? (
-                  <button
-                    type="button"
-                    onClick={() => setMatriculando(a.nome)}
-                    className="shrink-0 text-xs font-medium px-2 py-1 rounded border border-border hover:bg-accent"
-                  >
-                    MATRICULADO
-                  </button>
-                ) : null}
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {matriculados.has(a.nome) ? (
+                    <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 px-2 py-1">
+                      Matriculado ✓
+                    </span>
+                  ) : matriculando !== a.nome ? (
+                    <button
+                      type="button"
+                      onClick={() => setMatriculando(a.nome)}
+                      className="text-xs font-medium px-2 py-1 rounded border border-border hover:bg-accent"
+                    >
+                      MATRICULADO
+                    </button>
+                  ) : null}
+                  {matriculando !== a.nome && (
+                    <button
+                      type="button"
+                      disabled={removendo === a.nome}
+                      onClick={() => {
+                        if (
+                          !confirm(
+                            `Remover ${a.nome} da lista de prospects? Isso apaga todas as ${a.ocorrencias.length} ocorrência(s) dele na grade.`,
+                          )
+                        )
+                          return;
+                        remover.mutate(a);
+                      }}
+                      className="text-xs font-medium px-2 py-1 rounded border border-border text-muted-foreground hover:border-destructive hover:text-destructive disabled:opacity-50"
+                    >
+                      {removendo === a.nome ? "Removendo…" : "Remover"}
+                    </button>
+                  )}
+                </div>
               </div>
+              {remover.isError && remover.variables?.nome === a.nome && (
+                <div className="mt-1 text-xs text-destructive">
+                  {(remover.error as Error).message}
+                </div>
+              )}
               {matriculando === a.nome && (
                 <FormMatricular
                   nomeInicial={a.nome}
