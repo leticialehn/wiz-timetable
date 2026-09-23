@@ -37,7 +37,11 @@ async function publicClient() {
 }
 
 function nomeDoAluno(
-  row: { aluno_id: string | null; aluno_nome_avulso: string | null },
+  row: {
+    aluno_id: string | null;
+    aluno_nome_avulso: string | null;
+    nivel_avulso?: string | null;
+  },
   alunosById: Map<string, Aluno>,
 ) {
   if (row.aluno_id) {
@@ -49,7 +53,12 @@ function nomeDoAluno(
       avulso: false,
     };
   }
-  return { nome: row.aluno_nome_avulso ?? "?", nivel: "", nascimento: null, avulso: true };
+  return {
+    nome: row.aluno_nome_avulso ?? "?",
+    nivel: row.nivel_avulso ?? "",
+    nascimento: null,
+    avulso: true,
+  };
 }
 
 function celulaFromBase(
@@ -75,6 +84,7 @@ function celulaFromBase(
     // grade_base é horário fixo/permanente — "experimental" não existe nesse
     // escopo (a coluna nem existe na tabela), só em excecoes_semana.
     aluno_experimental: false,
+    nivel_avulso: null,
     tipo: row.tipo,
     horario_especifico: row.horario_especifico,
     observacao: row.observacao,
@@ -134,6 +144,7 @@ export const getGradeSemana = createServerFn({ method: "GET" })
             {
               aluno_id: m.aluno_id ?? row.aluno_id,
               aluno_nome_avulso: m.aluno_nome_avulso ?? row.aluno_nome_avulso,
+              nivel_avulso: m.nivel_avulso,
             },
             alunosById,
           );
@@ -151,6 +162,7 @@ export const getGradeSemana = createServerFn({ method: "GET" })
             aluno_nascimento: info.nascimento,
             aluno_avulso: info.avulso,
             aluno_experimental: m.experimental ?? false,
+            nivel_avulso: m.nivel_avulso ?? null,
             tipo: (m.tipo ?? row.tipo) as TipoAula,
             horario_especifico: m.horario_especifico ?? row.horario_especifico,
             observacao: m.observacao ?? row.observacao,
@@ -166,7 +178,11 @@ export const getGradeSemana = createServerFn({ method: "GET" })
         if (!e.professora_id || !e.periodo) continue;
         if (!e.aluno_id && !e.aluno_nome_avulso) continue;
         const info = nomeDoAluno(
-          { aluno_id: e.aluno_id, aluno_nome_avulso: e.aluno_nome_avulso },
+          {
+            aluno_id: e.aluno_id,
+            aluno_nome_avulso: e.aluno_nome_avulso,
+            nivel_avulso: e.nivel_avulso,
+          },
           alunosById,
         );
         doDia.push({
@@ -183,6 +199,7 @@ export const getGradeSemana = createServerFn({ method: "GET" })
           aluno_nascimento: info.nascimento,
           aluno_avulso: info.avulso,
           aluno_experimental: e.experimental,
+          nivel_avulso: e.nivel_avulso,
           tipo: (e.tipo ?? "regular") as TipoAula,
           horario_especifico: e.horario_especifico,
           observacao: e.observacao,
@@ -265,6 +282,7 @@ export const adicionarAluno = createServerFn({ method: "POST" })
       horario_especifico?: string | null;
       observacao?: string | null;
       experimental?: boolean;
+      nivel_avulso?: string | null;
     }) => data,
   )
   .handler(async ({ data }) => {
@@ -336,6 +354,7 @@ export const adicionarAluno = createServerFn({ method: "POST" })
         horario_especifico: data.horario_especifico ?? null,
         observacao: data.observacao ?? null,
         experimental: data.experimental ?? false,
+        nivel_avulso: data.nivel_avulso ?? null,
       });
       if (error) throw new Error(error.message);
     }

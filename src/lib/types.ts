@@ -354,6 +354,10 @@ export type ExcecaoSemana = {
   horario_especifico: string | null;
   observacao: string | null;
   experimental: boolean;
+  // Nível que o avulso/prospect vai experimentar — não existe pra aluno de
+  // verdade (esse já tem `alunos.nivel`) nem pra grade_base (não tem essa
+  // coluna, horário fixo permanente sempre tem aluno_id real).
+  nivel_avulso: string | null;
 };
 
 // Célula computada (aluno ocupando um período)
@@ -375,6 +379,9 @@ export type CelulaAula = {
   // célula regular (misturado com alunos de verdade), diferente do Comercial
   // (que exige a célula inteira configurada como tipo="comercial").
   aluno_experimental: boolean;
+  // Nível que um avulso/prospect vai experimentar — null pra aluno de
+  // verdade (já tem `aluno_nivel` via `alunos.nivel`).
+  nivel_avulso: string | null;
   tipo: TipoAula;
   horario_especifico: string | null;
   observacao: string | null;

@@ -355,6 +355,7 @@ export type Database = {
           grade_base_id: string | null;
           horario_especifico: string | null;
           id: string;
+          nivel_avulso: string | null;
           observacao: string | null;
           periodo: number | null;
           professora_id: string | null;
@@ -371,6 +372,7 @@ export type Database = {
           grade_base_id?: string | null;
           horario_especifico?: string | null;
           id?: string;
+          nivel_avulso?: string | null;
           observacao?: string | null;
           periodo?: number | null;
           professora_id?: string | null;
@@ -387,6 +389,7 @@ export type Database = {
           grade_base_id?: string | null;
           horario_especifico?: string | null;
           id?: string;
+          nivel_avulso?: string | null;
           observacao?: string | null;
           periodo?: number | null;
           professora_id?: string | null;

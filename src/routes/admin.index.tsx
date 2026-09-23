@@ -149,6 +149,9 @@ function GradePage() {
           aluno_nome_avulso: nome,
           horario_especifico: horarioEspecifico,
           experimental: tipo !== "comercial" && experimental,
+          // Comercial esconde o seletor de nível (prospect não escolheu
+          // ainda), então `nivel` já vem vazio nesse caso.
+          nivel_avulso: nivel.trim() || null,
         },
       });
       qc.invalidateQueries();
