@@ -10,7 +10,6 @@ import {
 import { criarAluno } from "@/lib/cadastros.functions";
 import { removerCelula } from "@/lib/grade.functions";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
-import { formatarDataBR } from "@/lib/date-utils";
 import { NIVEIS } from "@/lib/types";
 
 export const Route = createFileRoute("/admin/comercial")({ component: ComercialPage });
@@ -113,11 +112,6 @@ function ComercialPage() {
                       </li>
                     ))}
                   </ul>
-                  {a.ultimaData && (
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Última conversa: {formatarDataBR(a.ultimaData)}
-                    </div>
-                  )}
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
                   {matriculados.has(a.nome) ? (
