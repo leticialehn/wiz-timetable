@@ -32,7 +32,7 @@ Status legend: **Draft** (@sm) → **Ready** (@po) → **InProgress** (@dev) →
 | 6.1   | [Add "Comercial" horario type](6.1.add-comercial-tipo-aula.md)  | Done (CONCERNS) | @dev     |
 | 6.2   | ["Comercial" nav tab + prospect list](6.2.comercial-nav-tab.md) | Done (CONCERNS) | @dev     |
 
-## EPIC-003 — Test Harness + CI (P1) — Draft, created 2026-09-18
+## EPIC-003 — Test Harness + CI (P1) — ✅ Done (closed 2026-09-22)
 
 `docs/stories/epics/EPIC-003-test-harness-ci.md`
 
