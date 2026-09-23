@@ -211,7 +211,23 @@ export const getGradeSemana = createServerFn({ method: "GET" })
     }
 
     const celulas = Object.values(celulasPorData).flat();
-    return { professoras, alunos, celulas, celulasPorData, horariosConfig, datasSemana: datas };
+
+    const temasDoDia: Record<string, string> = {};
+    for (const e of excecoes) {
+      if (e.tipo_excecao === "tema" && e.professora_id && e.periodo && e.observacao) {
+        temasDoDia[`${e.data}|${e.professora_id}|${e.periodo}`] = e.observacao;
+      }
+    }
+
+    return {
+      professoras,
+      alunos,
+      celulas,
+      celulasPorData,
+      horariosConfig,
+      datasSemana: datas,
+      temasDoDia,
+    };
   });
 
 // ============ Configuração de tipo de horário (por célula) ============
@@ -398,6 +414,52 @@ export const removerCelula = createServerFn({ method: "POST" })
         data: data.data,
         tipo_excecao: "remover",
         grade_base_id: data.grade_base_id,
+      });
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true };
+  });
+
+// ============ Nota especial só pra um dia (ex.: atividade do Dia das Crianças) ============
+// Diferente de setHorarioConfig (tema permanente, toda semana) — essa é pontual,
+// só pro dia exato. Reaproveita excecoes_semana (tipo_excecao="tema"), sem
+// aluno_id/aluno_nome_avulso — só a nota em si.
+
+export const definirTemaDia = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      data: string;
+      dia_semana: number;
+      periodo: number;
+      professora_id: string;
+      observacao: string | null;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    // Story 1.3: edição de grade — secretaria-only.
+    const { requireRole } = await import("./auth.server");
+    await requireRole(["secretaria"]);
+    const sb = await admin();
+    // No máximo uma nota por (data, professora, período) — substitui a
+    // anterior em vez de acumular, e um texto vazio simplesmente limpa.
+    const { error: delError } = await sb
+      .from("excecoes_semana")
+      .delete()
+      .eq("data", data.data)
+      .eq("professora_id", data.professora_id)
+      .eq("periodo", data.periodo)
+      .eq("tipo_excecao", "tema");
+    if (delError) throw new Error(delError.message);
+
+    const observacao = data.observacao?.trim();
+    if (observacao) {
+      const { error } = await sb.from("excecoes_semana").insert({
+        data: data.data,
+        tipo_excecao: "tema",
+        dia_semana: data.dia_semana,
+        periodo: data.periodo,
+        professora_id: data.professora_id,
+        observacao,
       });
       if (error) throw new Error(error.message);
     }

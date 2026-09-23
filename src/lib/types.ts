@@ -343,7 +343,7 @@ export type GradeBaseRow = {
 export type ExcecaoSemana = {
   id: string;
   data: string;
-  tipo_excecao: "adicionar" | "remover" | "mover" | "ausente";
+  tipo_excecao: "adicionar" | "remover" | "mover" | "ausente" | "tema";
   grade_base_id: string | null;
   professora_id: string | null;
   aluno_id: string | null;
@@ -397,6 +397,10 @@ export type GradeSemana = {
   celulasPorData: Record<string, CelulaAula[]>;
   horariosConfig: HorarioConfig[];
   datasSemana: string[];
+  // Nota especial só pra um dia específico (ex.: atividade do Dia das
+  // Crianças numa terça só) — chave `${data}|${professora_id}|${periodo}`.
+  // Diferente de HorarioConfig.tema, que é permanente/toda semana.
+  temasDoDia: Record<string, string>;
 };
 
 export const DIAS_SEMANA = [

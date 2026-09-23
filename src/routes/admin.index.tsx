@@ -10,6 +10,7 @@ import {
   removerHorarioConfig,
   alternarVagaFechada,
   alternarAusenciaAvisada,
+  definirTemaDia,
 } from "@/lib/grade.functions";
 import { criarAluno, atualizarAluno } from "@/lib/cadastros.functions";
 import { useRealtimeGrade } from "@/hooks/use-realtime-grade";
@@ -100,6 +101,7 @@ function GradePage() {
   const atualizarAlunoFn = useServerFn(atualizarAluno);
   const alternarVagaFn = useServerFn(alternarVagaFechada);
   const alternarAusenciaFn = useServerFn(alternarAusenciaAvisada);
+  const definirTemaDiaFn = useServerFn(definirTemaDia);
 
   async function handleAdicionar(
     professoraId: string,
@@ -204,6 +206,19 @@ function GradePage() {
     qc.invalidateQueries();
   }
 
+  async function handleSalvarTemaDia(professoraId: string, periodo: number, observacao: string) {
+    await definirTemaDiaFn({
+      data: {
+        data: dataDoDia,
+        dia_semana: diaAtivo,
+        periodo,
+        professora_id: professoraId,
+        observacao,
+      },
+    });
+    qc.invalidateQueries();
+  }
+
   return (
     <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
       <div className="sticky top-[65px] z-10 bg-background pt-2 -mx-4 px-4 sm:-mx-6 sm:px-6">
@@ -274,6 +289,7 @@ function GradePage() {
           professoras={data.professoras.filter((p) => p.ativa)}
           celulas={data.celulasPorData[dataDoDia] ?? []}
           horariosConfig={data.horariosConfig}
+          temasDoDia={data.temasDoDia}
           diaSemana={diaAtivo}
           dataDoDia={dataDoDia}
           calendarioExcecoes={calendarioExcecoes ?? []}
@@ -300,6 +316,12 @@ function GradePage() {
             (c) => c.professora_id === editando.professora.id && c.periodo === editando.periodo,
           )}
           alunos={data.alunos}
+          temaDoDia={
+            data.temasDoDia[`${dataDoDia}|${editando.professora.id}|${editando.periodo}`] ?? null
+          }
+          onSalvarTemaDia={(observacao) =>
+            handleSalvarTemaDia(editando.professora.id, editando.periodo, observacao)
+          }
           onFechar={() => setEditando(null)}
         />
       )}
@@ -311,6 +333,7 @@ function GradeTabela(props: {
   professoras: Professora[];
   celulas: CelulaAula[];
   horariosConfig: HorarioConfig[];
+  temasDoDia: Record<string, string>;
   diaSemana: number;
   dataDoDia: string;
   calendarioExcecoes: CalendarioExcecao[];
@@ -399,6 +422,7 @@ function GradeTabela(props: {
                         cels={cels}
                         alunos={props.alunos}
                         dataDoDia={dataDoDia}
+                        temaDoDia={props.temasDoDia[`${dataDoDia}|${p.id}|${per}`] ?? null}
                         calendarioExcecoes={calendarioExcecoes}
                         onAdicionar={(alunoId, avulso, horarioEspecifico) =>
                           props.onAdicionar(p.id, per, alunoId, avulso, horarioEspecifico)
@@ -440,6 +464,7 @@ function CelulaConteudo({
   cels,
   alunos,
   dataDoDia,
+  temaDoDia,
   calendarioExcecoes,
   onAdicionar,
   onCriarEAdicionar,
@@ -455,6 +480,7 @@ function CelulaConteudo({
   cels: CelulaAula[];
   alunos: Aluno[];
   dataDoDia: string;
+  temaDoDia: string | null;
   calendarioExcecoes: CalendarioExcecao[];
   onAdicionar: (
     alunoId: string,
@@ -597,6 +623,14 @@ function CelulaConteudo({
 
   return (
     <div className="space-y-1 pr-2">
+      {temaDoDia && (
+        <div
+          className="rounded-md border border-amber-400/60 bg-amber-500/10 px-1.5 py-1 text-[11px] font-medium leading-tight text-amber-700 dark:text-amber-400 mb-1"
+          title="Nota especial só para hoje"
+        >
+          🎉 {temaDoDia}
+        </div>
+      )}
       {tipo !== "regular" && (
         <div className="flex items-baseline justify-between gap-1.5 mb-1">
           <span className="text-[11px] font-bold uppercase tracking-wide">{ROTULO_TIPO[tipo]}</span>
@@ -1141,6 +1175,8 @@ function CelulaEditor(props: {
   config: HorarioConfig | null;
   celulas: CelulaAula[];
   alunos: Aluno[];
+  temaDoDia: string | null;
+  onSalvarTemaDia: (observacao: string) => Promise<void>;
   onFechar: () => void;
 }) {
   const addFn = useServerFn(adicionarAluno);
@@ -1158,6 +1194,8 @@ function CelulaEditor(props: {
   const [avulsoNome, setAvulsoNome] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [modoTipo, setModoTipo] = useState(false);
+  const [temaDia, setTemaDia] = useState(props.temaDoDia ?? "");
+  const [salvandoTemaDia, setSalvandoTemaDia] = useState(false);
 
   const fechado = TIPO_FECHADO[tipo];
   const cap = CAPACIDADE[tipo];
@@ -1202,6 +1240,18 @@ function CelulaEditor(props: {
       setTema("");
     } catch (e) {
       setErro((e as Error).message);
+    }
+  }
+
+  async function salvarTemaDia() {
+    setErro(null);
+    setSalvandoTemaDia(true);
+    try {
+      await props.onSalvarTemaDia(temaDia.trim());
+    } catch (e) {
+      setErro((e as Error).message);
+    } finally {
+      setSalvandoTemaDia(false);
     }
   }
 
@@ -1277,6 +1327,32 @@ function CelulaEditor(props: {
               {erro}
             </div>
           )}
+
+          {/* Nota especial só para este dia (ex.: atividade do Dia das Crianças) */}
+          <section className="mb-6 rounded border border-amber-400/50 bg-amber-500/5 p-3">
+            <h3 className="font-medium text-sm mb-1">
+              🎉 Nota especial só para {formatarDataBR(props.dataDoDia)}
+            </h3>
+            <p className="text-xs text-muted-foreground mb-2">
+              Aparece destacada na grade só neste dia — não afeta as outras semanas. Deixe em branco
+              e salve para remover.
+            </p>
+            <div className="flex gap-2">
+              <input
+                value={temaDia}
+                onChange={(e) => setTemaDia(e.target.value)}
+                placeholder="Ex.: Atividade especial — Dia das Crianças"
+                className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+              <button
+                disabled={salvandoTemaDia}
+                onClick={salvarTemaDia}
+                className="shrink-0 rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm disabled:opacity-50"
+              >
+                {salvandoTemaDia ? "Salvando…" : "Salvar"}
+              </button>
+            </div>
+          </section>
 
           {/* Configuração do horário */}
           {modoTipo ? (

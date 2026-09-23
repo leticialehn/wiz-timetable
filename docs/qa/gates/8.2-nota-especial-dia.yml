@@ -1,0 +1,16 @@
+schema: 1
+story: "8.2"
+gate: PASS
+status_reason: >-
+  CHECK constraint re-verified live against production (exact string
+  match). Set/clear logic traced end to end (delete-then-conditional-
+  insert, gated on trimmed text, not a silent no-op). Lookup key format
+  confirmed identical between write side (GradeTabela) and read side
+  (getGradeSemana). Confirmed no new Supabase query added (reuses the
+  already-fetched excecoes array). typecheck/lint/test/build all re-run
+  clean; types.ts regen diffed to zero lines. No issues found.
+reviewer: "Dex (@dev, second pass)"
+reviewed_revision: "worktree:uncommitted (2026-09-23)"
+updated: "2026-09-23T15:56:00Z"
+top_issues: []
+waiver: { active: false }

@@ -89,6 +89,17 @@ one page per type. `/professora/alertas` untouched by design.
 | ----- | ----------------------------------------------------------------------- | ----------- | -------- |
 | 8.1   | [/admin/alertas as a card menu per type](8.1.alertas-cards-por-tipo.md) | Done (PASS) | @dev     |
 
+## EPIC-009 — Per-Day Cell Notes ("Nota Especial") (P3) — ✅ Done (closed 2026-09-23)
+
+Owner-requested replacement for the old paper/marker-pen workflow (marking a
+horário for a one-off special activity, e.g. Dia das Crianças) — a date-specific
+note on one professora/período, visible directly on the grid, that doesn't
+become a permanent weekly thing.
+
+| Story | Title                                                                  | Status      | Executor |
+| ----- | ---------------------------------------------------------------------- | ----------- | -------- |
+| 8.2   | ["Nota especial" for a single day on a cell](8.2.nota-especial-dia.md) | Done (PASS) | @dev     |
+
 ---
 
 Todas as 5 stories de EPIC-003/004/005 foram validadas pelo `@po` em 2026-09-22 —
