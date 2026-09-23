@@ -33,6 +33,7 @@ import { Route as AdminRelatoriosAlunoRouteImport } from './routes/admin.relator
 import { Route as AdminCalendarioImprimirRouteImport } from './routes/admin.calendario_.imprimir'
 import { Route as AdminAlunosInativosRouteImport } from './routes/admin.alunos_.inativos'
 import { Route as AdminAlunosIdRouteImport } from './routes/admin.alunos_.$id'
+import { Route as AdminAlertasSlugRouteImport } from './routes/admin.alertas_.$slug'
 import { Route as AdminAlunosIdHistoricoRouteImport } from './routes/admin.alunos_.$id_.historico'
 
 const ProfessoraRoute = ProfessoraRouteImport.update({
@@ -159,6 +160,11 @@ const AdminAlunosIdRoute = AdminAlunosIdRouteImport.update({
   path: '/alunos/$id',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAlertasSlugRoute = AdminAlertasSlugRouteImport.update({
+  id: '/alertas_/$slug',
+  path: '/alertas/$slug',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAlunosIdHistoricoRoute = AdminAlunosIdHistoricoRouteImport.update({
   id: '/alunos_/$id_/historico',
   path: '/alunos/$id/historico',
@@ -178,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/professora/alertas': typeof ProfessoraAlertasRoute
   '/admin/': typeof AdminIndexRoute
+  '/admin/alertas/$slug': typeof AdminAlertasSlugRoute
   '/admin/alunos/$id': typeof AdminAlunosIdRoute
   '/admin/alunos/inativos': typeof AdminAlunosInativosRoute
   '/admin/calendario/imprimir': typeof AdminCalendarioImprimirRoute
@@ -204,6 +211,7 @@ export interface FileRoutesByTo {
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/professora/alertas': typeof ProfessoraAlertasRoute
   '/admin': typeof AdminIndexRoute
+  '/admin/alertas/$slug': typeof AdminAlertasSlugRoute
   '/admin/alunos/$id': typeof AdminAlunosIdRoute
   '/admin/alunos/inativos': typeof AdminAlunosInativosRoute
   '/admin/calendario/imprimir': typeof AdminCalendarioImprimirRoute
@@ -232,6 +240,7 @@ export interface FileRoutesById {
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/professora_/alertas': typeof ProfessoraAlertasRoute
   '/admin/': typeof AdminIndexRoute
+  '/admin/alertas_/$slug': typeof AdminAlertasSlugRoute
   '/admin/alunos_/$id': typeof AdminAlunosIdRoute
   '/admin/alunos_/inativos': typeof AdminAlunosInativosRoute
   '/admin/calendario_/imprimir': typeof AdminCalendarioImprimirRoute
@@ -261,6 +270,7 @@ export interface FileRouteTypes {
     | '/admin/usuarios'
     | '/professora/alertas'
     | '/admin/'
+    | '/admin/alertas/$slug'
     | '/admin/alunos/$id'
     | '/admin/alunos/inativos'
     | '/admin/calendario/imprimir'
@@ -287,6 +297,7 @@ export interface FileRouteTypes {
     | '/admin/usuarios'
     | '/professora/alertas'
     | '/admin'
+    | '/admin/alertas/$slug'
     | '/admin/alunos/$id'
     | '/admin/alunos/inativos'
     | '/admin/calendario/imprimir'
@@ -314,6 +325,7 @@ export interface FileRouteTypes {
     | '/admin/usuarios'
     | '/professora_/alertas'
     | '/admin/'
+    | '/admin/alertas_/$slug'
     | '/admin/alunos_/$id'
     | '/admin/alunos_/inativos'
     | '/admin/calendario_/imprimir'
@@ -507,6 +519,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAlunosIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/alertas_/$slug': {
+      id: '/admin/alertas_/$slug'
+      path: '/alertas/$slug'
+      fullPath: '/admin/alertas/$slug'
+      preLoaderRoute: typeof AdminAlertasSlugRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/alunos_/$id_/historico': {
       id: '/admin/alunos_/$id_/historico'
       path: '/alunos/$id/historico'
@@ -526,6 +545,7 @@ interface AdminRouteChildren {
   AdminRelatoriosRoute: typeof AdminRelatoriosRoute
   AdminUsuariosRoute: typeof AdminUsuariosRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminAlertasSlugRoute: typeof AdminAlertasSlugRoute
   AdminAlunosIdRoute: typeof AdminAlunosIdRoute
   AdminAlunosInativosRoute: typeof AdminAlunosInativosRoute
   AdminCalendarioImprimirRoute: typeof AdminCalendarioImprimirRoute
@@ -549,6 +569,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminRelatoriosRoute: AdminRelatoriosRoute,
   AdminUsuariosRoute: AdminUsuariosRoute,
   AdminIndexRoute: AdminIndexRoute,
+  AdminAlertasSlugRoute: AdminAlertasSlugRoute,
   AdminAlunosIdRoute: AdminAlunosIdRoute,
   AdminAlunosInativosRoute: AdminAlunosInativosRoute,
   AdminCalendarioImprimirRoute: AdminCalendarioImprimirRoute,

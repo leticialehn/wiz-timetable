@@ -145,6 +145,24 @@ export type TipoAlerta =
   | "gravacao_r3r4"
   | "gravacao_r7r8";
 
+// Segmento de URL por tipo, pra /admin/alertas/<slug> — hífen em vez de "_"
+// (mesma convenção de "carga-professoras" em Relatórios), pra não confundir
+// com o "_" que o TanStack Router usa como marcador de rota não-aninhada.
+export const SLUG_TIPO_ALERTA: Record<TipoAlerta, string> = {
+  rematricula: "rematricula",
+  faltas: "faltas",
+  nota_fala: "nota-fala",
+  atrasado: "atrasado",
+  sem_aula: "sem-aula",
+  escrita_pendente: "escrita-pendente",
+  gravacao_r3r4: "gravacao-r3r4",
+  gravacao_r7r8: "gravacao-r7r8",
+};
+
+export const TIPO_POR_SLUG: Record<string, TipoAlerta> = Object.fromEntries(
+  Object.entries(SLUG_TIPO_ALERTA).map(([tipo, slug]) => [slug, tipo as TipoAlerta]),
+);
+
 // Alertas que interessam à professora no dia a dia da aula (cobrar tarefa,
 // lembrar de gravar) — os demais (faltas, nota, rematrícula…) são só pra
 // coordenação/Wizard.

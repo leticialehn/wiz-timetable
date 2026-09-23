@@ -1,0 +1,16 @@
+schema: 1
+story: "8.1"
+gate: PASS
+status_reason: >-
+  Card styling re-verified against RelatorioCard's own classes (visual
+  parity confirmed, not just described). Filtering re-traced to confirm
+  the new route is a thin wrapper over the pre-existing, untouched
+  apenasTipos logic. professora_.alertas.tsx confirmed unchanged via git
+  diff --stat (empty output). typecheck/lint/test/build all re-run clean,
+  including the new dynamic $slug route in the generated route tree. No
+  issues found.
+reviewer: "Dex (@dev, second pass)"
+reviewed_revision: "worktree:uncommitted (2026-09-23)"
+updated: "2026-09-23T15:05:00Z"
+top_issues: []
+waiver: { active: false }

@@ -7,6 +7,7 @@ import {
   marcarContactado,
   getAniversariantesDoMes,
   type AlertaAtivo,
+  type Aniversariante,
   type TipoAlerta,
   type DesfechoRematricula,
 } from "@/lib/alertas.functions";
@@ -14,7 +15,7 @@ import { getUltimasLicoesPorAluno } from "@/lib/cadastros.functions";
 import { formatarDataBR, formatarMesAnoBR, toISODate, somarMeses } from "@/lib/date-utils";
 
 // Ordem de exibição dos grupos: rematrícula sempre primeiro.
-const ORDEM_TIPO: TipoAlerta[] = [
+export const ORDEM_TIPO: TipoAlerta[] = [
   "rematricula",
   "faltas",
   "nota_fala",
@@ -25,7 +26,7 @@ const ORDEM_TIPO: TipoAlerta[] = [
   "gravacao_r7r8",
 ];
 
-const ROTULO_TIPO_ALERTA: Record<TipoAlerta, string> = {
+export const ROTULO_TIPO_ALERTA: Record<TipoAlerta, string> = {
   faltas: "Faltas seguidas",
   rematricula: "Rematrícula (R8)",
   nota_fala: "Nota baixa em Fala",
@@ -36,11 +37,23 @@ const ROTULO_TIPO_ALERTA: Record<TipoAlerta, string> = {
   gravacao_r7r8: "Gravação pendente (entre R7 e R8)",
 };
 
+// Descrição curta por tipo, pro card clicável da tela-menu de /admin/alertas.
+export const DESCRICAO_TIPO_ALERTA: Record<TipoAlerta, string> = {
+  faltas: "Alunos com faltas seguidas, sem avisar.",
+  rematricula: "Contratos perto do fim ou já vencidos, aguardando decisão de renovação.",
+  nota_fala: "Notas baixas (B ou pior) em Fala nas últimas lições.",
+  atrasado: "Alunos atrasados no calendário de lições do nível.",
+  sem_aula: "Alunos sem nenhuma aula agendada há vários dias.",
+  escrita_pendente: "Tarefas escritas seguidas sem entregar.",
+  gravacao_r3r4: "Gravação de revisão pendente (entre R3 e R4).",
+  gravacao_r7r8: "Gravação de revisão pendente (entre R7 e R8).",
+};
+
 // Uma cor por categoria pra dar pra notar a mudança de grupo só de bater o
 // olho, sem precisar parar pra ler o título — pedido depois que passar
 // rápido pela tela ficou difícil perceber onde uma categoria acaba e a
 // próxima começa (antes todo alerta pendente era da mesma cor laranja).
-const COR_TIPO_ALERTA: Record<
+export const COR_TIPO_ALERTA: Record<
   TipoAlerta,
   { borda: string; fundo: string; texto: string; ponto: string }
 > = {
@@ -150,12 +163,37 @@ function agruparPorTipo(alertas: AlertaAtivo[]): { tipo: TipoAlerta; itens: Aler
   );
 }
 
+// Extraído pra ser reaproveitado tanto aqui (default) quanto na página-menu
+// de /admin/alertas (que suprime esse bloco nas 8 sub-páginas por tipo, pra
+// não repetir o mesmo banner 8 vezes — mostra só uma vez, na tela-menu).
+export function AniversariantesBanner({ aniversariantes }: { aniversariantes: Aniversariante[] }) {
+  if (aniversariantes.length === 0) return null;
+  const nomeMesAtual = new Date().toLocaleDateString("pt-BR", { month: "long" });
+  return (
+    <div className="mb-6 rounded-lg border border-border bg-muted/40 p-3">
+      <h2 className="text-sm font-semibold mb-2">
+        🎂 Aniversariantes de {nomeMesAtual} ({aniversariantes.length})
+      </h2>
+      <ul className="space-y-1 text-sm">
+        {aniversariantes.map((a) => (
+          <li key={a.aluno_id}>
+            <span className="font-medium">Dia {a.dia}</span> — {a.nome}{" "}
+            <span className="text-muted-foreground">({a.nivel})</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function AlertasLista({
   resolvidoPor,
   apenasTipos,
+  mostrarAniversariantes = true,
 }: {
   resolvidoPor: string;
   apenasTipos?: TipoAlerta[];
+  mostrarAniversariantes?: boolean;
 }) {
   const qc = useQueryClient();
   const getFn = useServerFn(getAlertasAtivos);
@@ -249,25 +287,9 @@ export function AlertasLista({
   const gruposPendentes = agruparPorTipo(pendentes);
   const gruposResolvidos = agruparPorTipo(resolvidos);
 
-  const nomeMesAtual = new Date().toLocaleDateString("pt-BR", { month: "long" });
-
   return (
     <div>
-      {aniversariantes && aniversariantes.length > 0 && (
-        <div className="mb-6 rounded-lg border border-border bg-muted/40 p-3">
-          <h2 className="text-sm font-semibold mb-2">
-            🎂 Aniversariantes de {nomeMesAtual} ({aniversariantes.length})
-          </h2>
-          <ul className="space-y-1 text-sm">
-            {aniversariantes.map((a) => (
-              <li key={a.aluno_id}>
-                <span className="font-medium">Dia {a.dia}</span> — {a.nome}{" "}
-                <span className="text-muted-foreground">({a.nivel})</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {mostrarAniversariantes && <AniversariantesBanner aniversariantes={aniversariantes ?? []} />}
 
       <h2 className="text-lg font-semibold mb-3">
         Pendentes {pendentes.length > 0 && `(${pendentes.length})`}

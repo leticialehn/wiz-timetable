@@ -79,6 +79,16 @@ the bug — see 7.4.
 | 7.5   | [Nível on avulso/experimental bookings](7.5.nivel-avulso-experimental.md)                      | Done (PASS) | @dev           |
 | 7.6   | ["Remover" button on /admin/comercial](7.6.remover-button-comercial.md)                        | Done (PASS) | @dev           |
 
+## EPIC-008 — Alertas UI Restructuring (P3) — ✅ Done (closed 2026-09-23)
+
+Owner-requested UI cleanup: `/admin/alertas` mixed all 8 alert types on one
+long page; split into a card menu (matching `/admin/relatorios`'s look) plus
+one page per type. `/professora/alertas` untouched by design.
+
+| Story | Title                                                                   | Status      | Executor |
+| ----- | ----------------------------------------------------------------------- | ----------- | -------- |
+| 8.1   | [/admin/alertas as a card menu per type](8.1.alertas-cards-por-tipo.md) | Done (PASS) | @dev     |
+
 ---
 
 Todas as 5 stories de EPIC-003/004/005 foram validadas pelo `@po` em 2026-09-22 —
