@@ -129,7 +129,26 @@ function GradePage() {
     nivel: string,
     avulso: boolean,
     horarioEspecifico: string | null,
+    tipo: TipoHorario,
   ) {
+    // Story 7.1: Comercial nunca cria um aluno de verdade — o nome digitado é
+    // só um prospect (aluno_nome_avulso), igual ao mecanismo que "Exp"/outros
+    // avulsos já usam em qualquer outro tipo de célula.
+    if (tipo === "comercial") {
+      await adicionarFn({
+        data: {
+          escopo: avulso ? "semana" : "base",
+          data: dataDoDia,
+          dia_semana: diaAtivo,
+          periodo,
+          professora_id: professoraId,
+          aluno_nome_avulso: nome,
+          horario_especifico: horarioEspecifico,
+        },
+      });
+      qc.invalidateQueries();
+      return;
+    }
     const r = await criarAlunoFn({ data: { nome, nivel } });
     await handleAdicionar(professoraId, periodo, r.id, avulso, horarioEspecifico);
   }
@@ -302,6 +321,7 @@ function GradeTabela(props: {
     nivel: string,
     avulso: boolean,
     horarioEspecifico: string | null,
+    tipo: TipoHorario,
   ) => Promise<void>;
   onEditarAluno: (alunoId: string, nome: string, nivel: string) => Promise<void>;
   onRemover: (c: CelulaAula) => Promise<void>;
@@ -375,7 +395,15 @@ function GradeTabela(props: {
                           props.onAdicionar(p.id, per, alunoId, avulso, horarioEspecifico)
                         }
                         onCriarEAdicionar={(nome, nivel, avulso, horarioEspecifico) =>
-                          props.onCriarEAdicionar(p.id, per, nome, nivel, avulso, horarioEspecifico)
+                          props.onCriarEAdicionar(
+                            p.id,
+                            per,
+                            nome,
+                            nivel,
+                            avulso,
+                            horarioEspecifico,
+                            tipo,
+                          )
                         }
                         onEditarAluno={props.onEditarAluno}
                         onRemover={props.onRemover}
@@ -855,12 +883,16 @@ function LinhaVaziaEditavel({
     setErro(null);
   }
 
+  // Story 7.1: Comercial é sempre prospect, nunca vira aluno de verdade — não
+  // pede nível (aluno ainda não existe) e nunca chama criarAluno.
+  const ehComercial = tipo === "comercial";
+
   async function confirmar() {
     if (!nome.trim()) {
       cancelar();
       return;
     }
-    if (!alunoId && !nivel) {
+    if (!alunoId && !nivel && !ehComercial) {
       setErro("Escolha um nível.");
       return;
     }
@@ -872,8 +904,11 @@ function LinhaVaziaEditavel({
     setSalvando(true);
     try {
       const horarioEspecifico = temSlotsFixos ? (horarioFixo ?? horario) : null;
-      if (alunoId) await onAdicionar(alunoId, avulso, horarioEspecifico);
-      else await onCriarEAdicionar(nome.trim(), nivel, avulso, horarioEspecifico);
+      // Comercial é sempre "só esta semana" — um prospect não vira horário
+      // fixo recorrente na base, mesmo que alguém esqueça de marcar o avulso.
+      const avulsoEfetivo = ehComercial ? true : avulso;
+      if (alunoId) await onAdicionar(alunoId, avulsoEfetivo, horarioEspecifico);
+      else await onCriarEAdicionar(nome.trim(), nivel, avulsoEfetivo, horarioEspecifico);
       cancelar();
     } catch (e) {
       setSalvando(false);
@@ -947,27 +982,29 @@ function LinhaVaziaEditavel({
           placeholder="Nome…"
           className="min-w-0 flex-1 rounded border border-input bg-background px-1 py-0.5 text-[12px]"
         />
-        <select
-          value={nivel}
-          onChange={(e) => setNivel(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              confirmar();
-            }
-            if (e.key === "Escape") cancelar();
-          }}
-          className="w-16 shrink-0 rounded border border-input bg-background px-1 py-0.5 text-[12px]"
-        >
-          <option value="" disabled>
-            Nível
-          </option>
-          {NIVEIS.map((n) => (
-            <option key={n} value={n}>
-              {n}
+        {!ehComercial && (
+          <select
+            value={nivel}
+            onChange={(e) => setNivel(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                confirmar();
+              }
+              if (e.key === "Escape") cancelar();
+            }}
+            className="w-16 shrink-0 rounded border border-input bg-background px-1 py-0.5 text-[12px]"
+          >
+            <option value="" disabled>
+              Nível
             </option>
-          ))}
-        </select>
+            {NIVEIS.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
       {precisaEscolherHorario && (
         <select
@@ -993,18 +1030,20 @@ function LinhaVaziaEditavel({
           ))}
         </select>
       )}
-      <label
-        className="mt-0.5 flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400"
-        title="Marca esse aluno como avulso, só nesta semana (em vez de horário fixo)"
-      >
-        <input
-          type="checkbox"
-          checked={avulso}
-          onChange={(e) => setAvulso(e.target.checked)}
-          className="h-3 w-3"
-        />
-        Avulso (só esta semana)
-      </label>
+      {!ehComercial && (
+        <label
+          className="mt-0.5 flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400"
+          title="Marca esse aluno como avulso, só nesta semana (em vez de horário fixo)"
+        >
+          <input
+            type="checkbox"
+            checked={avulso}
+            onChange={(e) => setAvulso(e.target.checked)}
+            className="h-3 w-3"
+          />
+          Avulso (só esta semana)
+        </label>
+      )}
       {sugestoes.length > 0 && (
         <ul className="absolute left-0 right-0 top-full z-30 mt-0.5 max-h-32 overflow-y-auto rounded border border-border bg-card shadow-lg">
           {sugestoes.map((a) => (

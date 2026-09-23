@@ -1,0 +1,16 @@
+schema: 1
+story: "7.1"
+gate: PASS
+status_reason: >-
+  All 6 ACs implemented and independently re-verified: tipo-branch traced
+  in handleCriarEAdicionar, nível/avulso-checkbox correctly gated for
+  Comercial, the other avulso-only booking path confirmed unaffected,
+  typecheck/lint clean. Live browser verification not possible this
+  session (local port-forwarding conflict unrelated to the app) - covered
+  instead by the entire prop-threading chain type-checking cleanly plus a
+  full manual code trace. No issues found.
+reviewer: "Aria (@architect)"
+reviewed_revision: "worktree:uncommitted (2026-09-22, base commit 3df558f)"
+updated: "2026-09-22T23:25:55Z"
+top_issues: []
+waiver: { active: false }
