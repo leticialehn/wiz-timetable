@@ -685,8 +685,12 @@ function AlunoLinha({
   const [nivelExtra, setNivelExtra] = useState(0);
   // Aluno avisou com antecedência que não vem — não é falta (não conta pro
   // alerta de faltas seguidas) e não há presença/notas/lição pra lançar.
+  // Duas origens desse aviso: a própria professora marca aqui (grava em
+  // aulas_presenca), ou a secretaria marca antes na tela admin (grava em
+  // excecoes_semana, chega aqui como c.avisou_falta) — qualquer uma das duas
+  // já é suficiente pra mostrar o aviso, sem exigir que a professora repita.
   const avisadoOriginal =
-    (presencas.find((p) => p.parte === 1)?.status ?? null) === "falta_avisada";
+    (presencas.find((p) => p.parte === 1)?.status ?? null) === "falta_avisada" || c.avisou_falta;
   const [avisado, setAvisadoRaw] = useState(avisadoOriginal);
   const [avisadoEditadoManualmente, setAvisadoEditadoManualmente] = useState(false);
 
