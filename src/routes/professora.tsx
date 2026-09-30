@@ -602,11 +602,17 @@ function useParte(
     setPraticadoLocalRaw(v);
   }
 
+  // Falta (sem aviso prévio) nunca salva nota/lição (mesmo guard de
+  // salvarParte, abaixo) — sem essa mesma exceção aqui, a lição pré-
+  // preenchida com a sugestão (nunca salva de propósito) ficava perenemente
+  // diferente do "original" vazio, e o botão Salvar nunca ficava verde
+  // mesmo depois da falta já ter sido gravada com sucesso.
   const alterado =
     presencaLocal !== presencaOriginal ||
-    CAMPOS_NOTA.some(({ key }) => notasLocal[key] !== notasOriginais[key]) ||
-    licaoLocal !== licaoOriginal ||
-    praticadoLocal !== praticadoOriginal;
+    (presencaLocal !== "falta" &&
+      (CAMPOS_NOTA.some(({ key }) => notasLocal[key] !== notasOriginais[key]) ||
+        licaoLocal !== licaoOriginal ||
+        praticadoLocal !== praticadoOriginal));
 
   return {
     parte,
