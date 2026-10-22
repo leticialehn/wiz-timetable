@@ -255,6 +255,7 @@ export const getHistoricoLicoes = createServerFn({ method: "GET" })
         .lt("data", data.antesDe)
         .order("data", { ascending: false })
         .order("periodo", { ascending: false })
+        .order("horario_especifico", { ascending: false })
         .order("parte", { ascending: false });
       if (error) throw new Error(error.message);
       const resultado: Record<

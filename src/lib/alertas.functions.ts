@@ -68,6 +68,7 @@ export const getAlertasLicaoPendente = createServerFn({ method: "GET" }).handler
           .select("aluno_id,data,periodo,parte,licao,nivel_no_momento,praticado,professora_id")
           .order("data", { ascending: false })
           .order("periodo", { ascending: false })
+          .order("horario_especifico", { ascending: false })
           .order("parte", { ascending: false })
           .range(inicio, fim);
         return { data: data as RegistroLicao[] | null, error };
@@ -361,6 +362,7 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
           .eq("parte", 1)
           .order("data", { ascending: false })
           .order("periodo", { ascending: false })
+          .order("horario_especifico", { ascending: false })
           .range(inicio, fim);
         return { data: data as RegistroPresenca[] | null, error };
       }),
@@ -370,6 +372,7 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
           .select("aluno_id,data,periodo,parte,fala,escrita")
           .order("data", { ascending: false })
           .order("periodo", { ascending: false })
+          .order("horario_especifico", { ascending: false })
           .order("parte", { ascending: false })
           .range(inicio, fim);
         return { data: data as RegistroNota[] | null, error };
@@ -387,6 +390,7 @@ export const getAlertasAtivos = createServerFn({ method: "GET" }).handler(
           .select("aluno_id,data,periodo,parte,licao,nivel_no_momento,praticado")
           .order("data", { ascending: false })
           .order("periodo", { ascending: false })
+          .order("horario_especifico", { ascending: false })
           .order("parte", { ascending: false })
           .range(inicio, fim);
         return { data: data as RegistroLicaoAlerta[] | null, error };

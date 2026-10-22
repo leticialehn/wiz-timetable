@@ -166,11 +166,12 @@ function ProfessoraPage() {
   function atualizarLicaoAoVivo(
     alunoId: string,
     periodo: number,
+    horario: string,
     entrada: { licao: string; nivel_no_momento: string; praticado: boolean },
   ) {
     setLicaoAoVivoPorCelula((prev) => ({
       ...prev,
-      [`${alunoId}|${periodo}`]: { alunoId, periodo, ...entrada },
+      [`${alunoId}|${periodo}|${horario}`]: { alunoId, periodo, horario, ...entrada },
     }));
   }
 
@@ -378,16 +379,26 @@ function agruparPorPeriodo(cels: CelulaAula[]) {
 }
 
 type NovaLicaoAoVivo = { licao: string; nivel_no_momento: string; praticado: boolean };
-type LicaoAoVivo = NovaLicaoAoVivo & { alunoId: string; periodo: number };
+type LicaoAoVivo = NovaLicaoAoVivo & { alunoId: string; periodo: number; horario: string };
 
-// Junta o que já foi lançado/está sendo digitado em horários ANTERIORES do
-// mesmo dia (período com número menor = mais cedo) com o histórico de dias
-// anteriores — só "pra frente" no tempo, nunca o contrário. Se deixasse um
-// horário de depois influenciar um de antes, os dois ficariam se
-// atualizando um ao outro sem parar (e a tela pisca).
+// Posição de uma aula dentro do dia: período primeiro, e dentro do mesmo
+// período o horário específico (ex.: "8:20" vs "8:40" — um aluno pode ter 2
+// slots no mesmo período). Sem horário específico = início do período.
+function ordemNoDia(periodo: number, horario: string | null | undefined): number {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(horario ?? "");
+  const minutos = m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : 0;
+  return periodo * 10000 + minutos;
+}
+
+// Junta o que já foi lançado/está sendo digitado em aulas ANTERIORES do
+// mesmo dia (período menor, ou mesmo período com horário mais cedo) com o
+// histórico de dias anteriores — só "pra frente" no tempo, nunca o contrário.
+// Se deixasse uma aula de depois influenciar uma de antes, as duas ficariam se
+// atualizando uma à outra sem parar (e a tela pisca).
 function historicoComHoje(
   alunoId: string,
   periodo: number,
+  horario: string,
   licoesHoje: LicaoRow[],
   licaoAoVivoPorCelula: Record<string, LicaoAoVivo>,
   historicoLicoes: Record<
@@ -395,12 +406,16 @@ function historicoComHoje(
     { licao: string; nivel_no_momento: string; praticado: boolean }[]
   >,
 ): { licao: string; nivel_no_momento: string; praticado: boolean }[] {
+  const minha = ordemNoDia(periodo, horario);
   const aoVivo = Object.values(licaoAoVivoPorCelula)
-    .filter((e) => e.alunoId === alunoId && e.periodo < periodo)
-    .sort((a, b) => b.periodo - a.periodo);
+    .filter((e) => e.alunoId === alunoId && ordemNoDia(e.periodo, e.horario) < minha)
+    .sort((a, b) => ordemNoDia(b.periodo, b.horario) - ordemNoDia(a.periodo, a.horario));
   const salvas = licoesHoje
-    .filter((l) => l.aluno_id === alunoId && l.periodo < periodo)
-    .sort((a, b) => b.periodo - a.periodo);
+    .filter((l) => l.aluno_id === alunoId && ordemNoDia(l.periodo, l.horario_especifico) < minha)
+    .sort(
+      (a, b) =>
+        ordemNoDia(b.periodo, b.horario_especifico) - ordemNoDia(a.periodo, a.horario_especifico),
+    );
   return [...aoVivo, ...salvas, ...(historicoLicoes[alunoId] ?? [])];
 }
 
@@ -435,7 +450,12 @@ function AulaCard({
     { licao: string; nivel_no_momento: string; praticado: boolean }[]
   >;
   licaoAoVivoPorCelula: Record<string, LicaoAoVivo>;
-  onLicaoAoVivoChange: (alunoId: string, periodo: number, entrada: NovaLicaoAoVivo) => void;
+  onLicaoAoVivoChange: (
+    alunoId: string,
+    periodo: number,
+    horario: string,
+    entrada: NovaLicaoAoVivo,
+  ) => void;
   pendenciasPorAluno: Map<string, AlunoLicaoPendente>;
   calendarioExcecoes: CalendarioExcecao[];
   dataDoDia: string;
@@ -514,6 +534,7 @@ function AulaCard({
                     ? historicoComHoje(
                         c.aluno_id,
                         periodo,
+                        c.horario_especifico ?? "",
                         licoes,
                         licaoAoVivoPorCelula,
                         historicoLicoes,
@@ -669,7 +690,12 @@ function AlunoLinha({
   notas: NotaRow[];
   licoes: LicaoRow[];
   historicoLicao: { licao: string; nivel_no_momento: string; praticado: boolean }[];
-  onLicaoAoVivoChange: (alunoId: string, periodo: number, entrada: NovaLicaoAoVivo) => void;
+  onLicaoAoVivoChange: (
+    alunoId: string,
+    periodo: number,
+    horario: string,
+    entrada: NovaLicaoAoVivo,
+  ) => void;
   pendencia: AlunoLicaoPendente | undefined;
   calendarioExcecoes: CalendarioExcecao[];
   dataDoDia: string;
@@ -734,13 +760,21 @@ function AlunoLinha({
   // mesmo antes de clicar em Salvar.
   useEffect(() => {
     if (!c.aluno_id || !temLicao) return;
-    onLicaoAoVivoChange(c.aluno_id, c.periodo, {
+    onLicaoAoVivoChange(c.aluno_id, c.periodo, c.horario_especifico ?? "", {
       licao: parte1.licaoLocal || licaoSugestao1,
       nivel_no_momento: c.aluno_nivel,
       praticado: parte1.praticadoLocal,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [c.aluno_id, c.periodo, c.aluno_nivel, parte1.licaoLocal, parte1.praticadoLocal, temLicao]);
+  }, [
+    c.aluno_id,
+    c.periodo,
+    c.horario_especifico,
+    c.aluno_nivel,
+    parte1.licaoLocal,
+    parte1.praticadoLocal,
+    temLicao,
+  ]);
 
   // A 2ª lição é sempre a seguinte à maior lição já atingida — encadeia a
   // partir do valor (editado ou sugerido) que está na parte 1 agora mesmo,

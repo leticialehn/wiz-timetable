@@ -59,10 +59,18 @@ function chaveDe(r: {
   return `${r.data}-${r.periodo}-${r.professora_id}-${r.parte}-${r.horario_especifico}`;
 }
 
-// Ordena mais recente primeiro: data desc, depois período desc.
-function porDataDesc<T extends { data: string; periodo: number }>(a: T, b: T) {
+// Ordena mais recente primeiro: data desc, período desc, horário específico
+// desc (ex.: 8:40 antes de 8:20) e parte desc (2ª lição antes da 1ª) — assim as
+// lições descem em ordem (L58, L57, L56, L55…) em vez de embaralhar por dia.
+function porDataDesc<
+  T extends { data: string; periodo: number; horario_especifico?: string; parte?: number },
+>(a: T, b: T) {
   if (a.data !== b.data) return a.data < b.data ? 1 : -1;
-  return b.periodo - a.periodo;
+  if (a.periodo !== b.periodo) return b.periodo - a.periodo;
+  const ha = a.horario_especifico ?? "";
+  const hb = b.horario_especifico ?? "";
+  if (ha !== hb) return ha < hb ? 1 : -1;
+  return (b.parte ?? 0) - (a.parte ?? 0);
 }
 
 export const getHistoricoAluno = createServerFn({ method: "GET" })

@@ -146,6 +146,7 @@ export const getUltimasLicoesPorAluno = createServerFn({ method: "GET" }).handle
           .select("aluno_id,licao,data,periodo,parte")
           .order("data", { ascending: false })
           .order("periodo", { ascending: false })
+          .order("horario_especifico", { ascending: false })
           .order("parte", { ascending: false })
           .range(inicio, fim);
         return { data: data as { aluno_id: string; licao: string }[] | null, error };
